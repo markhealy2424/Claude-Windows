@@ -13,8 +13,6 @@ const defaultBranding = {
   intColor: "Matte Black, Powder Coating",
   glassSpec:
     "6mm Low E (Interior) +20A+Warm edge spacer+Argon gas+ 6mm Low E (Exterior), Double Tempered Glass",
-  whoWeAre: "",
-  whatWeBelieve: "",
 };
 
 // Find the supplier-quote line for a given RFQ mark. Suppliers sometimes split
@@ -238,33 +236,6 @@ export default function ProposalTab({ project, onChange }) {
         </div>
       </div>
 
-      <details className="card" style={{ marginBottom: 16 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 600 }}>Cover-page copy (optional)</summary>
-        <p className="text-muted" style={{ fontSize: 12, marginTop: 8, marginBottom: 12 }}>
-          Override the "Who We Are" and "What We Believe In" paragraphs on the proposal cover. Leave
-          blank to use the defaults.
-        </p>
-        <label style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 12 }}>
-          <span className="text-muted" style={{ fontSize: 11 }}>Who We Are</span>
-          <textarea
-            value={branding.whoWeAre}
-            onChange={(e) => setBranding({ ...branding, whoWeAre: e.target.value })}
-            rows={3}
-            placeholder="~50 words about your company"
-            style={{ width: "100%", fontFamily: "inherit", fontSize: 13 }}
-          />
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span className="text-muted" style={{ fontSize: 11 }}>What We Believe In</span>
-          <textarea
-            value={branding.whatWeBelieve}
-            onChange={(e) => setBranding({ ...branding, whatWeBelieve: e.target.value })}
-            rows={3}
-            placeholder="~70 words about certifications + warranty"
-            style={{ width: "100%", fontFamily: "inherit", fontSize: 13 }}
-          />
-        </label>
-      </details>
 
       {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api.js";
 import ItemEditor from "./ItemEditor.jsx";
@@ -15,6 +15,11 @@ export default function ProjectView() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
   const [tab, setTab] = useState("Items");
+  // Per-keystroke PATCHes can race: an older response carrying an older
+  // snapshot of the project arrives AFTER a newer one and clobbers freshly
+  // typed input ("letters get deleted as I type"). Track the latest issued
+  // patch and ignore any response that isn't the latest.
+  const latestPatchRef = useRef(0);
 
   useEffect(() => { api.getProject(id).then(setProject); }, [id]);
 
@@ -22,11 +27,14 @@ export default function ProjectView() {
 
   async function savePatch(patch) {
     setProject((p) => (p ? { ...p, ...patch } : p));
+    const myReq = ++latestPatchRef.current;
     try {
       const updated = await api.updateProject(id, patch);
+      if (myReq !== latestPatchRef.current) return;  // a newer keystroke is in flight
       setProject(updated);
     } catch (err) {
       console.error("savePatch failed:", err);
+      if (myReq !== latestPatchRef.current) return;
       api.getProject(id).then(setProject).catch(() => {});
     }
   }

@@ -15,9 +15,9 @@ const DEFAULT_INT_COLOR = "Matte Black, Powder Coating";
 const DEFAULT_GLASS =
   "6mm Low E (Interior) +20A+Warm edge spacer+Argon gas+ 6mm Low E (Exterior), Double Tempered Glass";
 const DEFAULT_WHO_WE_ARE =
-  "We design and supply premium thermally-broken aluminum windows and doors for residential and commercial projects, focused on craftsmanship, energy efficiency, and architectural integrity.";
+  "Every project is approached with strong logistics, careful preparation, and a customer-first mindset to ensure a smooth and dependable process from start to finish. Our philosophy is simple: deliver refined products, thoughtful service, and results that reflect true craftsmanship. We are committed to helping our customers feel confident in every choice, with clear communication, organized planning, and a dedication to excellence at every step.";
 const DEFAULT_WHAT_WE_BELIEVE =
-  "Every product we deliver is NFRC labeled and AAMA certified. Our windows and doors meet or exceed the highest energy and structural standards. We back every order with a 20-year warranty on materials and workmanship — so you can build with confidence.";
+  "We take pride in providing windows and doors that meet respected industry standards for performance, durability, and efficiency. All of our windows are NFRC certified and AAMA certified, reinforcing our dedication to dependable quality and proven excellence. We stand behind the products we offer and the level of care we bring to every order, backed by a 20 year warranty for every customer.";
 
 const TYPE_NAMES = {
   fixed: "Fixed Window",
@@ -81,8 +81,9 @@ function buildContext(branding = {}, info = {}, totals = {}) {
     intColor: branding.intColor || DEFAULT_INT_COLOR,
     glassSpec: branding.glassSpec || DEFAULT_GLASS,
     deliveryCharge: Number(branding.deliveryCharge ?? totals.delivery ?? 0),
-    whoWeAre: branding.whoWeAre || DEFAULT_WHO_WE_ARE,
-    whatWeBelieve: branding.whatWeBelieve || DEFAULT_WHAT_WE_BELIEVE,
+    // Cover copy is fixed company boilerplate — same on every proposal.
+    whoWeAre: DEFAULT_WHO_WE_ARE,
+    whatWeBelieve: DEFAULT_WHAT_WE_BELIEVE,
   };
 }
 
