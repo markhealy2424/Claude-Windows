@@ -9,36 +9,29 @@ const blank = {
 };
 
 export default function ProjectInfo({ project, onChange }) {
-  const initial = { ...blank, ...(project.info ?? {}) };
-  const [info, setInfo] = useState(initial);
-  const [saved, setSaved] = useState(false);
+  const [info, setInfo] = useState({ ...blank, ...(project.info ?? {}) });
 
-  // Reset local state if the project changes (navigating between projects).
+  // Reset local state when navigating between projects.
   useEffect(() => {
     setInfo({ ...blank, ...(project.info ?? {}) });
-    setSaved(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
+  // Auto-save: every change pushes to the parent's optimistic-savePatch
+  // path, so values persist as you type — no Save button to remember.
   function set(key, value) {
-    setInfo({ ...info, [key]: value });
-    setSaved(false);
-  }
-
-  function save(e) {
-    e?.preventDefault();
-    onChange({ info });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    const next = { ...info, [key]: value };
+    setInfo(next);
+    onChange({ info: next });
   }
 
   return (
     <div>
       <p className="text-muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 16 }}>
-        These details appear in the header of every RFQ PDF you export for this project.
+        These details appear in the header of every RFQ PDF you export for this project. Changes save automatically.
       </p>
 
-      <form onSubmit={save} className="card" style={{ maxWidth: 640 }}>
+      <div className="card" style={{ maxWidth: 640 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--s-4)" }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <TextField
@@ -75,12 +68,11 @@ export default function ProjectInfo({ project, onChange }) {
             />
           </label>
         </div>
+      </div>
 
-        <div className="row" style={{ marginTop: 20, justifyContent: "flex-end" }}>
-          {saved && <span className="text-success" style={{ marginRight: 8 }}>✓ Saved</span>}
-          <button className="primary" type="submit">Save project info</button>
-        </div>
-      </form>
+      <p className="text-muted" style={{ fontSize: 12, marginTop: 16, fontStyle: "italic" }}>
+        ✓ All fields auto-save. To verify, refresh this page — your values will still be here.
+      </p>
     </div>
   );
 }

@@ -35,7 +35,8 @@ function formatRfqDate(isoOrUndefined) {
 }
 
 export function renderRFQPdf({ items, projectName, info }, stream) {
-  const doc = new PDFDocument({ size: "A4", margin: 40 });
+  // Landscape A4 — 10 columns + sketches need the extra width.
+  const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
   doc.pipe(stream);
 
   // Title
@@ -71,16 +72,16 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
   doc.fillColor("#000").moveDown(0.6);
 
   const cols = [
-    { key: "mark", label: "Mark", w: 32 },
-    { key: "qty", label: "Qty", w: 26 },
-    { key: "sketch", label: "Sketch", w: 90 },
-    { key: "type", label: "Type", w: 50 },
-    { key: "material", label: "Material", w: 55 },
-    { key: "width", label: "Width", w: 50 },
-    { key: "height", label: "Height", w: 50 },
-    { key: "panels", label: "Panels", w: 36 },
-    { key: "operation", label: "Operation", w: 55 },
-    { key: "notes", label: "Notes", w: 71 },
+    { key: "mark", label: "Mark", w: 42 },
+    { key: "qty", label: "Qty", w: 36 },
+    { key: "sketch", label: "Sketch", w: 130 },
+    { key: "type", label: "Type", w: 65 },
+    { key: "material", label: "Material", w: 65 },
+    { key: "width", label: "Width", w: 70 },
+    { key: "height", label: "Height", w: 70 },
+    { key: "panels", label: "Panels", w: 48 },
+    { key: "operation", label: "Operation", w: 70 },
+    { key: "notes", label: "Notes", w: 166 },
   ];
   const xStart = doc.page.margins.left;
   const tableWidth = cols.reduce((s, c) => s + c.w, 0);
