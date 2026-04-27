@@ -39,32 +39,54 @@ OUTPUT FORMAT:
 Return ONLY a JSON object with this exact shape:
 
 {
-  "marks": { "A": 3, "B": 1, "C": 2, ... },
-  "perPage": { "1": { "A": 3, "B": 1 }, "2": { "C": 2 } },
+  "marks": [
+    { "letter": "A", "count": 3 },
+    { "letter": "B", "count": 1 },
+    { "letter": "C", "count": 2 }
+  ],
+  "perPage": [
+    { "page": 1, "marks": [{ "letter": "A", "count": 3 }, { "letter": "B", "count": 1 }] },
+    { "page": 2, "marks": [{ "letter": "C", "count": 2 }] }
+  ],
   "clusters": [
     { "mark": "G", "page": 1, "hexagonCount": 5 }
   ]
 }
 
 Where:
-- "marks" maps each detected mark to its TOTAL raw hexagon count across all analyzed pages.
-- "perPage" maps each page number (1-indexed string keys) to the per-page mark counts.
-- "clusters" lists every cluster of 3+ same-letter adjacent hexagons. Empty array if none.
+- "marks" is an array of {letter, count} objects — one entry per distinct mark across all analyzed pages, with the TOTAL raw hexagon count.
+- "perPage" is an array of {page, marks} objects — one entry per page analyzed (1-indexed page number), each containing the per-page {letter, count} array.
+- "clusters" is an array of {mark, page, hexagonCount} objects — one entry per cluster of 3+ same-letter adjacent hexagons. Empty array if none.
 - Only include marks with count >= 1. Do not list marks with count 0.
 - Do not include any commentary, explanation, or text outside the JSON.`;
+
+const MARK_COUNT_ITEM = {
+  type: "object",
+  properties: {
+    letter: { type: "string" },
+    count: { type: "integer", minimum: 1 },
+  },
+  required: ["letter", "count"],
+  additionalProperties: false,
+};
 
 const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
     marks: {
-      type: "object",
-      additionalProperties: { type: "integer", minimum: 1 },
+      type: "array",
+      items: MARK_COUNT_ITEM,
     },
     perPage: {
-      type: "object",
-      additionalProperties: {
+      type: "array",
+      items: {
         type: "object",
-        additionalProperties: { type: "integer", minimum: 1 },
+        properties: {
+          page: { type: "integer", minimum: 1 },
+          marks: { type: "array", items: MARK_COUNT_ITEM },
+        },
+        required: ["page", "marks"],
+        additionalProperties: false,
       },
     },
     clusters: {
@@ -156,12 +178,24 @@ Apply the rules from the system prompt and return the JSON object with mark coun
     throw new Error(`Vision response was not valid JSON: ${err.message}\n${textBlock.text.slice(0, 200)}`);
   }
 
-  const counts = parsed.marks ?? {};
-  const perPage = {};
-  for (const [pageStr, pageCounts] of Object.entries(parsed.perPage ?? {})) {
-    perPage[Number(pageStr)] = pageCounts;
+  // Convert array-of-pairs (schema-friendly) back to object-keyed shape that
+  // the rest of the app expects.
+  const counts = {};
+  for (const { letter, count } of parsed.marks ?? []) {
+    if (letter && count > 0) counts[letter] = count;
   }
+
+  const perPage = {};
+  for (const { page, marks } of parsed.perPage ?? []) {
+    if (!page) continue;
+    perPage[Number(page)] = {};
+    for (const { letter, count } of marks ?? []) {
+      if (letter && count > 0) perPage[Number(page)][letter] = count;
+    }
+  }
+
   const totalDetected = Object.values(counts).reduce((s, n) => s + Number(n || 0), 0);
+
   const clusters = (parsed.clusters ?? []).map((c) => ({
     mark: c.mark,
     page: Number(c.page),
