@@ -41,9 +41,14 @@ EXTRACTION RULES:
 2. **Convert ALL dimensions to inches.**
    - Feet-inches like 3'-0" → 36
    - Feet-inches like 5'-6" → 66 (5×12 + 6)
+   - Feet-inches like 2'-0" → 24 (NOT 60, NOT 120 — just 24)
    - Bare inches like 36" or 36 in → 36
    - Millimeters like 914 mm → 36 (divide by 25.4, round to 1 decimal)
    - If a cell is blank or unreadable, return 0.
+
+   READ THE VALUE EXACTLY AS PRINTED. Look at the digits in the row's WIDTH cell, then the row's HEIGHT cell, then convert. Do NOT do any extra math (no multiplying by panel count, no dividing, no swapping). Do NOT confuse the WIDTH column with the HEIGHT column. Double-check that you are reading the cell that lines up with the row's mark.
+
+   The WIDTH value in the schedule is the value to return directly in `width_in` — it is the per-panel width and the downstream app multiplies by panels itself. Do not divide.
 
 3. **Normalize the type field** to lowercase from the description column:
    - "FIXED UNIT" / "Fixed" / "Picture" / "FX" → "fixed"

@@ -236,9 +236,11 @@ export default function PlansTab({ project, onChange }) {
   // Apply parsed schedule items to project items: matched-by-mark items get
   // dimensions/type/operation/panels/notes overwritten (quantity preserved
   // from the floor-plan count); unmatched marks are created as new items.
-  function applySchedule(mode) {
+  function applySchedule(mode, editedItems) {
     if (!schedulePreview) return;
-    const incoming = schedulePreview.items ?? [];
+    const incoming = Array.isArray(editedItems) && editedItems.length > 0
+      ? editedItems
+      : (schedulePreview.items ?? []);
     const byMark = new Map(items.map((it) => [it.mark, it]));
     const updated = items.map((it) => it);  // copy refs
     const newItems = [];
@@ -947,24 +949,49 @@ function PageWithDetections({ projectId, planId, pageNumber, detections }) {
 }
 
 function SchedulePreview({ preview, items, onCancel, onApply }) {
-  const incoming = preview.items ?? [];
   const itemMarks = new Set(items.map((it) => it.mark));
-  const matched = incoming.filter((it) => itemMarks.has(it.mark));
-  const unmatched = incoming.filter((it) => !itemMarks.has(it.mark));
+  // Editable copy of the AI-extracted rows — user can correct any cell
+  // before applying.
+  const [edited, setEdited] = useState(preview.items ?? []);
+  useEffect(() => { setEdited(preview.items ?? []); }, [preview]);
+
+  const matched = edited.filter((it) => itemMarks.has(it.mark));
+  const unmatched = edited.filter((it) => !itemMarks.has(it.mark));
+
+  function update(idx, key, value) {
+    setEdited((prev) => prev.map((it, i) => (i === idx ? { ...it, [key]: value } : it)));
+  }
+
+  function updateNum(idx, key, value) {
+    const n = value === "" ? null : Number(value);
+    update(idx, key, Number.isFinite(n) ? n : null);
+    if (key === "width_in") {
+      const mm = n != null && Number.isFinite(n) ? Math.round(n * 25.4) : null;
+      setEdited((prev) => prev.map((it, i) => (i === idx ? { ...it, width_mm: mm } : it)));
+    }
+    if (key === "height_in") {
+      const mm = n != null && Number.isFinite(n) ? Math.round(n * 25.4) : null;
+      setEdited((prev) => prev.map((it, i) => (i === idx ? { ...it, height_mm: mm } : it)));
+    }
+  }
+
+  function removeRow(idx) {
+    setEdited((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap" }}>
         <strong>
-          Read {incoming.length} row{incoming.length === 1 ? "" : "s"} from the schedule
+          Read {edited.length} row{edited.length === 1 ? "" : "s"} from the schedule
           {" "}({matched.length} match existing items, {unmatched.length} new)
         </strong>
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button onClick={onCancel}>Cancel</button>
-          <button onClick={() => onApply("update")} disabled={matched.length === 0}>
+          <button onClick={() => onApply("update", edited)} disabled={matched.length === 0}>
             Update {matched.length} existing only
           </button>
-          <button className="primary" onClick={() => onApply("create")} disabled={incoming.length === 0}>
+          <button className="primary" onClick={() => onApply("create", edited)} disabled={edited.length === 0}>
             Apply all → {matched.length} updated + {unmatched.length} created
           </button>
         </div>
@@ -988,12 +1015,16 @@ function SchedulePreview({ preview, items, onCancel, onApply }) {
         )}
       </div>
 
-      {incoming.length > 0 ? (
+      <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+        Every cell below is editable — fix any misread values before applying. <strong>Width is per-panel</strong> (the app multiplies by panels for the total width).
+      </div>
+
+      {edited.length > 0 ? (
         <table>
           <thead>
             <tr>
               <th>Mark</th>
-              <th>Width (in)</th>
+              <th>Width per panel (in)</th>
               <th>Height (in)</th>
               <th>Type</th>
               <th>Operation</th>
@@ -1001,22 +1032,85 @@ function SchedulePreview({ preview, items, onCancel, onApply }) {
               <th>Sched qty</th>
               <th>Existing?</th>
               <th>Notes</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {incoming.map((it, i) => {
+            {edited.map((it, i) => {
               const exists = itemMarks.has(it.mark);
               return (
                 <tr key={i}>
-                  <td><strong>{it.mark}</strong></td>
-                  <td>{it.width_in ?? <span className="text-subtle">—</span>}</td>
-                  <td>{it.height_in ?? <span className="text-subtle">—</span>}</td>
-                  <td>{it.type}</td>
-                  <td>{it.operation || <span className="text-subtle">—</span>}</td>
-                  <td>{it.panels}</td>
-                  <td>{it.quantity || <span className="text-subtle">—</span>}</td>
+                  <td>
+                    <input
+                      value={it.mark ?? ""}
+                      onChange={(e) => update(i, "mark", e.target.value)}
+                      style={{ width: 50, fontWeight: 600 }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      value={it.width_in ?? ""}
+                      onChange={(e) => updateNum(i, "width_in", e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      style={{ width: 70 }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      value={it.height_in ?? ""}
+                      onChange={(e) => updateNum(i, "height_in", e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      style={{ width: 70 }}
+                    />
+                  </td>
+                  <td>
+                    <select value={it.type ?? "fixed"} onChange={(e) => update(i, "type", e.target.value)}>
+                      <option value="fixed">fixed</option>
+                      <option value="casement">casement</option>
+                      <option value="sliding">sliding</option>
+                      <option value="awning">awning</option>
+                      <option value="hung">hung</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      value={it.operation ?? ""}
+                      onChange={(e) => update(i, "operation", e.target.value)}
+                      style={{ width: 70 }}
+                      placeholder="left / right"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      value={it.panels ?? 1}
+                      onChange={(e) => updateNum(i, "panels", e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      style={{ width: 50 }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      value={it.quantity ?? 0}
+                      onChange={(e) => updateNum(i, "quantity", e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      style={{ width: 50 }}
+                    />
+                  </td>
                   <td>{exists ? <span className="text-success">yes</span> : <span className="text-warning">no — will create</span>}</td>
-                  <td className="text-muted" style={{ maxWidth: 220 }}>{it.notes}</td>
+                  <td>
+                    <input
+                      value={it.notes ?? ""}
+                      onChange={(e) => update(i, "notes", e.target.value)}
+                      style={{ width: 180 }}
+                    />
+                  </td>
+                  <td>
+                    <button onClick={() => removeRow(i)} title="Drop this row from the apply">×</button>
+                  </td>
                 </tr>
               );
             })}
@@ -1029,7 +1123,7 @@ function SchedulePreview({ preview, items, onCancel, onApply }) {
       )}
 
       <div className="text-muted" style={{ fontSize: 12, marginTop: 12 }}>
-        <strong>What "Apply all" does:</strong> for each detected mark that already exists in your Items tab, it updates the dimensions, type, operation, panels, and notes from the schedule (your existing quantity from the floor-plan mark count is preserved). For marks not yet in Items, it creates new entries with the schedule's data and quantity.
+        <strong>What "Apply all" does:</strong> for each row above whose mark matches an item in your Items tab, it overwrites the dimensions, type, operation, panels, and notes (your existing quantity from the floor-plan mark count is preserved). For rows whose mark isn't in Items yet, it creates a new entry. Use the × button to drop a row entirely.
       </div>
     </div>
   );
