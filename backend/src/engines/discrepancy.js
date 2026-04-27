@@ -38,13 +38,16 @@ function collapseByBaseMark(items) {
   return [...out.values()];
 }
 
-// Allow ±1" tolerance on width/height comparisons — supplier dimensions
-// occasionally round up/down by a fraction.
-const DIM_TOLERANCE_IN = 1;
+// Strict tolerance: flag any difference greater than 0.99 mm. This catches
+// real dimensional mismatches while ignoring inch↔mm conversion rounding
+// (e.g. 36" → 914.4 mm → 36.0" diff is well under 1 mm).
+const DIM_TOLERANCE_MM = 0.99;
+const MM_PER_IN = 25.4;
 
-function dimMatches(a, b) {
-  if (a == null || b == null) return true;  // can't compare → don't flag
-  return Math.abs(Number(a) - Number(b)) <= DIM_TOLERANCE_IN;
+function dimMatches(aIn, bIn) {
+  if (aIn == null || bIn == null) return true;  // can't compare → don't flag
+  const diffMm = Math.abs(Number(aIn) - Number(bIn)) * MM_PER_IN;
+  return diffMm <= DIM_TOLERANCE_MM;
 }
 
 function strMatch(a, b) {
@@ -113,24 +116,28 @@ export function findDiscrepancies(rfqItems, quoteItems) {
 
     const rfqTotalW = rfqTotalWidth(r);
     if (rfqTotalW != null && q.width_in != null && !dimMatches(rfqTotalW, q.width_in)) {
+      const diffMm = Math.round(Math.abs(rfqTotalW - q.width_in) * MM_PER_IN * 10) / 10;
       issues.push({
         mark,
         kind: "width_mismatch",
         severity: "high",
         rfq: rfqTotalW,
         quote: q.width_in,
-        message: `Total width for mark ${mark}${variantSuffix}: RFQ ${rfqTotalW}" vs quote ${q.width_in}".`,
+        diff_mm: diffMm,
+        message: `Total width for mark ${mark}${variantSuffix}: RFQ ${rfqTotalW}" vs quote ${q.width_in}" (off by ${diffMm} mm).`,
       });
     }
 
     if (r.height_in != null && q.height_in != null && !dimMatches(r.height_in, q.height_in)) {
+      const diffMm = Math.round(Math.abs(r.height_in - q.height_in) * MM_PER_IN * 10) / 10;
       issues.push({
         mark,
         kind: "height_mismatch",
         severity: "high",
         rfq: r.height_in,
         quote: q.height_in,
-        message: `Height for mark ${mark}${variantSuffix}: RFQ ${r.height_in}" vs quote ${q.height_in}".`,
+        diff_mm: diffMm,
+        message: `Height for mark ${mark}${variantSuffix}: RFQ ${r.height_in}" vs quote ${q.height_in}" (off by ${diffMm} mm).`,
       });
     }
 
