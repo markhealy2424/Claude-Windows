@@ -54,17 +54,17 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     }).then(json),
-  generateRFQ: (items, projectName) =>
+  generateRFQ: (items, projectName, info) =>
     fetch(`${base}/rfq`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, projectName }),
+      body: JSON.stringify({ items, projectName, info }),
     }).then(json),
-  downloadRFQPdf: async (items, projectName) => {
+  downloadRFQPdf: async (items, projectName, info) => {
     const res = await fetch(`${base}/rfq/pdf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, projectName }),
+      body: JSON.stringify({ items, projectName, info }),
     });
     if (!res.ok) throw new Error(await res.text());
     const blob = await res.blob();

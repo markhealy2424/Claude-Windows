@@ -6,8 +6,9 @@ import RFQTab from "./RFQTab.jsx";
 import QuotesTab from "./QuotesTab.jsx";
 import ProposalTab from "./ProposalTab.jsx";
 import PlansTab from "./PlansTab.jsx";
+import ProjectInfo from "./ProjectInfo.jsx";
 
-const TABS = ["Plans", "Items", "RFQ", "Quotes", "Proposal"];
+const TABS = ["Project Info", "Plans", "Items", "RFQ", "Quotes", "Proposal"];
 
 export default function ProjectView() {
   const { id } = useParams();
@@ -49,6 +50,7 @@ export default function ProjectView() {
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t}</button>
         ))}
       </div>
+      {tab === "Project Info" && <ProjectInfo project={project} onChange={savePatch} />}
       {tab === "Plans" && <PlansTab project={project} onChange={savePatch} />}
       {tab === "Items" && <ItemEditor items={project.items} onChange={saveItems} />}
       {tab === "RFQ" && <RFQTab project={project} />}

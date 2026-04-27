@@ -9,7 +9,7 @@ function dimCell(inches, mm) {
   return inPart + mmPart;
 }
 
-export function generateRFQ({ items, projectName }) {
+export function generateRFQ({ items, projectName, info }) {
   const rows = items.map((it) => ({
     mark: it.mark,
     qty: it.quantity,
@@ -24,16 +24,51 @@ export function generateRFQ({ items, projectName }) {
     operation: it.operation,
     notes: it.notes ?? "",
   }));
-  return { projectName, rows, generatedAt: new Date().toISOString() };
+  return { projectName, info: info ?? {}, rows, generatedAt: new Date().toISOString() };
 }
 
-export function renderRFQPdf({ items, projectName }, stream) {
+function formatRfqDate(isoOrUndefined) {
+  if (!isoOrUndefined) return "";
+  const d = new Date(`${isoOrUndefined}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return String(isoOrUndefined);
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+export function renderRFQPdf({ items, projectName, info }, stream) {
   const doc = new PDFDocument({ size: "A4", margin: 40 });
   doc.pipe(stream);
 
-  doc.fontSize(18).text(`Ready for Quote — ${projectName ?? "Untitled"}`);
-  doc.fontSize(9).fillColor("#666").text(new Date().toLocaleString());
-  doc.moveDown(0.8).fillColor("#000");
+  // Title
+  doc.font("Helvetica-Bold").fontSize(18).fillColor("#000")
+    .text(`Ready for Quote — ${projectName ?? "Untitled"}`);
+  doc.font("Helvetica");
+
+  // Project info block
+  const safe = info ?? {};
+  const dateLabel = formatRfqDate(safe.date);
+  const lineY = doc.y + 6;
+  doc.moveTo(doc.page.margins.left, lineY)
+    .lineTo(doc.page.width - doc.page.margins.right, lineY)
+    .strokeColor("#888").lineWidth(0.5).stroke().strokeColor("#000");
+  doc.moveDown(0.5);
+
+  const labelW = 75;
+  function row(label, value) {
+    if (!value) return;
+    const y = doc.y;
+    doc.fontSize(9).fillColor("#666").text(label, doc.page.margins.left, y, { width: labelW, continued: false });
+    doc.fontSize(10).fillColor("#000").text(value, doc.page.margins.left + labelW, y);
+  }
+  row("Address", safe.address);
+  row("Buyer", safe.buyerName);
+  row("Company", safe.company);
+  row("Date", dateLabel);
+
+  // Generation timestamp (small, right-aligned-ish)
+  doc.moveDown(0.4);
+  doc.fontSize(9).fillColor("#888")
+    .text(`Generated: ${new Date().toLocaleString()}`);
+  doc.fillColor("#000").moveDown(0.6);
 
   const cols = [
     { key: "mark", label: "Mark", w: 32 },

@@ -13,18 +13,18 @@ export default function RFQTab({ project }) {
     let cancelled = false;
     if (items.length === 0) { setPreview(null); return; }
     setLoading(true);
-    api.generateRFQ(items, project.name)
+    api.generateRFQ(items, project.name, project.info)
       .then((r) => { if (!cancelled) setPreview(r); })
       .catch((e) => { if (!cancelled) setError(String(e)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [project.id, items.length]);
+  }, [project.id, items.length, project.info]);
 
   async function downloadPdf() {
     setDownloading(true);
     setError("");
     try {
-      await api.downloadRFQPdf(items, project.name);
+      await api.downloadRFQPdf(items, project.name, project.info);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -49,6 +49,9 @@ export default function RFQTab({ project }) {
       </div>
       {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
       {loading && <div className="card">Generating preview…</div>}
+      {preview && (
+        <RFQHeader info={project.info ?? {}} projectName={project.name} />
+      )}
       {preview && (
         <table>
           <thead>
@@ -81,6 +84,31 @@ export default function RFQTab({ project }) {
           </tbody>
         </table>
       )}
+    </div>
+  );
+}
+
+function RFQHeader({ info, projectName }) {
+  const filled = info.address || info.buyerName || info.company || info.date;
+  if (!filled) {
+    return (
+      <div className="card warning" style={{ marginBottom: 16 }}>
+        Project info not filled in yet. Open the <strong>Project Info</strong> tab to add the address, buyer, company, and date — these appear in the RFQ header.
+      </div>
+    );
+  }
+  const dateLabel = info.date
+    ? new Date(info.date + "T00:00:00").toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+    : "—";
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <h3 style={{ marginTop: 0, marginBottom: 8 }}>Ready for Quote — {projectName}</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", columnGap: 16, rowGap: 4, fontSize: 13 }}>
+        {info.address && (<><span className="text-muted">Address:</span><span>{info.address}</span></>)}
+        {info.buyerName && (<><span className="text-muted">Buyer:</span><span>{info.buyerName}</span></>)}
+        {info.company && (<><span className="text-muted">Company:</span><span>{info.company}</span></>)}
+        {info.date && (<><span className="text-muted">Date:</span><span>{dateLabel}</span></>)}
+      </div>
     </div>
   );
 }
