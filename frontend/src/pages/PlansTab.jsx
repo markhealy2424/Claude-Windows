@@ -643,7 +643,6 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
   }
 
   function buildNewItem(mark, qty) {
-    const cluster = clusterByMark[mark];
     return {
       mark,
       quantity: qty,
@@ -657,9 +656,7 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
       gridRows: 1,
       operableRow: "all",
       grid: false,
-      notes: cluster
-        ? `Auto-created from floor plan. CLUSTER detected (${cluster.hexagonCount} hexagons of ${mark} on page ${cluster.page}). Check the schedule: if it's one ${cluster.hexagonCount}-panel window, set qty=1 with panels=${cluster.hexagonCount}; otherwise leave qty=${qty}. Fill in real dimensions.`
-        : `Auto-created from floor plan. Fill in dimensions, type, and operation from the schedule.`,
+      notes: "",
     };
   }
 
