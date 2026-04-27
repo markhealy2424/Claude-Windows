@@ -49,7 +49,7 @@ EXTRACTION RULES:
 
    READ THE VALUE EXACTLY AS PRINTED. Look at the digits in the row's WIDTH cell, then the row's HEIGHT cell, then convert. Do NOT do any extra math (no multiplying by panel count, no dividing, no swapping). Double-check that you are reading the cell that lines up with the row's mark.
 
-   The WIDTH value in the schedule is the value to return directly in `width_in` — it is the per-panel width and the downstream app multiplies by panels itself. Do not divide.
+   The WIDTH value in the schedule is the value to return directly in the width_in field — it is the per-panel width and the downstream app multiplies by panels itself. Do not divide.
 
    **CRITICAL — column order:** Different architects order WIDTH and HEIGHT differently. Before extracting any row, locate the column header and identify exactly which column is labeled WIDTH (or W, WD) and which is labeled HEIGHT (or H, HT). Some schedules go WIDTH-then-HEIGHT, others HEIGHT-then-WIDTH. Don't assume — match each value to the column its position falls under. If you can't find a header, prefer to leave the row out and let the user enter it manually.
 
