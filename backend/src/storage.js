@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, readdirSync, unlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,17 +26,47 @@ export function planPdfExists(projectId, planId) {
   return existsSync(getPlanPdfPath(projectId, planId));
 }
 
-export function getSchedulePdfPath(projectId, scheduleId) {
-  return resolve(DATA_DIR, "schedules", safe(projectId), `${safe(scheduleId)}.pdf`);
+// Schedule files: PDF, PNG, JPEG, or WebP. Stored under
+// ${DATA_DIR}/schedules/<projectId>/<scheduleId>.<ext> where ext matches
+// the upload's original extension. Vision API handles PDF and image
+// content blocks differently, so we preserve the extension for dispatch.
+
+const SCHEDULE_EXTS = new Set(["pdf", "png", "jpg", "jpeg", "webp"]);
+
+function pickExt(originalName, fallback = "pdf") {
+  const raw = String(originalName || "").split(".").pop().toLowerCase();
+  return SCHEDULE_EXTS.has(raw) ? raw : fallback;
 }
 
-export function saveSchedulePdf(projectId, scheduleId, buffer) {
-  const path = getSchedulePdfPath(projectId, scheduleId);
-  mkdirSync(dirname(path), { recursive: true });
+export function getScheduleFilePath(projectId, scheduleId) {
+  const dir = resolve(DATA_DIR, "schedules", safe(projectId));
+  if (!existsSync(dir)) return null;
+  const prefix = `${safe(scheduleId)}.`;
+  const match = readdirSync(dir).find((f) => f.startsWith(prefix));
+  return match ? resolve(dir, match) : null;
+}
+
+export function saveScheduleFile(projectId, scheduleId, buffer, originalName) {
+  const ext = pickExt(originalName);
+  const dir = resolve(DATA_DIR, "schedules", safe(projectId));
+  mkdirSync(dir, { recursive: true });
+  // Replace any existing file for this schedule (e.g. user re-uploads with
+  // a different format).
+  const existing = getScheduleFilePath(projectId, scheduleId);
+  if (existing) {
+    try { unlinkSync(existing); } catch { /* best effort */ }
+  }
+  const path = resolve(dir, `${safe(scheduleId)}.${ext}`);
   writeFileSync(path, buffer);
   return path;
 }
 
-export function schedulePdfExists(projectId, scheduleId) {
-  return existsSync(getSchedulePdfPath(projectId, scheduleId));
+export function scheduleFileExists(projectId, scheduleId) {
+  return Boolean(getScheduleFilePath(projectId, scheduleId));
 }
+
+// Backwards-compat aliases — older callers still reference the PDF-only names.
+export const getSchedulePdfPath = getScheduleFilePath;
+export const schedulePdfExists = scheduleFileExists;
+export const saveSchedulePdf = (projectId, scheduleId, buffer) =>
+  saveScheduleFile(projectId, scheduleId, buffer, "schedule.pdf");

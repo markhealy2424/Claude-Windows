@@ -494,8 +494,11 @@ export default function PlansTab({ project, onChange }) {
       {/* ─── Window Schedule section ─── */}
       <div style={{ marginTop: 40, paddingTop: 24, borderTop: "2px solid var(--color-border)" }}>
         <h3 style={{ marginTop: 0, marginBottom: 8 }}>Window Schedule</h3>
-        <p className="text-muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 12 }}>
-          Upload the window schedule PDF (the table that lists each mark with its width, height, type, operation, and notes). The AI reads each row and updates matching items in the Items tab — combined with the mark counts from floor plans, you get full item records without manual data entry.
+        <p className="text-muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 8 }}>
+          Upload the window schedule (the table that lists each mark with its width, height, type, and notes). The AI reads each row and updates matching items in the Items tab — combined with the mark counts from floor plans, you get full item records without manual data entry.
+        </p>
+        <p className="text-muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 12, fontStyle: "italic" }}>
+          <strong>Tip:</strong> for the most accurate read, upload a <strong>cropped screenshot of just the schedule table</strong> (PNG or JPEG) instead of the full sheet. The vision AI can focus on the cells without competing with elevations, door schedules, or title blocks. PDF works too, but a focused image typically gives ~2× better accuracy on dense tables.
         </p>
 
         <div className="row" style={{ marginBottom: 16, flexWrap: "wrap" }}>
@@ -505,12 +508,17 @@ export default function PlansTab({ project, onChange }) {
               className={`pill-toggle${s.id === activeScheduleId ? " active" : ""}`}
               onClick={() => { setActiveScheduleId(s.id); setSchedulePreview(null); }}
             >
-              {s.name}{s.pdfPersisted ? " · PDF ✓" : " · PDF ✗"}
+              {s.name}{s.pdfPersisted ? " · file ✓" : " · file ✗"}
             </button>
           ))}
           <label className="pill-upload">
-            + Upload schedule PDF
-            <input type="file" accept="application/pdf" onChange={handleScheduleFile} style={{ display: "none" }} />
+            + Upload schedule (PDF or image)
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              onChange={handleScheduleFile}
+              style={{ display: "none" }}
+            />
           </label>
         </div>
 

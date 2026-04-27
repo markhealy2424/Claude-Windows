@@ -127,15 +127,33 @@ const RESPONSE_SCHEMA = {
   additionalProperties: false,
 };
 
-export async function parseScheduleWithVision({ pdfPath, projectName }) {
+export async function parseScheduleWithVision({ filePath, pdfPath, projectName }) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
+  const path = filePath || pdfPath;  // pdfPath kept for backwards-compat
   const client = new Anthropic({ apiKey });
-  const pdfBytes = await readFile(pdfPath);
-  const pdfBase64 = pdfBytes.toString("base64");
+  const fileBytes = await readFile(path);
+  const fileBase64 = fileBytes.toString("base64");
+  const ext = path.split(".").pop().toLowerCase();
 
-  const userInstruction = `Read every row of the WINDOW SCHEDULE in the attached PDF and return the items array per the system prompt's procedure (locate table → count rows → row-by-row extraction → verify count).${projectName ? `\n\nProject: ${projectName}.` : ""}`;
+  // Cropped screenshots / image uploads typically beat full-page PDFs on
+  // schedule accuracy because the table fills the frame instead of being a
+  // small region of an A-sized sheet. Both go through Opus 4.7 native vision.
+  const isImage = ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp";
+  const mediaType = ({
+    pdf: "application/pdf",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+  })[ext] || "application/pdf";
+
+  const sourceBlock = isImage
+    ? { type: "image", source: { type: "base64", media_type: mediaType, data: fileBase64 } }
+    : { type: "document", source: { type: "base64", media_type: mediaType, data: fileBase64 } };
+
+  const userInstruction = `Read every row of the WINDOW SCHEDULE in the attached ${isImage ? "image" : "PDF"} and return the items array per the system prompt's procedure (locate table → count rows → row-by-row extraction → verify count).${projectName ? `\n\nProject: ${projectName}.` : ""}`;
 
   const stream = client.messages.stream({
     model: MODEL,
@@ -161,10 +179,7 @@ export async function parseScheduleWithVision({ pdfPath, projectName }) {
       {
         role: "user",
         content: [
-          {
-            type: "document",
-            source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-          },
+          sourceBlock,
           { type: "text", text: userInstruction },
         ],
       },

@@ -5,7 +5,7 @@ import { parseSchedule } from "../engines/scheduleMatching.js";
 import { detectMarks } from "../engines/markDetection.js";
 import {
   savePlanPdf, getPlanPdfPath, planPdfExists,
-  saveSchedulePdf, getSchedulePdfPath, schedulePdfExists,
+  saveScheduleFile, getScheduleFilePath, scheduleFileExists,
 } from "../storage.js";
 
 // Vision modules are lazy-loaded so an issue importing the Anthropic SDK
@@ -101,25 +101,29 @@ router.post("/count-marks", async (req, res) => {
 });
 
 router.post("/schedule-extract", upload.single("pdf"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "pdf required" });
+  if (!req.file) return res.status(400).json({ error: "file required" });
   const { projectId, scheduleId } = req.body ?? {};
+  const isPdf = req.file.mimetype === "application/pdf"
+    || /\.pdf$/i.test(req.file.originalname || "");
   try {
-    // Best-effort text extraction so the local fallback parser can still run
-    // without API key. Vision is the primary path.
+    // Best-effort text extraction (only applicable for PDFs). Image uploads
+    // skip this; vision will read them directly.
     let pages = [];
-    try { pages = await extractPlan(req.file.buffer); } catch { /* ignore */ }
+    if (isPdf) {
+      try { pages = await extractPlan(req.file.buffer); } catch { /* ignore */ }
+    }
 
     let pdfPersisted = false;
     if (projectId && scheduleId) {
       try {
-        saveSchedulePdf(projectId, scheduleId, req.file.buffer);
+        saveScheduleFile(projectId, scheduleId, req.file.buffer, req.file.originalname);
         pdfPersisted = true;
       } catch (err) {
-        console.error("[plans/schedule-extract] failed to persist PDF:", err);
+        console.error("[plans/schedule-extract] failed to persist:", err);
       }
     }
 
-    res.json({ pages, pdfPersisted });
+    res.json({ pages, pdfPersisted, fileName: req.file.originalname });
   } catch (err) {
     console.error("[plans/schedule-extract]", err);
     res.status(500).json({ error: err.message });
@@ -130,14 +134,17 @@ router.post("/parse-schedule-vision", async (req, res) => {
   const { projectId, scheduleId, projectName, pages, schedulePageNumbers } = req.body ?? {};
 
   const visionAvailable = Boolean(process.env.ANTHROPIC_API_KEY);
-  const pdfOnDisk = Boolean(projectId && scheduleId && schedulePdfExists(projectId, scheduleId));
+  const filePath = projectId && scheduleId
+    ? getScheduleFilePath(projectId, scheduleId)
+    : null;
+  const pdfOnDisk = Boolean(filePath);
   let visionError = null;
 
   if (visionAvailable && pdfOnDisk) {
     try {
       const parseScheduleWithVision = await loadScheduleParser();
       const result = await parseScheduleWithVision({
-        pdfPath: getSchedulePdfPath(projectId, scheduleId),
+        filePath,
         projectName,
       });
       return res.json(result);
@@ -179,11 +186,18 @@ router.post("/parse-schedule-vision", async (req, res) => {
 
 router.get("/schedule/:projectId/:scheduleId.pdf", (req, res) => {
   const { projectId, scheduleId } = req.params;
-  if (!schedulePdfExists(projectId, scheduleId)) {
-    return res.status(404).json({ error: "schedule PDF not on disk" });
-  }
-  res.setHeader("Content-Type", "application/pdf");
-  res.sendFile(getSchedulePdfPath(projectId, scheduleId));
+  const path = getScheduleFilePath(projectId, scheduleId);
+  if (!path) return res.status(404).json({ error: "schedule file not on disk" });
+  const ext = path.split(".").pop().toLowerCase();
+  const mime = {
+    pdf: "application/pdf",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+  }[ext] || "application/octet-stream";
+  res.setHeader("Content-Type", mime);
+  res.sendFile(path);
 });
 
 router.get("/:projectId/:planId.pdf", (req, res) => {
