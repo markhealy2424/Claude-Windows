@@ -979,6 +979,20 @@ function SchedulePreview({ preview, items, onCancel, onApply }) {
     setEdited((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  function swapWH(idx) {
+    setEdited((prev) => prev.map((it, i) => (
+      i === idx
+        ? {
+            ...it,
+            width_in: it.height_in,
+            height_in: it.width_in,
+            width_mm: it.height_mm,
+            height_mm: it.width_mm,
+          }
+        : it
+    )));
+  }
+
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap" }}>
@@ -1016,7 +1030,7 @@ function SchedulePreview({ preview, items, onCancel, onApply }) {
       </div>
 
       <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
-        Every cell below is editable — fix any misread values before applying. <strong>Width is per-panel</strong> (the app multiplies by panels for the total width).
+        Every cell below is editable — fix any misread values before applying. <strong>Width is per-panel</strong> (the app multiplies by panels for the total width). Use the <strong>↔</strong> button if AI swapped Width and Height for a row.
       </div>
 
       {edited.length > 0 ? (
@@ -1048,13 +1062,22 @@ function SchedulePreview({ preview, items, onCancel, onApply }) {
                     />
                   </td>
                   <td>
-                    <input
-                      type="number"
-                      value={it.width_in ?? ""}
-                      onChange={(e) => updateNum(i, "width_in", e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      style={{ width: 70 }}
-                    />
+                    <div className="row" style={{ gap: 4 }}>
+                      <input
+                        type="number"
+                        value={it.width_in ?? ""}
+                        onChange={(e) => updateNum(i, "width_in", e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        style={{ width: 70 }}
+                      />
+                      <button
+                        onClick={() => swapWH(i)}
+                        title="Swap Width and Height (use if AI flipped them)"
+                        style={{ padding: "4px 6px", fontSize: 12 }}
+                      >
+                        ↔
+                      </button>
+                    </div>
                   </td>
                   <td>
                     <input

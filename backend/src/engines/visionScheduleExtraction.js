@@ -42,13 +42,16 @@ EXTRACTION RULES:
    - Feet-inches like 3'-0" → 36
    - Feet-inches like 5'-6" → 66 (5×12 + 6)
    - Feet-inches like 2'-0" → 24 (NOT 60, NOT 120 — just 24)
+   - Feet-inches like 10'-0" → 120 (10×12 + 0)
    - Bare inches like 36" or 36 in → 36
    - Millimeters like 914 mm → 36 (divide by 25.4, round to 1 decimal)
    - If a cell is blank or unreadable, return 0.
 
-   READ THE VALUE EXACTLY AS PRINTED. Look at the digits in the row's WIDTH cell, then the row's HEIGHT cell, then convert. Do NOT do any extra math (no multiplying by panel count, no dividing, no swapping). Do NOT confuse the WIDTH column with the HEIGHT column. Double-check that you are reading the cell that lines up with the row's mark.
+   READ THE VALUE EXACTLY AS PRINTED. Look at the digits in the row's WIDTH cell, then the row's HEIGHT cell, then convert. Do NOT do any extra math (no multiplying by panel count, no dividing, no swapping). Double-check that you are reading the cell that lines up with the row's mark.
 
    The WIDTH value in the schedule is the value to return directly in `width_in` — it is the per-panel width and the downstream app multiplies by panels itself. Do not divide.
+
+   **CRITICAL — column order:** Different architects order WIDTH and HEIGHT differently. Before extracting any row, locate the column header and identify exactly which column is labeled WIDTH (or W, WD) and which is labeled HEIGHT (or H, HT). Some schedules go WIDTH-then-HEIGHT, others HEIGHT-then-WIDTH. Don't assume — match each value to the column its position falls under. If you can't find a header, prefer to leave the row out and let the user enter it manually.
 
 3. **Normalize the type field** to lowercase from the description column:
    - "FIXED UNIT" / "Fixed" / "Picture" / "FX" → "fixed"
