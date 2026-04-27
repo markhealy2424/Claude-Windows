@@ -1,10 +1,13 @@
 // SVG sketch with width/height labels and per-panel casement swing direction.
-// Casement panel layout rules:
+// Default casement panel layout (matches typical Casement/Picture/.../Picture/Casement units):
 //   1 panel:  honors `operation` ("left" or "right")
-//   2 panels: [L, R]              — left opens left, right opens right
-//   3 panels: [L, fixed, R]       — outermost open out, middle fixed
-//   4 panels: [L, L, R, R]        — left half opens left, right half opens right
-//   N panels: split equally; if N is odd, the single middle panel is fixed.
+//   2 panels: [L, R]                       — twin casement, both swing outward
+//   3 panels: [L, picture, R]              — Casement / Picture / Casement
+//   4 panels: [L, picture, picture, R]     — Casement / Picture / Picture / Casement
+//   N panels: outer two casement, all middle panels picture/fixed
+// Override via `operation`:
+//   "all"           → every panel casement, paired hinges (e.g. 4 → [L, L, R, R])
+//   "L,F,F,R"       → explicit per-panel list (L=left, R=right, F/P=fixed/picture)
 
 function formatInches(n) {
   if (n == null || Number.isNaN(Number(n))) return "?";
@@ -21,16 +24,44 @@ function formatInches(n) {
 function panelDirections(panels, type, operation = "") {
   const n = Math.max(1, Math.floor(panels));
   if (type !== "casement") return new Array(n).fill(null);
+
+  const op = (operation || "").toLowerCase();
+
   if (n === 1) {
-    return [operation.toLowerCase().includes("right") ? "right" : "left"];
+    return [op.includes("right") ? "right" : "left"];
   }
-  const half = Math.floor(n / 2);
-  const middle = n % 2;
-  return [
-    ...Array(half).fill("left"),
-    ...Array(middle).fill("fixed"),
-    ...Array(half).fill("right"),
-  ];
+
+  // Explicit per-panel layout, e.g. "L,F,F,R" or "L,L,R,R"
+  if (op.includes(",")) {
+    const parts = op.split(",").map((s) => s.trim());
+    const dirs = [];
+    for (let i = 0; i < n; i++) {
+      const p = parts[i] ?? "";
+      if (p.startsWith("l")) dirs.push("left");
+      else if (p.startsWith("r")) dirs.push("right");
+      else dirs.push("fixed");
+    }
+    return dirs;
+  }
+
+  if (n === 2) return ["left", "right"];
+
+  // "all" → every panel is casement with paired hinges
+  if (op.includes("all")) {
+    const half = Math.floor(n / 2);
+    const middle = n % 2;
+    return [
+      ...Array(half).fill("left"),
+      ...Array(middle).fill("fixed"),
+      ...Array(half).fill("right"),
+    ];
+  }
+
+  // Default: outer two casement, inner panels picture/fixed
+  const dirs = new Array(n).fill("fixed");
+  dirs[0] = "left";
+  dirs[n - 1] = "right";
+  return dirs;
 }
 
 export function generateSketch({ width_in, height_in, panels = 1, type = "fixed", operation = "" }) {

@@ -15,16 +15,41 @@ function formatInches(n) {
 function panelDirections(panels, type, operation = "") {
   const n = Math.max(1, Math.floor(panels));
   if (type !== "casement") return new Array(n).fill(null);
+
+  const op = (operation || "").toLowerCase();
+
   if (n === 1) {
-    return [operation.toLowerCase().includes("right") ? "right" : "left"];
+    return [op.includes("right") ? "right" : "left"];
   }
-  const half = Math.floor(n / 2);
-  const middle = n % 2;
-  return [
-    ...Array(half).fill("left"),
-    ...Array(middle).fill("fixed"),
-    ...Array(half).fill("right"),
-  ];
+
+  if (op.includes(",")) {
+    const parts = op.split(",").map((s) => s.trim());
+    const dirs = [];
+    for (let i = 0; i < n; i++) {
+      const p = parts[i] ?? "";
+      if (p.startsWith("l")) dirs.push("left");
+      else if (p.startsWith("r")) dirs.push("right");
+      else dirs.push("fixed");
+    }
+    return dirs;
+  }
+
+  if (n === 2) return ["left", "right"];
+
+  if (op.includes("all")) {
+    const half = Math.floor(n / 2);
+    const middle = n % 2;
+    return [
+      ...Array(half).fill("left"),
+      ...Array(middle).fill("fixed"),
+      ...Array(half).fill("right"),
+    ];
+  }
+
+  const dirs = new Array(n).fill("fixed");
+  dirs[0] = "left";
+  dirs[n - 1] = "right";
+  return dirs;
 }
 
 export function generateSketch({ width_in, height_in, panels = 1, type = "fixed", operation = "" }) {
