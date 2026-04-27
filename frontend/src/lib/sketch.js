@@ -1,10 +1,4 @@
-// SVG sketch with width/height labels and per-panel casement swing direction.
-// Casement panel layout rules:
-//   1 panel:  honors `operation` ("left" or "right")
-//   2 panels: [L, R]              — left opens left, right opens right
-//   3 panels: [L, fixed, R]       — outermost open out, middle fixed
-//   4 panels: [L, L, R, R]        — left half opens left, right half opens right
-//   N panels: split equally; if N is odd, the single middle panel is fixed.
+// Mirror of backend/src/engines/sketchGenerator.js — keep them in sync.
 
 function formatInches(n) {
   if (n == null || Number.isNaN(Number(n))) return "?";
@@ -53,9 +47,6 @@ export function generateSketch({ width_in, height_in, panels = 1, type = "fixed"
     );
   }
 
-  // Per-panel casement glyph: V whose apex sits on the HINGE side.
-  // Open-right panel → hinge on left → apex at panel's LEFT edge.
-  // Open-left panel  → hinge on right → apex at panel's RIGHT edge.
   const glyphs = [];
   for (let i = 0; i < n; i++) {
     const px = leftPad + i * panelW;
