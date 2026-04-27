@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
+import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 
 const defaultBranding = { company: "", tagline: "", color: "#111" };
 
@@ -94,20 +95,20 @@ export default function ProposalTab({ project, onChange }) {
     <div>
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Pricing</h3>
-        <div className="row" style={{ flexWrap: "wrap" }}>
-          <label>
-            Supplier quote{" "}
-            <select value={quoteId} onChange={(e) => setQuoteId(e.target.value)}>
-              <option value="">— none (zero cost) —</option>
-              {quotes.map((q) => (
-                <option key={q.id} value={q.id}>{q.supplier || "(unnamed)"} · {q.items.length}</option>
-              ))}
-            </select>
-          </label>
-          <label>Markup % <input type="number" value={markup} onChange={(e) => setMarkup(e.target.value)} style={{ width: 80 }} /></label>
-          <label>Delivery <input type="number" value={delivery} onChange={(e) => setDelivery(e.target.value)} style={{ width: 90 }} /></label>
-          <label>Fees <input type="number" value={fees} onChange={(e) => setFees(e.target.value)} style={{ width: 90 }} /></label>
-          <label>Round to <input type="number" value={round} onChange={(e) => setRound(e.target.value)} style={{ width: 80 }} /></label>
+        <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
+          <SelectField
+            label="Supplier quote"
+            value={quoteId}
+            onChange={setQuoteId}
+            options={[
+              ["", "— none (zero cost) —"],
+              ...quotes.map((q) => [q.id, `${q.supplier || "(unnamed)"} · ${q.items.length}`]),
+            ]}
+          />
+          <NumberField label="Markup %" value={markup} onChange={setMarkup} inputStyle={{ width: 80 }} />
+          <NumberField label="Delivery ($)" value={delivery} onChange={setDelivery} inputStyle={{ width: 90 }} />
+          <NumberField label="Fees ($)" value={fees} onChange={setFees} inputStyle={{ width: 90 }} />
+          <NumberField label="Round to" value={round} onChange={setRound} inputStyle={{ width: 80 }} />
           <button className="primary" onClick={runPricing} disabled={pricing}>
             {pricing ? "Pricing…" : "Apply pricing"}
           </button>
@@ -116,10 +117,13 @@ export default function ProposalTab({ project, onChange }) {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Branding</h3>
-        <div className="row" style={{ flexWrap: "wrap" }}>
-          <label>Company <input value={branding.company} onChange={(e) => setBranding({ ...branding, company: e.target.value })} /></label>
-          <label>Tagline <input value={branding.tagline} onChange={(e) => setBranding({ ...branding, tagline: e.target.value })} /></label>
-          <label>Header color <input type="color" value={branding.color} onChange={(e) => setBranding({ ...branding, color: e.target.value })} /></label>
+        <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
+          <TextField label="Company" value={branding.company} onChange={(v) => setBranding({ ...branding, company: v })} />
+          <TextField label="Tagline" value={branding.tagline} onChange={(v) => setBranding({ ...branding, tagline: v })} />
+          <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 11, color: "#666" }}>Header color</span>
+            <input type="color" value={branding.color} onChange={(e) => setBranding({ ...branding, color: e.target.value })} />
+          </label>
         </div>
       </div>
 
@@ -156,6 +160,7 @@ export default function ProposalTab({ project, onChange }) {
                         value={overrides[it.mark] ?? ""}
                         placeholder={String(markup)}
                         style={{ width: 70 }}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => setOverrides({ ...overrides, [it.mark]: e.target.value })}
                       />
                     </td>

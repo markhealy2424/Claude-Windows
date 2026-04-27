@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 
 const blank = {
   mark: "", quantity: 1, type: "fixed", operation: "",
   width_in: 36, height_in: 48, width_mm: 914, height_mm: 1219,
   panels: 1, grid: false, notes: "",
 };
+
+const TYPES = [["fixed", "fixed"], ["casement", "casement"], ["sliding", "sliding"]];
 
 export default function ItemEditor({ items = [], onChange }) {
   const [draft, setDraft] = useState(blank);
@@ -20,31 +23,20 @@ export default function ItemEditor({ items = [], onChange }) {
     onChange(items.filter((_, i) => i !== idx));
   }
 
-  function field(name, type = "text") {
-    return (
-      <input
-        type={type}
-        value={draft[name]}
-        onChange={(e) => setDraft({ ...draft, [name]: type === "number" ? Number(e.target.value) : e.target.value })}
-        placeholder={name}
-      />
-    );
+  function set(key, value) {
+    setDraft({ ...draft, [key]: value });
   }
 
   return (
     <div>
-      <form onSubmit={addItem} className="row" style={{ flexWrap: "wrap", marginBottom: 16 }}>
-        {field("mark")}
-        {field("quantity", "number")}
-        <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
-          <option value="fixed">fixed</option>
-          <option value="casement">casement</option>
-          <option value="sliding">sliding</option>
-        </select>
-        <input value={draft.operation} onChange={(e) => setDraft({ ...draft, operation: e.target.value })} placeholder="operation (left/right)" />
-        {field("width_in", "number")}
-        {field("height_in", "number")}
-        {field("panels", "number")}
+      <form onSubmit={addItem} className="row" style={{ flexWrap: "wrap", marginBottom: 16, alignItems: "flex-end" }}>
+        <TextField label="Mark" value={draft.mark} onChange={(v) => set("mark", v)} />
+        <NumberField label="Qty" value={draft.quantity} onChange={(v) => set("quantity", v)} />
+        <SelectField label="Type" value={draft.type} onChange={(v) => set("type", v)} options={TYPES} />
+        <TextField label="Operation (left/right)" value={draft.operation} onChange={(v) => set("operation", v)} />
+        <NumberField label="Width (in)" value={draft.width_in} onChange={(v) => set("width_in", v)} />
+        <NumberField label="Height (in)" value={draft.height_in} onChange={(v) => set("height_in", v)} />
+        <NumberField label="Panels" value={draft.panels} onChange={(v) => set("panels", v)} />
         <button className="primary" type="submit">Add</button>
       </form>
       <table>

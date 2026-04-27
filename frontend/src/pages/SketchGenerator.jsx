@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { generateSketch } from "../lib/sketch.js";
+import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 
 export default function SketchGenerator() {
   const [spec, setSpec] = useState({
@@ -12,16 +13,17 @@ export default function SketchGenerator() {
   return (
     <div>
       <h1>Sketch Generator</h1>
-      <div className="row" style={{ flexWrap: "wrap", marginBottom: 20 }}>
-        <label>Width" <input type="number" value={spec.width_in} onChange={(e) => set("width_in", Number(e.target.value))} /></label>
-        <label>Height" <input type="number" value={spec.height_in} onChange={(e) => set("height_in", Number(e.target.value))} /></label>
-        <label>Panels <input type="number" value={spec.panels} min={1} onChange={(e) => set("panels", Number(e.target.value))} /></label>
-        <label>Type <select value={spec.type} onChange={(e) => set("type", e.target.value)}>
-          <option value="fixed">fixed</option>
-          <option value="casement">casement</option>
-          <option value="sliding">sliding</option>
-        </select></label>
-        <label>Operation (1-panel only) <input value={spec.operation} onChange={(e) => set("operation", e.target.value)} placeholder="left / right" /></label>
+      <div className="row" style={{ flexWrap: "wrap", marginBottom: 20, alignItems: "flex-end" }}>
+        <NumberField label="Width (in)" value={spec.width_in} onChange={(v) => set("width_in", v)} />
+        <NumberField label="Height (in)" value={spec.height_in} onChange={(v) => set("height_in", v)} />
+        <NumberField label="Panels" value={spec.panels} onChange={(v) => set("panels", v)} min={1} />
+        <SelectField
+          label="Type"
+          value={spec.type}
+          onChange={(v) => set("type", v)}
+          options={[["fixed", "fixed"], ["casement", "casement"], ["sliding", "sliding"]]}
+        />
+        <TextField label="Operation (1-panel only)" value={spec.operation} onChange={(v) => set("operation", v)} />
       </div>
       <div className="card" style={{ display: "inline-block" }} dangerouslySetInnerHTML={{ __html: svg }} />
       <div style={{ marginTop: 12, color: "#666", fontSize: 12 }}>

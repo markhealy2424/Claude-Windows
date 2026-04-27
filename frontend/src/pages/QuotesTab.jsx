@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { api } from "../api.js";
+import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 
 const blankItem = {
   mark: "", quantity: 1, type: "fixed", operation: "",
@@ -72,15 +73,8 @@ export default function QuotesTab({ project, onChange }) {
     }
   }
 
-  function field(name, type = "text") {
-    return (
-      <input
-        type={type}
-        value={draft[name]}
-        onChange={(e) => setDraft({ ...draft, [name]: type === "number" ? Number(e.target.value) : e.target.value })}
-        placeholder={name}
-      />
-    );
+  function set(key, value) {
+    setDraft({ ...draft, [key]: value });
   }
 
   return (
@@ -110,31 +104,29 @@ export default function QuotesTab({ project, onChange }) {
       {active && (
         <>
           <div className="card" style={{ marginBottom: 16 }}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <label>
-                Supplier{" "}
-                <input
-                  value={active.supplier}
-                  onChange={(e) => updateActive({ supplier: e.target.value })}
-                  placeholder="Supplier name"
-                />
-              </label>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
+              <TextField
+                label="Supplier"
+                value={active.supplier}
+                onChange={(v) => updateActive({ supplier: v })}
+              />
               <button onClick={() => removeQuote(active.id)}>Remove this quote</button>
             </div>
           </div>
 
-          <form onSubmit={addItem} className="row" style={{ flexWrap: "wrap", marginBottom: 16 }}>
-            {field("mark")}
-            {field("quantity", "number")}
-            <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
-              <option value="fixed">fixed</option>
-              <option value="casement">casement</option>
-              <option value="sliding">sliding</option>
-            </select>
-            <input value={draft.operation} onChange={(e) => setDraft({ ...draft, operation: e.target.value })} placeholder="operation" />
-            {field("width_in", "number")}
-            {field("height_in", "number")}
-            {field("cost", "number")}
+          <form onSubmit={addItem} className="row" style={{ flexWrap: "wrap", marginBottom: 16, alignItems: "flex-end" }}>
+            <TextField label="Mark" value={draft.mark} onChange={(v) => set("mark", v)} />
+            <NumberField label="Qty" value={draft.quantity} onChange={(v) => set("quantity", v)} />
+            <SelectField
+              label="Type"
+              value={draft.type}
+              onChange={(v) => set("type", v)}
+              options={[["fixed", "fixed"], ["casement", "casement"], ["sliding", "sliding"]]}
+            />
+            <TextField label="Operation" value={draft.operation} onChange={(v) => set("operation", v)} />
+            <NumberField label="Width (in)" value={draft.width_in} onChange={(v) => set("width_in", v)} />
+            <NumberField label="Height (in)" value={draft.height_in} onChange={(v) => set("height_in", v)} />
+            <NumberField label="Cost ($)" value={draft.cost} onChange={(v) => set("cost", v)} />
             <button className="primary" type="submit">Add line</button>
           </form>
 
