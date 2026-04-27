@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as pdfjs from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { api } from "../api.js";
@@ -162,9 +162,9 @@ export default function PlansTab({ project, onChange }) {
     }
   }
 
-  function applyMarkCounts() {
+  function applyMarkCounts(finalCounts) {
     if (!marksPreview) return;
-    const counts = marksPreview.counts ?? {};
+    const counts = finalCounts ?? marksPreview.counts ?? {};
     const updated = items.map((it) => {
       const c = counts[it.mark];
       if (c != null && c > 0) return { ...it, quantity: c };
@@ -291,6 +291,8 @@ export default function PlansTab({ project, onChange }) {
               preview={marksPreview}
               items={items}
               floorPages={floorPages}
+              project={project}
+              plan={active}
               onCancel={() => setMarksPreview(null)}
               onApply={applyMarkCounts}
             />
@@ -427,14 +429,40 @@ function ExtractionPreview({ preview, schedulePages, existingItemCount, onCancel
   );
 }
 
-function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
+function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onApply }) {
   const counts = preview.counts ?? {};
   const marks = Object.keys(counts).sort();
   const itemMarks = new Set(items.map((it) => it.mark));
-  const matched = marks.filter((m) => itemMarks.has(m));
-  const unmatched = marks.filter((m) => !itemMarks.has(m));
   const clusters = preview.clusters ?? [];
   const clusteredMarks = new Set(clusters.map((c) => c.mark));
+  const detections = preview.detections ?? [];
+
+  // Editable counts default to vision counts; user can adjust before applying.
+  const [editedCounts, setEditedCounts] = useState({});
+  useEffect(() => {
+    const init = {};
+    for (const m of Object.keys(counts)) init[m] = counts[m];
+    setEditedCounts(init);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview]);
+
+  const matched = marks.filter((m) => itemMarks.has(m) && Number(editedCounts[m] ?? counts[m]) > 0);
+
+  function handleEdit(mark, value) {
+    const n = value === "" ? 0 : Number(value);
+    setEditedCounts({ ...editedCounts, [mark]: Number.isFinite(n) && n >= 0 ? n : 0 });
+  }
+
+  function applyEdited() {
+    onApply(editedCounts);
+  }
+
+  // Group detections by page for the per-page renders.
+  const detectionsByPage = {};
+  for (const d of detections) {
+    if (!detectionsByPage[d.page]) detectionsByPage[d.page] = [];
+    detectionsByPage[d.page].push(d);
+  }
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
@@ -448,7 +476,7 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
           <button onClick={onCancel}>Cancel</button>
           <button
             className="primary"
-            onClick={onApply}
+            onClick={applyEdited}
             disabled={matched.length === 0}
             title={matched.length === 0 ? "No detected marks match any existing item" : ""}
           >
@@ -521,22 +549,46 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
         </div>
       )}
 
+      {detections.length > 0 && project && plan && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: "#333", marginBottom: 8 }}>
+            <strong>Visual verification</strong> — each yellow box marks where the AI found a hexagon. Compare against the plan, then adjust the "Final qty" column below before applying.
+          </div>
+          {floorPages.map((pageNum) => {
+            const pageDets = detectionsByPage[pageNum] ?? [];
+            if (pageDets.length === 0) return null;
+            return (
+              <PageWithDetections
+                key={pageNum}
+                projectId={project.id}
+                planId={plan.id}
+                pageNumber={pageNum}
+                detections={pageDets}
+              />
+            );
+          })}
+        </div>
+      )}
+
       <table>
         <thead>
           <tr>
             <th>Mark</th>
-            <th>Count</th>
+            <th>AI count</th>
             {floorPages.map((p) => (
               <th key={p}>Page {p}</th>
             ))}
+            <th>Final qty</th>
             <th>Existing item?</th>
-            <th>Current qty → new qty</th>
+            <th>Apply preview</th>
           </tr>
         </thead>
         <tbody>
           {marks.map((m) => {
             const item = items.find((it) => it.mark === m);
             const isClustered = clusteredMarks.has(m);
+            const editedVal = editedCounts[m] ?? counts[m];
+            const edited = Number(editedVal) !== Number(counts[m]);
             return (
               <tr key={m} style={isClustered ? { background: "#fff8e1" } : undefined}>
                 <td>
@@ -547,8 +599,22 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
                 {floorPages.map((p) => (
                   <td key={p}>{preview.perPage?.[p]?.[m] ?? 0}</td>
                 ))}
+                <td>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editedVal}
+                    onChange={(e) => handleEdit(m, e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    style={{
+                      width: 60,
+                      fontWeight: edited ? 600 : 400,
+                      borderColor: edited ? "#0a0" : undefined,
+                    }}
+                  />
+                </td>
                 <td>{item ? "yes" : <span style={{ color: "#a60" }}>no — add it in Items</span>}</td>
-                <td>{item ? `${item.quantity} → ${counts[m]}` : "—"}</td>
+                <td>{item ? `${item.quantity} → ${editedVal}` : "—"}</td>
               </tr>
             );
           })}
@@ -561,6 +627,110 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
           Add them in the Items tab to capture their counts.
         </div>
       )}
+    </div>
+  );
+}
+
+// Cache the parsed PDF document per planId so we don't re-fetch + re-parse for each page.
+const pdfCache = new Map();
+async function getCachedPdf(projectId, planId) {
+  const key = `${projectId}/${planId}`;
+  if (!pdfCache.has(key)) {
+    const promise = (async () => {
+      const url = api.planPdfUrl(projectId, planId);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+      const buf = await res.arrayBuffer();
+      return await pdfjs.getDocument({ data: buf }).promise;
+    })();
+    pdfCache.set(key, promise);
+  }
+  return pdfCache.get(key);
+}
+
+function PageWithDetections({ projectId, planId, pageNumber, detections }) {
+  const canvasRef = useRef(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const pdf = await getCachedPdf(projectId, planId);
+        if (cancelled) return;
+        const page = await pdf.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const targetWidth = 900;
+        const scale = Math.min(targetWidth / baseViewport.width, 2);
+        const viewport = page.getViewport({ scale });
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+        if (!cancelled) setSize({ w: viewport.width, h: viewport.height });
+      } catch (e) {
+        if (!cancelled) setError(String(e));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId, planId, pageNumber]);
+
+  // Color a stable hue per mark so adjacent same-letter boxes are visually grouped.
+  const colorForMark = (mark) => {
+    let h = 0;
+    for (const c of mark) h = (h * 31 + c.charCodeAt(0)) % 360;
+    return `hsl(${h}, 80%, 50%)`;
+  };
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+        Page {pageNumber} — {detections.length} hexagon{detections.length === 1 ? "" : "s"} detected
+      </div>
+      {error && <div style={{ color: "#b00", fontSize: 12 }}>{error}</div>}
+      <div style={{ position: "relative", display: "inline-block", border: "1px solid #ddd", maxWidth: "100%", overflow: "auto" }}>
+        <canvas ref={canvasRef} style={{ display: "block" }} />
+        {size.w > 0 && (
+          <svg
+            style={{ position: "absolute", top: 0, left: 0, width: size.w, height: size.h, pointerEvents: "none" }}
+            viewBox={`0 0 ${size.w} ${size.h}`}
+          >
+            {detections.map((d, i) => {
+              const px = (d.x / 100) * size.w;
+              const py = (d.y / 100) * size.h;
+              const pw = Math.max(8, (d.width / 100) * size.w);
+              const ph = Math.max(8, (d.height / 100) * size.h);
+              const color = colorForMark(d.mark);
+              return (
+                <g key={i}>
+                  <rect
+                    x={px}
+                    y={py}
+                    width={pw}
+                    height={ph}
+                    fill="rgba(255, 235, 59, 0.25)"
+                    stroke={color}
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={px + pw / 2}
+                    y={Math.max(12, py - 3)}
+                    textAnchor="middle"
+                    fill={color}
+                    fontWeight="bold"
+                    fontSize={13}
+                    style={{ paintOrder: "stroke", stroke: "white", strokeWidth: 3 }}
+                  >
+                    {d.mark}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        )}
+      </div>
     </div>
   );
 }

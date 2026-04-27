@@ -41,8 +41,7 @@ Return ONLY a JSON object with this exact shape:
 {
   "marks": [
     { "letter": "A", "count": 3 },
-    { "letter": "B", "count": 1 },
-    { "letter": "C", "count": 2 }
+    { "letter": "B", "count": 1 }
   ],
   "perPage": [
     { "page": 1, "marks": [{ "letter": "A", "count": 3 }, { "letter": "B", "count": 1 }] },
@@ -50,6 +49,9 @@ Return ONLY a JSON object with this exact shape:
   ],
   "clusters": [
     { "mark": "G", "page": 1, "hexagonCount": 5 }
+  ],
+  "detections": [
+    { "mark": "A", "page": 1, "x": 25.5, "y": 38.0, "width": 3.0, "height": 3.5 }
   ]
 }
 
@@ -57,6 +59,14 @@ Where:
 - "marks" is an array of {letter, count} objects — one entry per distinct mark across all analyzed pages, with the TOTAL raw hexagon count.
 - "perPage" is an array of {page, marks} objects — one entry per page analyzed (1-indexed page number), each containing the per-page {letter, count} array.
 - "clusters" is an array of {mark, page, hexagonCount} objects — one entry per cluster of 3+ same-letter adjacent hexagons. Empty array if none.
+- "detections" is an array of bounding boxes — ONE ENTRY PER COUNTED HEXAGON. If you counted 5 G hexagons total, you must return exactly 5 G entries in detections (one per hexagon, not one summary). The total number of detections across all marks must equal the total raw hexagon count. Each detection has:
+   - "mark": the letter inside the hexagon
+   - "page": 1-indexed page number where the hexagon is located
+   - "x": horizontal position of the hexagon's TOP-LEFT corner, as a percentage of page width (0 = left edge, 100 = right edge)
+   - "y": vertical position of the hexagon's TOP-LEFT corner, as a percentage of page height (0 = top edge, 100 = bottom edge)
+   - "width": hexagon width as a percentage of page width (typically 2-5)
+   - "height": hexagon height as a percentage of page height (typically 2-5)
+   Be as precise as you can — these coordinates are used to highlight each hexagon on the rendered page so a human can verify your count visually.
 - Only include marks with count >= 1. Do not list marks with count 0.
 - Do not include any commentary, explanation, or text outside the JSON.`;
 
@@ -105,8 +115,24 @@ const RESPONSE_SCHEMA = {
         additionalProperties: false,
       },
     },
+    detections: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          mark: { type: "string" },
+          page: { type: "integer" },
+          x: { type: "number" },
+          y: { type: "number" },
+          width: { type: "number" },
+          height: { type: "number" },
+        },
+        required: ["mark", "page", "x", "y", "width", "height"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["marks", "perPage", "clusters"],
+  required: ["marks", "perPage", "clusters", "detections"],
   additionalProperties: false,
 };
 
@@ -209,10 +235,31 @@ Apply the rules from the system prompt and return the JSON object with mark coun
     }))
     .filter((c) => c.mark && c.page >= 1 && c.hexagonCount >= 3);
 
+  // Per-hexagon bounding boxes (percentages of page dimensions). Filter to
+  // entries that look sane — coords inside [0, 100] and non-zero size.
+  const detections = (parsed.detections ?? [])
+    .map((d) => ({
+      mark: d.mark,
+      page: Number(d.page),
+      x: Number(d.x),
+      y: Number(d.y),
+      width: Number(d.width),
+      height: Number(d.height),
+    }))
+    .filter((d) =>
+      d.mark &&
+      d.page >= 1 &&
+      d.x >= 0 && d.x <= 100 &&
+      d.y >= 0 && d.y <= 100 &&
+      d.width > 0 && d.width <= 100 &&
+      d.height > 0 && d.height <= 100
+    );
+
   return {
     counts,
     perPage,
     clusters,
+    detections,
     decoded: false,
     shift: 0,
     totalDetected,

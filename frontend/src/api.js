@@ -33,6 +33,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pages, floorPageNumbers, projectId, planId, projectName }),
     }).then(json),
+  planPdfUrl: (projectId, planId) => `${base}/plans/${projectId}/${planId}.pdf`,
   updateProject: (id, patch) =>
     fetch(`${base}/projects/${id}`, {
       method: "PATCH",

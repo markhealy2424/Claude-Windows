@@ -79,6 +79,15 @@ router.post("/count-marks", async (req, res) => {
   }
 });
 
+router.get("/:projectId/:planId.pdf", (req, res) => {
+  const { projectId, planId } = req.params;
+  if (!planPdfExists(projectId, planId)) {
+    return res.status(404).json({ error: "PDF not on disk for this plan" });
+  }
+  res.setHeader("Content-Type", "application/pdf");
+  res.sendFile(getPlanPdfPath(projectId, planId));
+});
+
 router.post("/parse-schedule", (req, res) => {
   const { pages, schedulePageNumbers } = req.body ?? {};
   if (!Array.isArray(pages)) return res.status(400).json({ error: "pages array required" });
