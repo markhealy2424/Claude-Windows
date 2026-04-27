@@ -4,7 +4,8 @@ import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 
 const blankItem = {
   mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
-  width_in: 36, height_in: 48, unit_price_usd: 0, total_price_usd: 0, notes: "",
+  width_in: 36, height_in: 48, unit_price_usd: 0, total_price_usd: 0,
+  glass: "", ext_color: "", int_color: "", thickness: "", profile: "", notes: "",
 };
 
 const blankQuote = () => ({
@@ -220,7 +221,10 @@ export default function QuotesTab({ project, onChange }) {
             <thead>
               <tr>
                 <th>Mark</th><th>Qty</th><th>Type</th><th>Op</th><th>Material</th>
-                <th>Width (in)</th><th>Height (in)</th><th>Unit $</th><th>Total $</th><th>Notes</th><th></th>
+                <th>Width (in)</th><th>Height (in)</th>
+                <th>Glass</th><th>Ext Color</th><th>Int Color</th>
+                <th>Thick</th><th>Profile</th>
+                <th>Unit $</th><th>Total $</th><th>Notes</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -234,17 +238,22 @@ export default function QuotesTab({ project, onChange }) {
                     </select>
                   </td>
                   <td><input value={it.operation ?? ""} onChange={(e) => updateActiveItem(i, { operation: e.target.value })} style={{ width: 60 }} /></td>
-                  <td><input value={it.material ?? "Aluminum"} onChange={(e) => updateActiveItem(i, { material: e.target.value })} style={{ width: 80 }} /></td>
+                  <td><input value={it.material ?? "Aluminum"} onChange={(e) => updateActiveItem(i, { material: e.target.value })} style={{ width: 130 }} /></td>
                   <td><input type="number" value={it.width_in ?? 0} onChange={(e) => updateActiveItem(i, { width_in: Number(e.target.value) || 0 })} style={{ width: 70 }} onFocus={(e)=>e.target.select()} /></td>
                   <td><input type="number" value={it.height_in ?? 0} onChange={(e) => updateActiveItem(i, { height_in: Number(e.target.value) || 0 })} style={{ width: 70 }} onFocus={(e)=>e.target.select()} /></td>
+                  <td><input value={it.glass ?? ""} onChange={(e) => updateActiveItem(i, { glass: e.target.value })} style={{ width: 240 }} title={it.glass ?? ""} /></td>
+                  <td><input value={it.ext_color ?? ""} onChange={(e) => updateActiveItem(i, { ext_color: e.target.value })} style={{ width: 140 }} /></td>
+                  <td><input value={it.int_color ?? ""} onChange={(e) => updateActiveItem(i, { int_color: e.target.value })} style={{ width: 140 }} /></td>
+                  <td><input value={it.thickness ?? ""} onChange={(e) => updateActiveItem(i, { thickness: e.target.value })} style={{ width: 60 }} /></td>
+                  <td><input value={it.profile ?? ""} onChange={(e) => updateActiveItem(i, { profile: e.target.value })} style={{ width: 160 }} title={it.profile ?? ""} /></td>
                   <td><input type="number" value={it.unit_price_usd ?? it.cost ?? 0} onChange={(e) => updateActiveItem(i, { unit_price_usd: Number(e.target.value) || 0 })} style={{ width: 80 }} onFocus={(e)=>e.target.select()} /></td>
                   <td><input type="number" value={it.total_price_usd ?? 0} onChange={(e) => updateActiveItem(i, { total_price_usd: Number(e.target.value) || 0 })} style={{ width: 90 }} onFocus={(e)=>e.target.select()} /></td>
-                  <td><input value={it.notes ?? ""} onChange={(e) => updateActiveItem(i, { notes: e.target.value })} style={{ width: 200 }} /></td>
+                  <td><input value={it.notes ?? ""} onChange={(e) => updateActiveItem(i, { notes: e.target.value })} style={{ width: 160 }} /></td>
                   <td><button onClick={() => removeItem(i)} title="Drop this line">×</button></td>
                 </tr>
               ))}
               {active.items.length === 0 && (
-                <tr><td colSpan={11} className="text-subtle">No quote lines yet. Upload a supplier PDF above, or use the form below to add lines manually.</td></tr>
+                <tr><td colSpan={16} className="text-subtle">No quote lines yet. Upload a supplier PDF above, or use the form below to add lines manually.</td></tr>
               )}
             </tbody>
           </table>

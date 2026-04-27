@@ -3,129 +3,599 @@ import SVGtoPDF from "svg-to-pdfkit";
 import { generateSketch } from "./sketchGenerator.js";
 import { totalWidthIn } from "./dimensions.js";
 
-export function generateProposal({ items, projectName, branding = {} }) {
-  const rows = items.map((it) => ({
-    item: it.mark,
-    qty: it.quantity,
-    description: [it.type, it.operation].filter(Boolean).join(", "),
-    size: `${it.width_in}" x ${it.height_in}"`,
-    price: it.client_price,
-    sketch: generateSketch(it),
-  }));
-  return { projectName, branding, rows, generatedAt: new Date().toISOString() };
+const ACCENT = "#B85C38";
+const RED = "#C0392B";
+const BORDER = "#888";
+const SUBTLE = "#666";
+const ROW_TINT = "#fafafa";
+const HEADER_TINT = "#f2f2f2";
+
+const DEFAULT_EXT_COLOR = "Matte Black, Powder Coating";
+const DEFAULT_INT_COLOR = "Matte Black, Powder Coating";
+const DEFAULT_GLASS =
+  "6mm Low E (Interior) +20A+Warm edge spacer+Argon gas+ 6mm Low E (Exterior), Double Tempered Glass";
+const DEFAULT_WHO_WE_ARE =
+  "We design and supply premium thermally-broken aluminum windows and doors for residential and commercial projects, focused on craftsmanship, energy efficiency, and architectural integrity.";
+const DEFAULT_WHAT_WE_BELIEVE =
+  "Every product we deliver is NFRC labeled and AAMA certified. Our windows and doors meet or exceed the highest energy and structural standards. We back every order with a 20-year warranty on materials and workmanship — so you can build with confidence.";
+
+const TYPE_NAMES = {
+  fixed: "Fixed Window",
+  casement: "Casement Window",
+  awning: "Awning Window",
+  hung: "Hung Window",
+  sliding: "Sliding Window",
+  "folding-door": "Folding Door",
+  "sliding-door": "Sliding Door",
+};
+
+function typeDisplayName(item) {
+  const t = (item.type || "").toLowerCase();
+  if (t === "casement-door") {
+    return Number(item.panels ?? 1) >= 2 ? "Double French Door" : "French Door";
+  }
+  if (TYPE_NAMES[t]) return TYPE_NAMES[t];
+  if (!t) return "Window";
+  return t.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 const money = (n) =>
   Number(n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-export function renderProposalPdf({ items, projectName, branding = {}, totals = {} }, stream) {
-  const doc = new PDFDocument({ size: "A4", margin: 40 });
-  doc.pipe(stream);
+function inchStr(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "?";
+  const r = Math.round(n * 100) / 100;
+  return `${r}"`;
+}
 
-  const accent = branding.color || "#111";
-  const company = branding.company || "Your Company";
-  const tagline = branding.tagline || "";
+function totalSqFt(w, h) {
+  const W = Number(w);
+  const H = Number(h);
+  if (!Number.isFinite(W) || !Number.isFinite(H)) return null;
+  return (W * H) / 144;
+}
 
-  doc.rect(0, 0, doc.page.width, 70).fill(accent);
-  doc.fillColor("#fff").fontSize(18).text(company, 40, 22);
-  if (tagline) doc.fontSize(10).text(tagline, 40, 46);
-  doc.fillColor("#000");
+function roughOpening(w, h) {
+  const W = Number(w);
+  const H = Number(h);
+  if (!Number.isFinite(W) || !Number.isFinite(H)) return "?";
+  const fmt = (v) => {
+    const r = Math.round(v * 10) / 10;
+    return `${r}`;
+  };
+  return `${fmt(W + 0.5)}"x${fmt(H + 0.5)}"`;
+}
 
-  doc.moveDown(3);
-  doc.fontSize(16).text(`Proposal — ${projectName ?? "Untitled"}`);
-  doc.fontSize(9).fillColor("#666").text(new Date().toLocaleString());
-  doc.moveDown(0.8).fillColor("#000");
+function buildContext(branding = {}, info = {}, totals = {}) {
+  return {
+    margin: 36,
+    accent: branding.color || ACCENT,
+    company: branding.company || info.company || "Healy Windows and Doors",
+    companyAddress: branding.companyAddress || "",
+    companyPhone: branding.companyPhone || "",
+    customerName: branding.customerName || info.buyerName || "",
+    quoteNumber: branding.quoteNumber || "",
+    siteAddress: branding.siteAddress || info.address || "",
+    extColor: branding.extColor || DEFAULT_EXT_COLOR,
+    intColor: branding.intColor || DEFAULT_INT_COLOR,
+    glassSpec: branding.glassSpec || DEFAULT_GLASS,
+    deliveryCharge: Number(branding.deliveryCharge ?? totals.delivery ?? 0),
+    whoWeAre: branding.whoWeAre || DEFAULT_WHO_WE_ARE,
+    whatWeBelieve: branding.whatWeBelieve || DEFAULT_WHAT_WE_BELIEVE,
+  };
+}
 
-  const cols = [
-    { label: "Item", w: 38 },
-    { label: "Qty", w: 28 },
-    { label: "Sketch", w: 95 },
-    { label: "Description", w: 120 },
-    { label: "Width", w: 45 },
-    { label: "Height", w: 45 },
-    { label: "Price", w: 65 },
-    { label: "Line total", w: 79 },
-  ];
-  const xStart = doc.page.margins.left;
-  const tableWidth = cols.reduce((s, c) => s + c.w, 0);
-  const rowH = 80;
-
-  function drawHeader() {
-    let x = xStart;
-    const y = doc.y;
-    doc.rect(xStart, y, tableWidth, 18).fill("#f2f2f2").fillColor("#000");
-    doc.fontSize(10).font("Helvetica-Bold");
-    cols.forEach((c) => {
-      doc.text(c.label, x + 4, y + 4, { width: c.w - 8 });
-      x += c.w;
+function drawBrandMark(doc, x, y, size, ctx) {
+  doc.save();
+  doc.roundedRect(x, y, size, size, Math.max(6, size / 8)).fill(ctx.accent);
+  doc
+    .fillColor("#fff")
+    .font("Helvetica-Bold")
+    .fontSize(size * 0.55)
+    .text((ctx.company.charAt(0) || "H").toUpperCase(), x, y + size * 0.18, {
+      width: size,
+      align: "center",
     });
-    doc.font("Helvetica").fontSize(9);
-    doc.y = y + 20;
-    doc.x = xStart;
+  doc.restore();
+  doc.fillColor("#000");
+}
+
+// Header bar drawn at the top of every detail / summary / signature page.
+// Returns the y-coordinate just below the header so callers can lay out content.
+function drawPageHeader(doc, ctx) {
+  const { margin } = ctx;
+  const pageW = doc.page.width;
+  const x0 = margin;
+  const y0 = margin;
+  const w = pageW - margin * 2;
+  const headerH = 90;
+
+  doc.lineWidth(1).strokeColor("#000").rect(x0, y0, w, headerH).stroke();
+
+  // Brand mark on the left
+  const brandSize = 60;
+  const brandX = x0 + 16;
+  const brandY = y0 + (headerH - brandSize) / 2;
+  drawBrandMark(doc, brandX, brandY, brandSize, ctx);
+
+  // Vertical divider
+  const divX = brandX + brandSize + 16;
+  doc
+    .strokeColor("#000")
+    .lineWidth(0.8)
+    .moveTo(divX, y0 + 10)
+    .lineTo(divX, y0 + headerH - 10)
+    .stroke();
+
+  // Center column: company name + address + phone
+  const rightStart = x0 + w * 0.66;
+  const centerX = divX + 12;
+  const centerW = rightStart - centerX - 12;
+
+  doc
+    .fillColor("#000")
+    .font("Helvetica-Bold")
+    .fontSize(13)
+    .text(ctx.company, centerX, y0 + 10, { width: centerW, align: "center" });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(11)
+    .text("Windows and Doors", centerX, y0 + 28, { width: centerW, align: "center" });
+  doc.font("Helvetica").fontSize(9).fillColor("#000");
+  let cy = y0 + 46;
+  if (ctx.companyAddress) {
+    doc.text(ctx.companyAddress, centerX, cy, { width: centerW, align: "center" });
+    cy += 12;
+  }
+  if (ctx.companyPhone) {
+    doc.text(ctx.companyPhone, centerX, cy, { width: centerW, align: "center" });
   }
 
-  drawHeader();
+  // Right column: customer / quote # / site
+  const rx = rightStart + 10;
+  const rw = w - (rightStart - x0) - 20;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(11)
+    .fillColor("#000")
+    .text(ctx.customerName || "—", rx, y0 + 12, { width: rw });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .text("Quote #: ", rx, y0 + 32, { continued: true })
+    .font("Helvetica")
+    .text(ctx.quoteNumber || "—");
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .text("Site: ", rx, y0 + 50, { continued: true })
+    .font("Helvetica")
+    .fillColor(SUBTLE)
+    .text(ctx.siteAddress || "—", { width: rw });
+  doc.fillColor("#000");
 
+  return y0 + headerH;
+}
+
+// Draw a single item card. Card box includes top header info and body
+// (sketch on left, spec block on right).
+function drawItemCard(doc, item, lineNumber, ctx, x, y, w, h) {
+  doc.lineWidth(1).strokeColor("#000").rect(x, y, w, h).stroke();
+
+  // ── Top bar: Line / Qty (left) · Location (center) · Item / Line totals (right)
+  const topPad = 8;
+  const leftCol = x + 12;
+  doc.font("Helvetica-Bold").fontSize(10).fillColor("#000");
+  doc.text(`Line:${String(lineNumber).padStart(2, "0")}`, leftCol, y + topPad);
+  doc.text(`Quantity: ${item.quantity ?? 1}`, leftCol, y + topPad + 14);
+
+  // Center label
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .fillColor("#000")
+    .text(`Location: - ${item.mark ?? ""}`, x, y + topPad + 4, {
+      width: w,
+      align: "center",
+    });
+
+  // Right totals
+  const itemTotal = Number(item.client_price ?? 0);
+  const qty = Number(item.quantity ?? 1);
+  const lineTotal = itemTotal * qty;
+  const rightW = 180;
+  const rightX = x + w - rightW - 12;
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#000")
+    .text(`Item total: ${money(itemTotal)}`, rightX, y + topPad, {
+      width: rightW,
+      align: "right",
+    });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .fillColor(RED)
+    .text(`Line Total: ${money(lineTotal)}`, rightX, y + topPad + 14, {
+      width: rightW,
+      align: "right",
+    });
+  doc.fillColor("#000");
+
+  // ── Body
+  const bodyTop = y + topPad + 36;
+  const bodyH = h - (bodyTop - y) - 8;
+  const sketchW = Math.min(170, w * 0.32);
+  const sketchX = x + 8;
+
+  try {
+    SVGtoPDF(doc, generateSketch(item), sketchX, bodyTop, {
+      width: sketchW - 4,
+      height: bodyH - 4,
+      preserveAspectRatio: "xMidYMid meet",
+    });
+  } catch {
+    doc
+      .fillColor(SUBTLE)
+      .font("Helvetica")
+      .fontSize(9)
+      .text("(sketch error)", sketchX, bodyTop);
+    doc.fillColor("#000");
+  }
+
+  // Spec block
+  const specX = x + sketchW + 14;
+  const specW = w - sketchW - 24;
+  let sy = bodyTop;
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(13)
+    .fillColor("#000")
+    .text(typeDisplayName(item), specX, sy, { width: specW, align: "center" });
+  sy = doc.y + 6;
+
+  const totalW = totalWidthIn(item) ?? Number(item.width_in ?? 0);
+  const h_in = Number(item.height_in ?? 0);
+  const extColor = item.extColor || ctx.extColor;
+  const intColor = item.intColor || ctx.intColor;
+  const glassSpec = item.glass || ctx.glassSpec;
+  const hasGrid = Number(item.gridRows ?? 1) > 1;
+  // Material can come straight from the supplier (already includes
+  // "Thermally Broken, ...") or just be the bare material name.
+  const rawMat = (item.material || "").trim();
+  const material = !rawMat
+    ? "Thermally Broken, Aluminum"
+    : /thermally broken/i.test(rawMat)
+      ? rawMat
+      : `Thermally Broken, ${rawMat}`;
+
+  const lines = [
+    [null, material],
+    [null, "Tempered Glass"],
+    ["Size", `${inchStr(totalW)} x ${inchStr(h_in)}`],
+  ];
+  if (item.profile) lines.push(["Aluminum Alloy Profile", item.profile]);
+  if (item.thickness) lines.push(["Thickness", item.thickness]);
+  lines.push(["Ext Color", extColor]);
+  lines.push(["Interior Color", intColor]);
+  if (hasGrid) lines.push(["Internal Grid", "Grid in Between"]);
+  lines.push(["Glass", glassSpec]);
+  lines.push(["Rough Opening", roughOpening(totalW, h_in)]);
+  const sqft = totalSqFt(totalW, h_in);
+  lines.push(["Total Sq.Ft.", sqft != null ? sqft.toFixed(2) : "?"]);
+
+  for (const [label, val] of lines) {
+    if (sy > y + h - 12) break; // safety
+    if (label) {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(9.5)
+        .fillColor("#000")
+        .text(`${label}: `, specX, sy, { continued: true, width: specW });
+      doc.font("Helvetica").text(val, { width: specW });
+    } else {
+      doc.font("Helvetica").fontSize(9.5).fillColor("#000")
+        .text(val, specX, sy, { width: specW });
+    }
+    sy = doc.y + 1.5;
+  }
+}
+
+function drawCoverPage(doc, ctx) {
+  const { margin } = ctx;
+  const pageW = doc.page.width;
+  const x = margin;
+  const y = margin;
+  const w = pageW - margin * 2;
+
+  // Banner box
+  const bannerH = 240;
+  doc.lineWidth(1).strokeColor("#000").rect(x, y, w, bannerH).stroke();
+
+  // Brand mark centered
+  const brandSize = 100;
+  drawBrandMark(doc, x + (w - brandSize) / 2, y + 32, brandSize, ctx);
+
+  // Company name + tagline
+  doc
+    .fillColor("#000")
+    .font("Helvetica-Bold")
+    .fontSize(24)
+    .text(ctx.company, x, y + 150, { width: w, align: "center" });
+  doc
+    .font("Helvetica")
+    .fontSize(11)
+    .fillColor(SUBTLE)
+    .text("AAMA Certified · Energy Star Partner", x, y + 182, {
+      width: w,
+      align: "center",
+    });
+  const tagParts = [ctx.companyAddress, ctx.companyPhone].filter(Boolean);
+  if (tagParts.length) {
+    doc
+      .fontSize(10)
+      .text(tagParts.join("  ·  "), x, y + 200, { width: w, align: "center" });
+  }
+  doc.fillColor("#000");
+
+  // Body copy
+  const padX = 60;
+  let by = y + bannerH + 50;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .text("Who We Are", x, by, { width: w, align: "center" });
+  by = doc.y + 8;
+  doc
+    .font("Helvetica")
+    .fontSize(10.5)
+    .fillColor("#000")
+    .text(ctx.whoWeAre, x + padX, by, {
+      width: w - padX * 2,
+      align: "center",
+      paragraphGap: 6,
+    });
+
+  by = doc.y + 36;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .text("What We Believe In", x, by, { width: w, align: "center" });
+  by = doc.y + 8;
+  doc
+    .font("Helvetica")
+    .fontSize(10.5)
+    .fillColor("#000")
+    .text(ctx.whatWeBelieve, x + padX, by, {
+      width: w - padX * 2,
+      align: "center",
+      paragraphGap: 6,
+    });
+}
+
+function drawSummaryPage(doc, items, ctx) {
+  const headerBottom = drawPageHeader(doc, ctx);
+  const { margin } = ctx;
+  const x0 = margin;
+  const w = doc.page.width - margin * 2;
+
+  let y = headerBottom + 24;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(20)
+    .fillColor("#000")
+    .text("Quote Summary", x0, y, { width: w, align: "center" });
+  y = doc.y + 14;
+
+  const cols = [
+    { label: "Line", w: 40, align: "center" },
+    { label: "Product", w: 150, align: "left" },
+    { label: "Location", w: 60, align: "center" },
+    { label: "Qty", w: 40, align: "right" },
+    { label: "Sq.Ft.", w: 55, align: "right" },
+    { label: "Unit Price", w: 80, align: "right" },
+    { label: "Total", w: 90, align: "right" },
+  ];
+  const tableW = cols.reduce((s, c) => s + c.w, 0);
+  const tableX = x0 + (w - tableW) / 2;
+
+  // Header row
+  doc.rect(tableX, y, tableW, 22).fill(HEADER_TINT);
+  doc.fillColor("#000").font("Helvetica-Bold").fontSize(10);
+  let cx = tableX;
+  cols.forEach((c) => {
+    doc.text(c.label, cx + 5, y + 6, { width: c.w - 10, align: c.align });
+    cx += c.w;
+  });
+  y += 22;
+
+  doc.font("Helvetica").fontSize(9.5);
   let subtotal = 0;
-  items.forEach((it) => {
-    if (doc.y + rowH > doc.page.height - doc.page.margins.bottom - 80) {
-      doc.addPage();
-      drawHeader();
-    }
-    const yTop = doc.y;
-    let x = xStart;
-    const cellText = (text, w) => {
-      doc.text(String(text ?? ""), x + 4, yTop + 6, { width: w - 8, height: rowH - 12 });
-    };
+  let totalSqftAll = 0;
+  let totalProducts = 0;
 
+  items.forEach((it, i) => {
+    const totalW = totalWidthIn(it) ?? Number(it.width_in ?? 0);
+    const h_in = Number(it.height_in ?? 0);
+    const sqft = totalSqFt(totalW, h_in) ?? 0;
     const qty = Number(it.quantity ?? 1);
-    const price = Number(it.client_price ?? 0);
-    const lineTotal = qty * price;
-    subtotal += lineTotal;
+    const unit = Number(it.client_price ?? 0);
+    const total = unit * qty;
+    subtotal += total;
+    totalSqftAll += sqft * qty;
+    totalProducts += qty;
 
-    cellText(it.mark, cols[0].w); x += cols[0].w;
-    cellText(qty, cols[1].w); x += cols[1].w;
-
-    try {
-      SVGtoPDF(doc, generateSketch(it), x + 4, yTop + 6, {
-        width: cols[2].w - 8, height: rowH - 12, preserveAspectRatio: "xMidYMid meet",
-      });
-    } catch {
-      doc.text("(sketch err)", x + 4, yTop + 6);
+    if (i % 2 === 1) {
+      doc.rect(tableX, y, tableW, 18).fill(ROW_TINT).fillColor("#000");
     }
-    x += cols[2].w;
 
-    const wIn = totalWidthIn(it);
-    cellText([it.type, it.operation].filter(Boolean).join(", "), cols[3].w); x += cols[3].w;
-    cellText(wIn != null ? `${wIn}"` : "?", cols[4].w); x += cols[4].w;
-    cellText(it.height_in != null ? `${it.height_in}"` : "?", cols[5].w); x += cols[5].w;
-    cellText(money(price), cols[6].w); x += cols[6].w;
-    cellText(money(lineTotal), cols[7].w);
-
-    const yBot = yTop + rowH;
-    doc.moveTo(xStart, yBot).lineTo(xStart + tableWidth, yBot).strokeColor("#ddd").stroke().strokeColor("#000");
-    doc.y = yBot + 2;
-    doc.x = xStart;
+    cx = tableX;
+    const vals = [
+      String(i + 1).padStart(2, "0"),
+      typeDisplayName(it),
+      it.mark ?? "",
+      String(qty),
+      sqft.toFixed(2),
+      money(unit),
+      money(total),
+    ];
+    doc.font("Helvetica").fontSize(9.5).fillColor("#000");
+    cols.forEach((c, j) => {
+      doc.text(vals[j], cx + 5, y + 5, { width: c.w - 10, align: c.align });
+      cx += c.w;
+    });
+    y += 18;
   });
 
-  const delivery = Number(totals.delivery ?? 0);
-  const fees = Number(totals.fees ?? 0);
-  const total = Number(totals.total ?? subtotal + delivery + fees);
+  // Bottom totals
+  y += 4;
+  doc
+    .lineWidth(0.5)
+    .strokeColor(BORDER)
+    .moveTo(tableX, y)
+    .lineTo(tableX + tableW, y)
+    .stroke();
+  y += 6;
 
-  doc.moveDown(1);
-  const labelW = tableWidth - 100;
-  const valueW = 100;
-  const writeTotal = (label, amount, bold = false) => {
-    if (bold) doc.font("Helvetica-Bold");
-    doc.text(label, xStart, doc.y, { width: labelW, align: "right" });
-    doc.text(money(amount), xStart + labelW, doc.y - doc.currentLineHeight(), { width: valueW, align: "right" });
-    if (bold) doc.font("Helvetica");
+  const lastColW = cols[cols.length - 1].w;
+  const labelW = tableW - lastColW;
+  const writeTotalRow = (label, amount, bold) => {
+    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 11 : 10);
+    doc.text(label, tableX, y, { width: labelW - 8, align: "right" });
+    doc.text(money(amount), tableX + labelW, y, {
+      width: lastColW - 6,
+      align: "right",
+    });
+    y = doc.y + 4;
   };
-  writeTotal("Subtotal", subtotal);
-  if (delivery) writeTotal("Delivery", delivery);
-  if (fees) writeTotal("Fees", fees);
-  doc.moveDown(0.3);
-  writeTotal("Total", total, true);
+
+  writeTotalRow("Subtotal", subtotal, true);
+  if (ctx.deliveryCharge > 0) writeTotalRow("Delivery Charge", ctx.deliveryCharge, false);
+  writeTotalRow("Total", subtotal + ctx.deliveryCharge, true);
+
+  return { subtotal, total: subtotal + ctx.deliveryCharge, totalSqftAll, totalProducts };
+}
+
+function drawSignaturePage(doc, ctx, summary) {
+  drawPageHeader(doc, ctx);
+  const { margin } = ctx;
+  const x0 = margin;
+  const w = doc.page.width - margin * 2;
+  const pageH = doc.page.height;
+
+  let y = margin + 130;
+
+  const cells = [
+    ["Total", money(summary.total)],
+    ["Total Sq.Ft.", summary.totalSqftAll.toFixed(2)],
+    ["Total Products", String(summary.totalProducts)],
+  ];
+  const cellW = w / cells.length;
+  const cellH = 70;
+  cells.forEach(([label, val], i) => {
+    const cx = x0 + cellW * i;
+    doc.lineWidth(0.8).strokeColor("#000").rect(cx, y, cellW, cellH).stroke();
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .fillColor(SUBTLE)
+      .text(label, cx, y + 14, { width: cellW, align: "center" });
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(18)
+      .fillColor("#000")
+      .text(val, cx, y + 36, { width: cellW, align: "center" });
+  });
+
+  // Signature block near the bottom
+  const sigY = pageH - margin - 180;
+  const lineDash = "____________________________________";
+  doc.font("Helvetica").fontSize(11).fillColor("#000");
+  doc.text(`Customer Signature: ${lineDash}      Date: ${"_".repeat(20)}`, x0, sigY, {
+    width: w,
+  });
+  doc.moveDown(3);
+  doc.text(`Print Name: ${lineDash}${lineDash}`, x0, doc.y, { width: w });
+}
+
+function addPageNumbers(doc) {
+  const range = doc.bufferedPageRange();
+  const total = range.count;
+  for (let i = 0; i < total; i++) {
+    doc.switchToPage(range.start + i);
+    const pageW = doc.page.width;
+    const pageH = doc.page.height;
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor(SUBTLE)
+      .text(`Page ${i + 1} of ${total}`, pageW - 110, pageH - 28, {
+        width: 80,
+        align: "right",
+      });
+    doc.fillColor("#000");
+  }
+}
+
+export function renderProposalPdf(
+  { items = [], projectName, branding = {}, totals = {}, info = {} },
+  stream
+) {
+  const ctx = buildContext(branding, info, totals);
+  const margin = ctx.margin;
+
+  const doc = new PDFDocument({ size: "A4", margin, bufferPages: true });
+  doc.pipe(stream);
+
+  // 1) Cover page
+  drawCoverPage(doc, ctx);
+
+  // 2) Detail pages — 3 cards per page
+  const cardsPerPage = 3;
+  const pageH = 842; // A4 portrait pt
+  const pageW = 595;
+  const usableW = pageW - margin * 2;
+
+  for (let i = 0; i < items.length; i += cardsPerPage) {
+    doc.addPage();
+    const headerBottom = drawPageHeader(doc, ctx);
+    const footerReserve = 36;
+    const usableH = pageH - margin - footerReserve - (headerBottom - margin);
+    const gap = 14;
+    const cardH = (usableH - (cardsPerPage - 1) * gap) / cardsPerPage;
+
+    const slice = items.slice(i, i + cardsPerPage);
+    slice.forEach((it, j) => {
+      const cardY = headerBottom + 14 + j * (cardH + gap);
+      drawItemCard(doc, it, i + j + 1, ctx, margin, cardY, usableW, cardH);
+    });
+  }
+
+  // 3) Summary page
+  doc.addPage();
+  const summary = drawSummaryPage(doc, items, ctx);
+
+  // 4) Signature page
+  doc.addPage();
+  drawSignaturePage(doc, ctx, summary);
+
+  // Page numbers across all pages
+  addPageNumbers(doc);
 
   doc.end();
+}
+
+export function generateProposal({ items, projectName, branding = {} }) {
+  const rows = items.map((it) => ({
+    item: it.mark,
+    qty: it.quantity,
+    description: typeDisplayName(it),
+    size: `${inchStr(totalWidthIn(it) ?? it.width_in)} x ${inchStr(it.height_in)}`,
+    price: it.client_price,
+    sketch: generateSketch(it),
+  }));
+  return { projectName, branding, rows, generatedAt: new Date().toISOString() };
 }

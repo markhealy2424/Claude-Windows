@@ -17,12 +17,12 @@ router.post("/", (req, res) => {
 });
 
 router.post("/pdf", (req, res) => {
-  const { items, projectName, branding, totals } = req.body ?? {};
+  const { items, projectName, branding, totals, info } = req.body ?? {};
   if (!Array.isArray(items)) return res.status(400).json({ error: "items array required" });
   const safeName = (projectName ?? "proposal").replace(/[^a-z0-9-_]+/gi, "_");
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${safeName}-proposal.pdf"`);
-  renderProposalPdf({ items, projectName, branding, totals }, res);
+  renderProposalPdf({ items, projectName, branding, totals, info }, res);
 });
 
 export default router;

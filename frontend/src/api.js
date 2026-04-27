@@ -109,11 +109,11 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items, projectName, branding }),
     }).then(json),
-  downloadProposalPdf: async (items, projectName, branding, totals) => {
+  downloadProposalPdf: async (items, projectName, branding, totals, info) => {
     const res = await fetch(`${base}/proposals/pdf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, projectName, branding, totals }),
+      body: JSON.stringify({ items, projectName, branding, totals, info }),
     });
     if (!res.ok) throw new Error(await res.text());
     const blob = await res.blob();
