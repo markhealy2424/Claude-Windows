@@ -9,8 +9,14 @@ const blank = {
 
 const TYPES = [["fixed", "fixed"], ["casement", "casement"], ["sliding", "sliding"]];
 
+function totalWidth(it) {
+  return Number(it.width_in ?? 0) * Math.max(1, Math.floor(Number(it.panels ?? 1)));
+}
+
 export default function ItemEditor({ items = [], onChange }) {
   const [draft, setDraft] = useState(blank);
+  const [editIndex, setEditIndex] = useState(-1);
+  const [editDraft, setEditDraft] = useState(null);
 
   function addItem(e) {
     e.preventDefault();
@@ -20,14 +26,37 @@ export default function ItemEditor({ items = [], onChange }) {
   }
 
   function removeItem(idx) {
+    if (editIndex === idx) { setEditIndex(-1); setEditDraft(null); }
     onChange(items.filter((_, i) => i !== idx));
+  }
+
+  function startEdit(idx) {
+    setEditIndex(idx);
+    setEditDraft({ ...blank, ...items[idx] });
+  }
+
+  function cancelEdit() {
+    setEditIndex(-1);
+    setEditDraft(null);
+  }
+
+  function saveEdit() {
+    if (editIndex < 0 || !editDraft) return;
+    if (!editDraft.mark) return;
+    onChange(items.map((it, i) => (i === editIndex ? { ...editDraft } : it)));
+    setEditIndex(-1);
+    setEditDraft(null);
   }
 
   function set(key, value) {
     setDraft({ ...draft, [key]: value });
   }
 
-  const totalW = Number(draft.width_in ?? 0) * Math.max(1, Math.floor(Number(draft.panels ?? 1)));
+  function setEdit(key, value) {
+    setEditDraft({ ...editDraft, [key]: value });
+  }
+
+  const draftTotalW = totalWidth(draft);
 
   return (
     <div>
@@ -43,27 +72,68 @@ export default function ItemEditor({ items = [], onChange }) {
         <button className="primary" type="submit">Add</button>
       </form>
       <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
-        Total width = per-panel width × panels. Currently: {Number(draft.width_in) || 0}" × {draft.panels || 1} = <strong>{totalW}"</strong>.
+        Total width = per-panel width × panels. Currently: {Number(draft.width_in) || 0}" × {draft.panels || 1} = <strong>{draftTotalW}"</strong>.
         Grid rows = how many horizontal divisions to draw across the unit (1 = no grid).
       </div>
+
       <table>
         <thead>
-          <tr><th>Mark</th><th>Qty</th><th>Type</th><th>Operation</th><th>W/panel</th><th>Total W</th><th>H</th><th>Panels</th><th>Grid</th><th></th></tr>
+          <tr>
+            <th>Mark</th><th>Qty</th><th>Type</th><th>Operation</th>
+            <th>W/panel</th><th>Total W</th><th>H</th>
+            <th>Panels</th><th>Grid</th><th>Notes</th><th></th>
+          </tr>
         </thead>
         <tbody>
           {items.map((it, i) => {
-            const total = Number(it.width_in ?? 0) * Math.max(1, Math.floor(Number(it.panels ?? 1)));
+            if (i === editIndex && editDraft) {
+              const editTotal = totalWidth(editDraft);
+              return (
+                <tr key={i} style={{ background: "#fff8e1" }}>
+                  <td><TextField label="" value={editDraft.mark} onChange={(v) => setEdit("mark", v)} inputStyle={{ width: 60 }} /></td>
+                  <td><NumberField label="" value={editDraft.quantity} onChange={(v) => setEdit("quantity", v)} inputStyle={{ width: 50 }} /></td>
+                  <td>
+                    <SelectField label="" value={editDraft.type} onChange={(v) => setEdit("type", v)} options={TYPES} />
+                  </td>
+                  <td><TextField label="" value={editDraft.operation} onChange={(v) => setEdit("operation", v)} inputStyle={{ width: 80 }} /></td>
+                  <td><NumberField label="" value={editDraft.width_in} onChange={(v) => setEdit("width_in", v)} inputStyle={{ width: 60 }} /></td>
+                  <td style={{ color: "#666" }}>{editTotal}"</td>
+                  <td><NumberField label="" value={editDraft.height_in} onChange={(v) => setEdit("height_in", v)} inputStyle={{ width: 60 }} /></td>
+                  <td><NumberField label="" value={editDraft.panels} onChange={(v) => setEdit("panels", v)} inputStyle={{ width: 50 }} /></td>
+                  <td><NumberField label="" value={editDraft.gridRows} onChange={(v) => setEdit("gridRows", v)} inputStyle={{ width: 50 }} /></td>
+                  <td><TextField label="" value={editDraft.notes} onChange={(v) => setEdit("notes", v)} inputStyle={{ width: 120 }} /></td>
+                  <td>
+                    <div className="row">
+                      <button className="primary" onClick={saveEdit} disabled={!editDraft.mark} type="button">Save</button>
+                      <button onClick={cancelEdit} type="button">Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            }
             return (
               <tr key={i}>
-                <td>{it.mark}</td><td>{it.quantity}</td><td>{it.type}</td><td>{it.operation}</td>
-                <td>{it.width_in}"</td><td>{total}"</td><td>{it.height_in}"</td>
-                <td>{it.panels}</td><td>{it.gridRows ?? 1}</td>
-                <td><button onClick={() => removeItem(i)}>Remove</button></td>
+                <td>{it.mark}</td>
+                <td>{it.quantity}</td>
+                <td>{it.type}</td>
+                <td>{it.operation}</td>
+                <td>{it.width_in}"</td>
+                <td>{totalWidth(it)}"</td>
+                <td>{it.height_in}"</td>
+                <td>{it.panels}</td>
+                <td>{it.gridRows ?? 1}</td>
+                <td style={{ maxWidth: 180, color: "#666" }}>{it.notes}</td>
+                <td>
+                  <div className="row">
+                    <button onClick={() => startEdit(i)} disabled={editIndex >= 0 && editIndex !== i}>Edit</button>
+                    <button onClick={() => removeItem(i)}>Remove</button>
+                  </div>
+                </td>
               </tr>
             );
           })}
           {items.length === 0 && (
-            <tr><td colSpan={10} style={{ color: "#888" }}>No items yet.</td></tr>
+            <tr><td colSpan={11} style={{ color: "#888" }}>No items yet.</td></tr>
           )}
         </tbody>
       </table>
