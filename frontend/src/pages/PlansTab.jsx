@@ -998,8 +998,8 @@ function SchedulePreview({ preview, items, onCancel, onApply }) {
               <th>Type</th>
               <th>Operation</th>
               <th>Panels</th>
-              <th>Schedule qty</th>
-              <th>Existing item?</th>
+              <th>Sched qty</th>
+              <th>Existing?</th>
               <th>Notes</th>
             </tr>
           </thead>
