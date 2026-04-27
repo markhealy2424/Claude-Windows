@@ -35,7 +35,15 @@ export default function ProjectView() {
 
   return (
     <div>
-      <h1>{project.name} <small style={{ color: "#888" }}>· {project.status}</small></h1>
+      <div className="page-header">
+        <div>
+          <div className="breadcrumb">
+            <a href="/">← Projects</a>
+          </div>
+          <h1 style={{ margin: 0 }}>{project.name}</h1>
+        </div>
+        <span className="badge accent">{project.status}</span>
+      </div>
       <div className="tabs">
         {TABS.map((t) => (
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t}</button>

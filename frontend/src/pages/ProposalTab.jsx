@@ -121,13 +121,13 @@ export default function ProposalTab({ project, onChange }) {
           <TextField label="Company" value={branding.company} onChange={(v) => setBranding({ ...branding, company: v })} />
           <TextField label="Tagline" value={branding.tagline} onChange={(v) => setBranding({ ...branding, tagline: v })} />
           <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 11, color: "#666" }}>Header color</span>
+            <span className="text-muted" style={{ fontSize: 11 }}>Header color</span>
             <input type="color" value={branding.color} onChange={(e) => setBranding({ ...branding, color: e.target.value })} />
           </label>
         </div>
       </div>
 
-      {error && <div className="card" style={{ color: "#b00", marginBottom: 12 }}>{error}</div>}
+      {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
 
       {priced && (
         <>
@@ -179,7 +179,7 @@ export default function ProposalTab({ project, onChange }) {
               <tr><td colSpan={8} style={{ textAlign: "right", fontWeight: 600 }}>Total</td><td style={{ fontWeight: 600 }}>{money(priced.total)}</td></tr>
             </tfoot>
           </table>
-          <div style={{ color: "#888", marginTop: 8, fontSize: 12 }}>
+          <div className="text-subtle" style={{ marginTop: 8, fontSize: 12 }}>
             Edit any per-item markup % above and click "Apply pricing" again to recompute.
           </div>
         </>

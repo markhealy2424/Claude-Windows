@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const labelStyle = { display: "flex", flexDirection: "column", gap: 2 };
-const captionStyle = { fontSize: 11, color: "#666" };
+const captionStyle = { fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 };
 
 export function NumberField({ label, value, onChange, style, inputStyle, ...rest }) {
   const [text, setText] = useState(value == null ? "" : String(value));

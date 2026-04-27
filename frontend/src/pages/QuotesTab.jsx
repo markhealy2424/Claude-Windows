@@ -84,18 +84,13 @@ export default function QuotesTab({ project, onChange }) {
           {quotes.map((q) => (
             <button
               key={q.id}
-              className={q.id === activeId ? "active" : ""}
+              className={`pill-toggle${q.id === activeId ? " active" : ""}`}
               onClick={() => setActiveId(q.id)}
-              style={{
-                padding: "6px 10px", borderRadius: 4, border: "1px solid #ccc",
-                background: q.id === activeId ? "#111" : "#fff",
-                color: q.id === activeId ? "#fff" : "#111", cursor: "pointer",
-              }}
             >
               {q.supplier || "(unnamed)"} · {q.items.length}
             </button>
           ))}
-          <button onClick={addQuote}>+ Add quote</button>
+          <button onClick={addQuote} className="pill-upload">+ Add quote</button>
         </div>
       </div>
 
@@ -143,7 +138,7 @@ export default function QuotesTab({ project, onChange }) {
                 </tr>
               ))}
               {active.items.length === 0 && (
-                <tr><td colSpan={8} style={{ color: "#888" }}>No quote lines yet.</td></tr>
+                <tr><td colSpan={8} className="text-subtle">No quote lines yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -153,18 +148,18 @@ export default function QuotesTab({ project, onChange }) {
               {comparing ? "Comparing…" : "Run discrepancy check"}
             </button>
             {comparison?.quoteId === active.id && (
-              <span style={{ color: "#666" }}>
+              <span className="text-muted">
                 last run {new Date(comparison.ranAt).toLocaleTimeString()}
               </span>
             )}
           </div>
 
-          {error && <div className="card" style={{ color: "#b00", marginBottom: 12 }}>{error}</div>}
+          {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
 
           {comparison?.quoteId === active.id && (
             <div className="card">
               {comparison.ok ? (
-                <div style={{ color: "#0a0" }}>No discrepancies — quote matches RFQ.</div>
+                <div className="text-success">✓ No discrepancies — quote matches RFQ.</div>
               ) : (
                 <table>
                   <thead>

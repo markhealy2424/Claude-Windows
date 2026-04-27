@@ -39,7 +39,7 @@ export default function Dashboard() {
             </tr>
           ))}
           {projects.length === 0 && (
-            <tr><td colSpan={4} style={{ color: "#888" }}>No projects yet.</td></tr>
+            <tr><td colSpan={4} className="text-subtle">No projects yet.</td></tr>
           )}
         </tbody>
       </table>

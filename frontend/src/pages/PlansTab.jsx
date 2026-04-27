@@ -6,11 +6,11 @@ import { api } from "../api.js";
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const KINDS = [
-  { value: "unknown", label: "—", color: "#eee", text: "#666" },
-  { value: "floor", label: "Floor", color: "#dbeafe", text: "#1e3a8a" },
-  { value: "elevation", label: "Elev.", color: "#e0e7ff", text: "#3730a3" },
-  { value: "window_schedule", label: "Win Sched", color: "#fde68a", text: "#92400e" },
-  { value: "door_schedule", label: "Door Sched", color: "#fecaca", text: "#991b1b" },
+  { value: "unknown", label: "—", color: "#EFEAE0", text: "#6B6053" },
+  { value: "floor", label: "Floor", color: "#DBEAFE", text: "#1E3A8A" },
+  { value: "elevation", label: "Elev.", color: "#E0E7FF", text: "#3730A3" },
+  { value: "window_schedule", label: "Win Sched", color: "#FBEBC6", text: "#8E5400" },
+  { value: "door_schedule", label: "Door Sched", color: "#F8D9D5", text: "#94251A" },
 ];
 
 const SCHEDULE_KINDS = new Set(["window_schedule", "door_schedule"]);
@@ -197,23 +197,19 @@ export default function PlansTab({ project, onChange }) {
         {plans.map((p) => (
           <button
             key={p.id}
+            className={`pill-toggle${p.id === activeId ? " active" : ""}`}
             onClick={() => setActiveId(p.id)}
-            style={{
-              padding: "6px 10px", borderRadius: 4, border: "1px solid #ccc",
-              background: p.id === activeId ? "#111" : "#fff",
-              color: p.id === activeId ? "#fff" : "#111", cursor: "pointer",
-            }}
           >
             {p.name} · {p.pageCount}p{p.pages?.length ? " · text ✓" : ""}{p.pdfPersisted ? " · PDF ✓" : " · PDF ✗"}
           </button>
         ))}
-        <label style={{ padding: "6px 10px", border: "1px dashed #888", borderRadius: 4, cursor: "pointer" }}>
+        <label className="pill-upload">
           + Upload PDF
           <input type="file" accept="application/pdf" onChange={handleFile} style={{ display: "none" }} />
         </label>
       </div>
 
-      {error && <div className="card" style={{ color: "#b00", marginBottom: 12 }}>{error}</div>}
+      {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
       {loading && <div className="card">Rendering pages…</div>}
 
       {active && (
@@ -222,7 +218,7 @@ export default function PlansTab({ project, onChange }) {
             <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
               <div>
                 <div style={{ fontWeight: 600 }}>{active.name}</div>
-                <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
                   {active.pageCount} pages ·{" "}
                   {KINDS.filter((k) => tagCounts[k.value] > 0).map((k) => `${tagCounts[k.value]} ${k.label}`).join(", ") || "none tagged yet"}
                 </div>
@@ -258,14 +254,23 @@ export default function PlansTab({ project, onChange }) {
                 <button onClick={() => removePlan(active.id)}>Remove plan</button>
               </div>
             </div>
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee" }}>
-              <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Bulk: mark every page as</div>
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--color-divider)" }}>
+              <div className="text-muted" style={{ fontSize: 12, marginBottom: 6 }}>Bulk: mark every page as</div>
               <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
                 {KINDS.map((k) => (
                   <button
                     key={k.value}
                     onClick={() => setAllTags(k.value)}
-                    style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #ccc", background: k.color, color: k.text, cursor: "pointer", fontSize: 12 }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "var(--radius-sm)",
+                      border: `1px solid ${k.text}`,
+                      background: k.color,
+                      color: k.text,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
                   >
                     {k.label}
                   </button>
@@ -275,7 +280,7 @@ export default function PlansTab({ project, onChange }) {
           </div>
 
           {!hasExtractedText && (
-            <div className="card" style={{ marginBottom: 12, color: "#a60" }}>
+            <div className="card warning" style={{ marginBottom: 12 }}>
               No extracted text on file for this plan. Re-upload the PDF to enable item extraction.
             </div>
           )}
@@ -312,12 +317,12 @@ export default function PlansTab({ project, onChange }) {
                     key={pg.pageNumber}
                     className="card"
                     style={{
-                      borderColor: SCHEDULE_KINDS.has(currentKind) ? kindMeta.text : "#eee",
+                      borderColor: SCHEDULE_KINDS.has(currentKind) ? kindMeta.text : "var(--color-border)",
                       borderWidth: SCHEDULE_KINDS.has(currentKind) ? 2 : 1,
                     }}
                   >
                     <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, color: "#666" }}>Page {pg.pageNumber}</span>
+                      <span className="text-muted" style={{ fontSize: 12 }}>Page {pg.pageNumber}</span>
                       <span
                         style={{
                           fontSize: 11, padding: "2px 6px", borderRadius: 10,
@@ -330,7 +335,7 @@ export default function PlansTab({ project, onChange }) {
                     <img
                       src={pg.dataUrl}
                       alt={`Page ${pg.pageNumber}`}
-                      style={{ width: "100%", border: "1px solid #eee", display: "block" }}
+                      style={{ width: "100%", border: "1px solid var(--color-divider)", display: "block" }}
                     />
                     <div className="row" style={{ flexWrap: "wrap", gap: 4, marginTop: 8 }}>
                       {KINDS.map((k) => {
@@ -342,13 +347,14 @@ export default function PlansTab({ project, onChange }) {
                             style={{
                               flex: "1 1 auto",
                               padding: "4px 6px",
-                              borderRadius: 4,
-                              border: selected ? `2px solid ${k.text}` : "1px solid #ddd",
-                              background: selected ? k.color : "#fff",
-                              color: selected ? k.text : "#333",
+                              borderRadius: "var(--radius-sm)",
+                              border: selected ? `2px solid ${k.text}` : "1px solid var(--color-border-strong)",
+                              background: selected ? k.color : "var(--color-surface)",
+                              color: selected ? k.text : "var(--color-text)",
                               cursor: "pointer",
                               fontSize: 11,
-                              fontWeight: selected ? 600 : 400,
+                              fontWeight: selected ? 600 : 500,
+                              transition: "all var(--transition)",
                             }}
                           >
                             {k.label}
@@ -389,12 +395,12 @@ function ExtractionPreview({ preview, schedulePages, existingItemCount, onCancel
       </div>
 
       {meta?.pages && (
-        <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
+        <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
           {meta.pages.map((p) => (
             <div key={p.pageNumber}>
               Page {p.pageNumber}: {p.ok
                 ? <>columns: {p.columns.join(", ")} · {p.itemsExtracted} row{p.itemsExtracted === 1 ? "" : "s"}</>
-                : <span style={{ color: "#a60" }}>{p.reason}</span>}
+                : <span className="text-warning">{p.reason}</span>}
             </div>
           ))}
         </div>
@@ -415,7 +421,7 @@ function ExtractionPreview({ preview, schedulePages, existingItemCount, onCancel
           </tbody>
         </table>
       ) : (
-        <div style={{ color: "#a60" }}>
+        <div className="text-warning">
           No items detected. The schedule may use a layout the parser doesn't recognize yet (no header row found, or columns we don't classify).
         </div>
       )}
@@ -525,17 +531,17 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
 
       <div style={{ fontSize: 12, marginBottom: 8 }}>
         {preview.detector === "vision" ? (
-          <span style={{ color: "#0a0" }}>
+          <span className="text-success">
             ✓ Counted by AI vision ({preview.model ?? "Claude"}) — reads hexagons directly from the rendered PDF.
             {preview.usage && (
-              <span style={{ color: "#888" }}>
+              <span className="text-subtle">
                 {" "}· {preview.usage.input_tokens?.toLocaleString()} input + {preview.usage.output_tokens?.toLocaleString()} output tokens
                 {preview.usage.cache_read_input_tokens > 0 && ` (${preview.usage.cache_read_input_tokens.toLocaleString()} cached)`}
               </span>
             )}
           </span>
         ) : (
-          <span style={{ color: "#a60" }}>
+          <span className="text-warning">
             ⚠ Counted by local text fallback. Local detection over-counts grid labels, legend entries, and any short-letter glyph it finds — counts here are unreliable.
             <br /><br />
             <strong>Why vision didn't run:</strong>{" "}
@@ -562,17 +568,11 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
       </div>
 
       {clusters.length > 0 && (
-        <div style={{
-          background: "#fff8e1",
-          border: "1px solid #f0c040",
-          borderRadius: 4,
-          padding: 12,
-          marginBottom: 12,
-        }}>
-          <strong style={{ color: "#92400e" }}>
+        <div className="card warning" style={{ padding: 12, marginBottom: 12 }}>
+          <strong className="text-warning">
             ⚠ {clusters.length} cluster{clusters.length === 1 ? "" : "s"} of 3+ same-letter hexagons detected — verify against the schedule
           </strong>
-          <div style={{ fontSize: 12, color: "#666", marginTop: 4, marginBottom: 8 }}>
+          <div className="text-muted" style={{ fontSize: 12, marginTop: 4, marginBottom: 8 }}>
             A cluster of 3+ adjacent hexagons with the same letter is usually a single multi-panel window assembly (total quantity = 1 with that many panels), not N separate windows. Check each one against the schedule's panel count for that mark and adjust the quantity manually after applying.
           </div>
           <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
@@ -589,7 +589,7 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
 
       {detections.length > 0 && project && plan && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: "#333", marginBottom: 8 }}>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
             <strong>Visual verification</strong> — each yellow box marks where the AI found a hexagon. Compare against the plan, then adjust the "Final qty" column below before applying.
           </div>
           {floorPages.map((pageNum) => {
@@ -628,10 +628,10 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
             const editedVal = editedCounts[m] ?? counts[m];
             const edited = Number(editedVal) !== Number(counts[m]);
             return (
-              <tr key={m} style={isClustered ? { background: "#fff8e1" } : undefined}>
+              <tr key={m} className={isClustered ? "warning" : undefined}>
                 <td>
                   <strong>{m}</strong>
-                  {isClustered && <span title="Cluster detected — verify against schedule" style={{ marginLeft: 6, color: "#92400e" }}>⚠</span>}
+                  {isClustered && <span title="Cluster detected — verify against schedule" className="text-warning" style={{ marginLeft: 6 }}>⚠</span>}
                 </td>
                 <td>{counts[m]}</td>
                 {floorPages.map((p) => (
@@ -644,14 +644,11 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
                     value={editedVal}
                     onChange={(e) => handleEdit(m, e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    style={{
-                      width: 60,
-                      fontWeight: edited ? 600 : 400,
-                      borderColor: edited ? "#0a0" : undefined,
-                    }}
+                    className={edited ? "edited" : undefined}
+                    style={{ width: 60 }}
                   />
                 </td>
-                <td>{item ? "yes" : <span style={{ color: "#a60" }}>no — add it in Items</span>}</td>
+                <td>{item ? "yes" : <span className="text-warning">no — add it in Items</span>}</td>
                 <td>{item ? `${item.quantity} → ${editedVal}` : "—"}</td>
               </tr>
             );
@@ -660,7 +657,7 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
       </table>
 
       {unmatched.length > 0 && (
-        <div style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
+        <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
           {unmatched.length} mark{unmatched.length === 1 ? "" : "s"} found in floor plans with no matching item: <strong>{unmatched.join(", ")}</strong>.
           Click <strong>"Apply all"</strong> above to auto-create them in the Items tab with the detected quantity (you'll need to fill in dimensions, type, and operation from the schedule afterward).
         </div>
@@ -724,11 +721,11 @@ function PageWithDetections({ projectId, planId, pageNumber, detections }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+      <div className="text-muted" style={{ fontSize: 12, marginBottom: 4 }}>
         Page {pageNumber} — {detections.length} hexagon{detections.length === 1 ? "" : "s"} detected
       </div>
-      {error && <div style={{ color: "#b00", fontSize: 12 }}>{error}</div>}
-      <div style={{ position: "relative", display: "inline-block", border: "1px solid #ddd", maxWidth: "100%", overflow: "auto" }}>
+      {error && <div className="text-error" style={{ fontSize: 12 }}>{error}</div>}
+      <div style={{ position: "relative", display: "inline-block", border: "1px solid var(--color-border-strong)", maxWidth: "100%", overflow: "auto" }}>
         <canvas ref={canvasRef} style={{ display: "block" }} />
         {size.w > 0 && (
           <svg

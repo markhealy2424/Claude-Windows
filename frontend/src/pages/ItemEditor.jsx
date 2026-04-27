@@ -73,7 +73,7 @@ export default function ItemEditor({ items = [], onChange }) {
         <SelectField label="Operable row" value={draft.operableRow ?? "all"} onChange={(v) => set("operableRow", v)} options={OPERABLE_ROWS} />
         <button className="primary" type="submit">Add</button>
       </form>
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
+      <div className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
         Total width = per-panel width × panels. Currently: {Number(draft.width_in) || 0}" × {draft.panels || 1} = <strong>{draftTotalW}"</strong>.
         Grid rows = how many horizontal divisions to draw across the unit (1 = no grid).
       </div>
@@ -91,7 +91,7 @@ export default function ItemEditor({ items = [], onChange }) {
             if (i === editIndex && editDraft) {
               const editTotal = totalWidth(editDraft);
               return (
-                <tr key={i} style={{ background: "#fff8e1" }}>
+                <tr key={i} className="editing">
                   <td><TextField label="" value={editDraft.mark} onChange={(v) => setEdit("mark", v)} inputStyle={{ width: 60 }} /></td>
                   <td><NumberField label="" value={editDraft.quantity} onChange={(v) => setEdit("quantity", v)} inputStyle={{ width: 50 }} /></td>
                   <td>
@@ -99,7 +99,7 @@ export default function ItemEditor({ items = [], onChange }) {
                   </td>
                   <td><TextField label="" value={editDraft.operation} onChange={(v) => setEdit("operation", v)} inputStyle={{ width: 80 }} /></td>
                   <td><NumberField label="" value={editDraft.width_in} onChange={(v) => setEdit("width_in", v)} inputStyle={{ width: 60 }} /></td>
-                  <td style={{ color: "#666" }}>{editTotal}"</td>
+                  <td className="text-muted">{editTotal}"</td>
                   <td><NumberField label="" value={editDraft.height_in} onChange={(v) => setEdit("height_in", v)} inputStyle={{ width: 60 }} /></td>
                   <td><NumberField label="" value={editDraft.panels} onChange={(v) => setEdit("panels", v)} inputStyle={{ width: 50 }} /></td>
                   <td><NumberField label="" value={editDraft.gridRows} onChange={(v) => setEdit("gridRows", v)} inputStyle={{ width: 50 }} /></td>
@@ -128,7 +128,7 @@ export default function ItemEditor({ items = [], onChange }) {
                 <td>{it.panels}</td>
                 <td>{it.gridRows ?? 1}</td>
                 <td>{it.operableRow ?? "all"}</td>
-                <td style={{ maxWidth: 180, color: "#666" }}>{it.notes}</td>
+                <td className="text-muted" style={{ maxWidth: 180 }}>{it.notes}</td>
                 <td>
                   <div className="row">
                     <button onClick={() => startEdit(i)} disabled={editIndex >= 0 && editIndex !== i}>Edit</button>
@@ -139,7 +139,7 @@ export default function ItemEditor({ items = [], onChange }) {
             );
           })}
           {items.length === 0 && (
-            <tr><td colSpan={12} style={{ color: "#888" }}>No items yet.</td></tr>
+            <tr><td colSpan={12} className="text-subtle">No items yet.</td></tr>
           )}
         </tbody>
       </table>

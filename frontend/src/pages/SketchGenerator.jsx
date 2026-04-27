@@ -34,11 +34,11 @@ export default function SketchGenerator() {
         />
         <TextField label="Operation" value={spec.operation} onChange={(v) => set("operation", v)} />
       </div>
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
+      <div className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
         Total width = per-panel × panels = <strong>{totalW}"</strong>. Grid rows draws (rows − 1) horizontal lines evenly across the unit.
       </div>
       <div className="card" style={{ display: "inline-block" }} dangerouslySetInnerHTML={{ __html: svg }} />
-      <div style={{ marginTop: 12, color: "#666", fontSize: 12, maxWidth: 540 }}>
+      <div className="text-muted" style={{ marginTop: 12, fontSize: 12, maxWidth: 540 }}>
         Default multi-panel casement layout (matches typical Casement/Picture/.../Picture/Casement units):
         <ul style={{ margin: "4px 0 4px 18px", padding: 0 }}>
           <li>2 panels → [L, R] — twin casement</li>

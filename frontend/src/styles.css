@@ -407,6 +407,88 @@ code {
   border: 1px solid var(--color-border);
 }
 
+/* ─── Text color utilities ─── */
+
+.text-muted   { color: var(--color-text-muted); }
+.text-subtle  { color: var(--color-text-subtle); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-error   { color: var(--color-error); }
+.text-accent  { color: var(--color-accent); }
+
+/* ─── Pill toggle buttons (Plans + Quotes selector bars) ─── */
+
+.pill-toggle {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.pill-toggle:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-text-muted);
+}
+.pill-toggle.active {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+.pill-toggle.active:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+/* ─── Upload pill (dashed action) ─── */
+
+.pill-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--color-text-muted);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.pill-upload:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  border-style: solid;
+  color: var(--color-accent);
+}
+
+/* ─── Row + card states ─── */
+
+tr.warning,
+tr.warning td { background: var(--color-warning-soft); }
+
+tr.editing td { background: var(--color-accent-soft); }
+
+.card.warning {
+  background: var(--color-warning-soft);
+  border-color: #E8C880;
+}
+.card.error {
+  background: var(--color-error-soft);
+  border-color: #E5A8A0;
+}
+
+/* Inline edited input emphasis */
+input.edited { font-weight: 600; border-color: var(--color-success); }
+
 /* ─── Status badges ─── */
 
 .badge {

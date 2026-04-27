@@ -39,7 +39,7 @@ export default function RFQTab({ project }) {
   return (
     <div>
       <div className="row" style={{ marginBottom: 16, justifyContent: "space-between" }}>
-        <div style={{ color: "#666" }}>
+        <div className="text-muted">
           {items.length} item{items.length === 1 ? "" : "s"}
           {preview && <> · generated {new Date(preview.generatedAt).toLocaleTimeString()}</>}
         </div>
@@ -47,7 +47,7 @@ export default function RFQTab({ project }) {
           {downloading ? "Building PDF…" : "Download PDF"}
         </button>
       </div>
-      {error && <div className="card" style={{ color: "#b00", marginBottom: 12 }}>{error}</div>}
+      {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
       {loading && <div className="card">Generating preview…</div>}
       {preview && (
         <table>
@@ -66,11 +66,11 @@ export default function RFQTab({ project }) {
                 <td>{r.type}</td>
                 <td>
                   {r.width_in ?? "?"}"
-                  {r.width_mm != null && <div style={{ color: "#666", fontSize: 11 }}>{r.width_mm} mm</div>}
+                  {r.width_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_mm} mm</div>}
                 </td>
                 <td>
                   {r.height_in ?? "?"}"
-                  {r.height_mm != null && <div style={{ color: "#666", fontSize: 11 }}>{r.height_mm} mm</div>}
+                  {r.height_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.height_mm} mm</div>}
                 </td>
                 <td>{r.operation}</td>
                 <td>{r.notes}</td>
