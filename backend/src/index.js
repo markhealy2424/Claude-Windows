@@ -31,5 +31,14 @@ if (existsSync(frontendDist)) {
   });
 }
 
-const port = process.env.PORT || 4000;
-app.listen(port, () => console.log(`api listening on :${port}`));
+const port = Number(process.env.PORT) || 4000;
+app.listen(port, "0.0.0.0", () => {
+  console.log(`api listening on 0.0.0.0:${port}`);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("[unhandledRejection]", err);
+});
