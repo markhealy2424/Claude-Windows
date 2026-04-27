@@ -162,15 +162,9 @@ export default function PlansTab({ project, onChange }) {
     }
   }
 
-  function applyMarkCounts(finalCounts) {
-    if (!marksPreview) return;
-    const counts = finalCounts ?? marksPreview.counts ?? {};
-    const updated = items.map((it) => {
-      const c = counts[it.mark];
-      if (c != null && c > 0) return { ...it, quantity: c };
-      return it;
-    });
-    onChange({ items: updated });
+  function applyMarkCounts(finalItems) {
+    if (!marksPreview || !Array.isArray(finalItems)) return;
+    onChange({ items: finalItems });
     setMarksPreview(null);
   }
 
@@ -447,15 +441,51 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
   }, [preview]);
 
   const matched = marks.filter((m) => itemMarks.has(m) && Number(editedCounts[m] ?? counts[m]) > 0);
-  const unmatched = marks.filter((m) => !itemMarks.has(m));
+  const unmatched = marks.filter((m) => !itemMarks.has(m) && Number(editedCounts[m] ?? counts[m]) > 0);
+  const clusterByMark = {};
+  for (const c of clusters) clusterByMark[c.mark] = c;
 
   function handleEdit(mark, value) {
     const n = value === "" ? 0 : Number(value);
     setEditedCounts({ ...editedCounts, [mark]: Number.isFinite(n) && n >= 0 ? n : 0 });
   }
 
-  function applyEdited() {
-    onApply(editedCounts);
+  function buildNewItem(mark, qty) {
+    const cluster = clusterByMark[mark];
+    return {
+      mark,
+      quantity: qty,
+      type: "fixed",
+      operation: "",
+      width_in: 36,
+      height_in: 48,
+      width_mm: 914,
+      height_mm: 1219,
+      panels: 1,
+      gridRows: 1,
+      operableRow: "all",
+      grid: false,
+      notes: cluster
+        ? `Auto-created from floor plan. CLUSTER detected (${cluster.hexagonCount} hexagons of ${mark} on page ${cluster.page}). Check the schedule: if it's one ${cluster.hexagonCount}-panel window, set qty=1 with panels=${cluster.hexagonCount}; otherwise leave qty=${qty}. Fill in real dimensions.`
+        : `Auto-created from floor plan. Fill in dimensions, type, and operation from the schedule.`,
+    };
+  }
+
+  function applyExistingOnly() {
+    const updated = items.map((it) => {
+      const c = editedCounts[it.mark];
+      return c != null && c > 0 ? { ...it, quantity: c } : it;
+    });
+    onApply(updated);
+  }
+
+  function applyAllAndCreateNew() {
+    const updated = items.map((it) => {
+      const c = editedCounts[it.mark];
+      return c != null && c > 0 ? { ...it, quantity: c } : it;
+    });
+    const newItems = unmatched.map((m) => buildNewItem(m, Number(editedCounts[m])));
+    onApply([...updated, ...newItems]);
   }
 
   // Group detections by page for the per-page renders.
@@ -473,15 +503,22 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
           {floorPages.length} floor page{floorPages.length === 1 ? "" : "s"}{" "}
           ({marks.length} unique mark{marks.length === 1 ? "" : "s"})
         </strong>
-        <div className="row">
+        <div className="row" style={{ flexWrap: "wrap" }}>
           <button onClick={onCancel}>Cancel</button>
           <button
-            className="primary"
-            onClick={applyEdited}
+            onClick={applyExistingOnly}
             disabled={matched.length === 0}
-            title={matched.length === 0 ? "No detected marks match any existing item" : ""}
+            title={matched.length === 0 ? "No detected marks match any existing item" : "Update quantities of items already in the Items tab; ignore unmatched marks"}
           >
-            Apply quantities to {matched.length} matching item{matched.length === 1 ? "" : "s"}
+            Update {matched.length} existing only
+          </button>
+          <button
+            className="primary"
+            onClick={applyAllAndCreateNew}
+            disabled={matched.length + unmatched.length === 0}
+            title="Update existing items AND create new Items entries for any unmatched marks"
+          >
+            Apply all → {matched.length} updated + {unmatched.length} created
           </button>
         </div>
       </div>
@@ -623,9 +660,9 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
       </table>
 
       {unmatched.length > 0 && (
-        <div style={{ fontSize: 12, color: "#a60", marginTop: 8 }}>
-          {unmatched.length} mark{unmatched.length === 1 ? "" : "s"} found in floor plans with no matching item: {unmatched.join(", ")}.
-          Add them in the Items tab to capture their counts.
+        <div style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
+          {unmatched.length} mark{unmatched.length === 1 ? "" : "s"} found in floor plans with no matching item: <strong>{unmatched.join(", ")}</strong>.
+          Click <strong>"Apply all"</strong> above to auto-create them in the Items tab with the detected quantity (you'll need to fill in dimensions, type, and operation from the schedule afterward).
         </div>
       )}
     </div>
