@@ -19,6 +19,12 @@ export const api = {
     fd.append("pdf", file);
     return fetch(`${base}/plans/extract`, { method: "POST", body: fd }).then(json);
   },
+  parseSchedule: (pages, schedulePageNumbers) =>
+    fetch(`${base}/plans/parse-schedule`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pages, schedulePageNumbers }),
+    }).then(json),
   updateProject: (id, patch) =>
     fetch(`${base}/projects/${id}`, {
       method: "PATCH",

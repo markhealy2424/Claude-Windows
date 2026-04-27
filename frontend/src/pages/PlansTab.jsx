@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import * as pdfjs from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { api } from "../api.js";
@@ -13,22 +13,32 @@ const KINDS = [
   ["door_schedule", "Door Schedule"],
 ];
 
+const SCHEDULE_KINDS = new Set(["window_schedule", "door_schedule"]);
+
 export default function PlansTab({ project, onChange }) {
   const plans = project.plans ?? [];
+  const items = project.items ?? [];
   const [activeId, setActiveId] = useState(plans[0]?.id ?? null);
   const [file, setFile] = useState(null);
-  const [pages, setPages] = useState([]);
+  const [thumbs, setThumbs] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [extracting, setExtracting] = useState(false);
-  const [extraction, setExtraction] = useState(null);
+  const [extractingItems, setExtractingItems] = useState(false);
+  const [extractionPreview, setExtractionPreview] = useState(null);
   const [error, setError] = useState("");
 
   const active = plans.find((p) => p.id === activeId) ?? null;
+  const schedulePages = active
+    ? Object.entries(active.tags ?? {})
+        .filter(([, kind]) => SCHEDULE_KINDS.has(kind))
+        .map(([n]) => Number(n))
+        .sort((a, b) => a - b)
+    : [];
+  const hasExtractedText = !!(active?.pages?.length);
 
-  async function loadPdf(f) {
+  async function renderThumbs(f) {
     setLoading(true);
     setError("");
-    setPages([]);
+    setThumbs([]);
     try {
       const buf = await f.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: buf }).promise;
@@ -42,7 +52,7 @@ export default function PlansTab({ project, onChange }) {
         await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
         out.push({ pageNumber: i, dataUrl: canvas.toDataURL("image/png") });
       }
-      setPages(out);
+      setThumbs(out);
       return out.length;
     } catch (e) {
       setError(String(e));
@@ -56,59 +66,77 @@ export default function PlansTab({ project, onChange }) {
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
-    const count = await loadPdf(f);
-    if (count > 0) {
-      const plan = {
-        id: crypto.randomUUID(),
-        name: f.name,
-        pageCount: count,
-        tags: {},
-        addedAt: new Date().toISOString(),
-      };
-      const next = [...plans, plan];
-      setActiveId(plan.id);
-      onChange({ plans: next });
+    setExtractionPreview(null);
+    const count = await renderThumbs(f);
+    if (count === 0) return;
+
+    let extractedPages = null;
+    try {
+      const result = await api.extractPlan(f);
+      extractedPages = result.pages ?? [];
+    } catch (e) {
+      setError("Text extraction failed: " + String(e) + " (you can still tag pages manually)");
     }
+
+    const plan = {
+      id: crypto.randomUUID(),
+      name: f.name,
+      pageCount: count,
+      tags: {},
+      pages: extractedPages,
+      addedAt: new Date().toISOString(),
+    };
+    setActiveId(plan.id);
+    onChange({ plans: [...plans, plan] });
   }
 
   function setTag(pageNumber, kind) {
     if (!active) return;
     const tags = { ...active.tags, [pageNumber]: kind };
-    const next = plans.map((p) => (p.id === active.id ? { ...p, tags } : p));
-    onChange({ plans: next });
+    onChange({ plans: plans.map((p) => (p.id === active.id ? { ...p, tags } : p)) });
   }
 
   function removePlan(id) {
     const next = plans.filter((p) => p.id !== id);
     if (activeId === id) {
       setActiveId(next[0]?.id ?? null);
-      setPages([]);
+      setThumbs([]);
       setFile(null);
-      setExtraction(null);
+      setExtractionPreview(null);
     }
     onChange({ plans: next });
   }
 
-  async function runExtract() {
-    if (!file) return;
-    setExtracting(true);
+  async function extractItems() {
+    if (!active || !hasExtractedText || schedulePages.length === 0) return;
+    setExtractingItems(true);
     setError("");
     try {
-      const result = await api.extractPlan(file);
-      setExtraction(result);
+      const result = await api.parseSchedule(active.pages, schedulePages);
+      setExtractionPreview(result);
     } catch (e) {
       setError(String(e));
     } finally {
-      setExtracting(false);
+      setExtractingItems(false);
     }
   }
 
-  // When switching plans, clear previews unless the active plan was the just-uploaded one
+  function applyItems(mode) {
+    if (!extractionPreview) return;
+    const incoming = extractionPreview.items;
+    const next =
+      mode === "replace"
+        ? incoming
+        : mergeByMark(items, incoming);
+    onChange({ items: next });
+    setExtractionPreview(null);
+  }
+
   useEffect(() => {
     if (!active || !file || file.name !== active.name) {
-      setPages([]);
+      setThumbs([]);
       setFile(null);
-      setExtraction(null);
+      setExtractionPreview(null);
     }
   }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -125,7 +153,7 @@ export default function PlansTab({ project, onChange }) {
               color: p.id === activeId ? "#fff" : "#111", cursor: "pointer",
             }}
           >
-            {p.name} · {p.pageCount}p
+            {p.name} · {p.pageCount}p{p.pages?.length ? " · text ✓" : ""}
           </button>
         ))}
         <label style={{ padding: "6px 10px", border: "1px dashed #888", borderRadius: 4, cursor: "pointer" }}>
@@ -139,39 +167,49 @@ export default function PlansTab({ project, onChange }) {
 
       {active && (
         <>
-          <div className="row" style={{ marginBottom: 12, justifyContent: "space-between" }}>
-            <div style={{ color: "#666" }}>{active.name} · {active.pageCount} pages</div>
+          <div className="row" style={{ marginBottom: 12, justifyContent: "space-between", flexWrap: "wrap" }}>
+            <div style={{ color: "#666" }}>
+              {active.name} · {active.pageCount} pages
+              {schedulePages.length > 0 && <> · {schedulePages.length} schedule page{schedulePages.length === 1 ? "" : "s"} tagged</>}
+            </div>
             <div className="row">
-              <button onClick={runExtract} disabled={!file || extracting}>
-                {extracting ? "Extracting…" : "Run extraction (stub)"}
+              <button
+                className="primary"
+                onClick={extractItems}
+                disabled={!hasExtractedText || schedulePages.length === 0 || extractingItems}
+                title={
+                  !hasExtractedText
+                    ? "Re-upload this PDF to enable extraction"
+                    : schedulePages.length === 0
+                    ? "Tag at least one page as Window Schedule or Door Schedule first"
+                    : ""
+                }
+              >
+                {extractingItems ? "Extracting…" : "Extract items from schedules"}
               </button>
               <button onClick={() => removePlan(active.id)}>Remove plan</button>
             </div>
           </div>
 
-          {!file && pages.length === 0 && (
-            <div className="card" style={{ marginBottom: 12, color: "#888" }}>
-              Re-upload this PDF to view page previews. (PDF bytes aren't persisted server-side yet — only metadata + tags.)
+          {!hasExtractedText && (
+            <div className="card" style={{ marginBottom: 12, color: "#a60" }}>
+              No extracted text on file for this plan. Re-upload the PDF to enable item extraction.
             </div>
           )}
 
-          {extraction && (
-            <div className="card" style={{ marginBottom: 12 }}>
-              <strong>Extraction result</strong>
-              <div style={{ color: "#666", fontSize: 12, marginBottom: 6 }}>
-                {extraction.pages?.length ?? 0} pages · {extraction.marks?.length ?? 0} marks · {extraction.items?.length ?? 0} items
-              </div>
-              {(extraction.pages?.length ?? 0) === 0 && (
-                <div style={{ color: "#a60", fontSize: 12 }}>
-                  Backend extraction engines are stubs — they return empty results. Use page tags + the Items tab in the meantime.
-                </div>
-              )}
-            </div>
+          {extractionPreview && (
+            <ExtractionPreview
+              preview={extractionPreview}
+              schedulePages={schedulePages}
+              existingItemCount={items.length}
+              onCancel={() => setExtractionPreview(null)}
+              onApply={applyItems}
+            />
           )}
 
-          {pages.length > 0 && (
+          {thumbs.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-              {pages.map((pg) => (
+              {thumbs.map((pg) => (
                 <div key={pg.pageNumber} className="card">
                   <div style={{ marginBottom: 6, fontSize: 12, color: "#666" }}>Page {pg.pageNumber}</div>
                   <img src={pg.dataUrl} alt={`Page ${pg.pageNumber}`} style={{ width: "100%", border: "1px solid #eee" }} />
@@ -196,4 +234,68 @@ export default function PlansTab({ project, onChange }) {
       )}
     </div>
   );
+}
+
+function ExtractionPreview({ preview, schedulePages, existingItemCount, onCancel, onApply }) {
+  const { items, meta } = preview;
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+        <strong>Extracted {items.length} item{items.length === 1 ? "" : "s"} from {schedulePages.length} schedule page{schedulePages.length === 1 ? "" : "s"}</strong>
+        <div className="row">
+          <button onClick={onCancel}>Cancel</button>
+          <button onClick={() => onApply("append")} disabled={items.length === 0}>
+            Append to existing items
+          </button>
+          <button className="primary" onClick={() => onApply("replace")} disabled={items.length === 0}>
+            Replace all {existingItemCount} item{existingItemCount === 1 ? "" : "s"}
+          </button>
+        </div>
+      </div>
+
+      {meta?.pages && (
+        <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
+          {meta.pages.map((p) => (
+            <div key={p.pageNumber}>
+              Page {p.pageNumber}: {p.ok
+                ? <>columns: {p.columns.join(", ")} · {p.itemsExtracted} row{p.itemsExtracted === 1 ? "" : "s"}</>
+                : <span style={{ color: "#a60" }}>{p.reason}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {items.length > 0 ? (
+        <table>
+          <thead>
+            <tr><th>Mark</th><th>Qty</th><th>Type</th><th>Operation</th><th>W (in)</th><th>H (in)</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            {items.map((it, i) => (
+              <tr key={i}>
+                <td>{it.mark}</td><td>{it.quantity}</td><td>{it.type}</td><td>{it.operation}</td>
+                <td>{it.width_in ?? "?"}</td><td>{it.height_in ?? "?"}</td><td>{it.notes}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div style={{ color: "#a60" }}>
+          No items detected. The schedule may use a layout the parser doesn't recognize yet (no header row found, or columns we don't classify).
+        </div>
+      )}
+    </div>
+  );
+}
+
+function mergeByMark(existing, incoming) {
+  const map = new Map(existing.map((it) => [it.mark, { ...it }]));
+  for (const it of incoming) {
+    if (map.has(it.mark)) {
+      map.set(it.mark, { ...map.get(it.mark), ...it });
+    } else {
+      map.set(it.mark, { ...it });
+    }
+  }
+  return [...map.values()];
 }
