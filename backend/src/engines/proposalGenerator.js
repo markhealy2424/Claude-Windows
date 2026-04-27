@@ -36,13 +36,14 @@ export function renderProposalPdf({ items, projectName, branding = {}, totals = 
   doc.moveDown(0.8).fillColor("#000");
 
   const cols = [
-    { label: "Item", w: 40 },
-    { label: "Qty", w: 30 },
-    { label: "Sketch", w: 100 },
-    { label: "Description", w: 130 },
-    { label: "Size", w: 75 },
-    { label: "Price", w: 70 },
-    { label: "Line total", w: 70 },
+    { label: "Item", w: 38 },
+    { label: "Qty", w: 28 },
+    { label: "Sketch", w: 95 },
+    { label: "Description", w: 120 },
+    { label: "Width", w: 45 },
+    { label: "Height", w: 45 },
+    { label: "Price", w: 65 },
+    { label: "Line total", w: 79 },
   ];
   const xStart = doc.page.margins.left;
   const tableWidth = cols.reduce((s, c) => s + c.w, 0);
@@ -94,9 +95,10 @@ export function renderProposalPdf({ items, projectName, branding = {}, totals = 
     x += cols[2].w;
 
     cellText([it.type, it.operation].filter(Boolean).join(", "), cols[3].w); x += cols[3].w;
-    cellText(`${it.width_in}" × ${it.height_in}"`, cols[4].w); x += cols[4].w;
-    cellText(money(price), cols[5].w); x += cols[5].w;
-    cellText(money(lineTotal), cols[6].w);
+    cellText(it.width_in != null ? `${it.width_in}"` : "?", cols[4].w); x += cols[4].w;
+    cellText(it.height_in != null ? `${it.height_in}"` : "?", cols[5].w); x += cols[5].w;
+    cellText(money(price), cols[6].w); x += cols[6].w;
+    cellText(money(lineTotal), cols[7].w);
 
     const yBot = yTop + rowH;
     doc.moveTo(xStart, yBot).lineTo(xStart + tableWidth, yBot).strokeColor("#ddd").stroke().strokeColor("#000");

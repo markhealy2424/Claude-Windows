@@ -140,7 +140,7 @@ export default function ProposalTab({ project, onChange }) {
           <table>
             <thead>
               <tr>
-                <th>Item</th><th>Qty</th><th>Description</th><th>Size</th>
+                <th>Item</th><th>Qty</th><th>Description</th><th>Width</th><th>Height</th>
                 <th>Supplier</th><th>Markup %</th><th>Client price</th><th>Line total</th>
               </tr>
             </thead>
@@ -152,7 +152,8 @@ export default function ProposalTab({ project, onChange }) {
                     <td>{it.mark}</td>
                     <td>{it.quantity}</td>
                     <td>{[it.type, it.operation].filter(Boolean).join(", ")}</td>
-                    <td>{it.width_in}" × {it.height_in}"</td>
+                    <td>{it.width_in != null ? `${it.width_in}"` : "?"}</td>
+                    <td>{it.height_in != null ? `${it.height_in}"` : "?"}</td>
                     <td>{money(it.cost)}</td>
                     <td>
                       <input
@@ -171,10 +172,10 @@ export default function ProposalTab({ project, onChange }) {
               })}
             </tbody>
             <tfoot>
-              <tr><td colSpan={7} style={{ textAlign: "right" }}>Subtotal</td><td>{money(priced.subtotal)}</td></tr>
-              {Number(priced.delivery) > 0 && <tr><td colSpan={7} style={{ textAlign: "right" }}>Delivery</td><td>{money(priced.delivery)}</td></tr>}
-              {Number(priced.fees) > 0 && <tr><td colSpan={7} style={{ textAlign: "right" }}>Fees</td><td>{money(priced.fees)}</td></tr>}
-              <tr><td colSpan={7} style={{ textAlign: "right", fontWeight: 600 }}>Total</td><td style={{ fontWeight: 600 }}>{money(priced.total)}</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: "right" }}>Subtotal</td><td>{money(priced.subtotal)}</td></tr>
+              {Number(priced.delivery) > 0 && <tr><td colSpan={8} style={{ textAlign: "right" }}>Delivery</td><td>{money(priced.delivery)}</td></tr>}
+              {Number(priced.fees) > 0 && <tr><td colSpan={8} style={{ textAlign: "right" }}>Fees</td><td>{money(priced.fees)}</td></tr>}
+              <tr><td colSpan={8} style={{ textAlign: "right", fontWeight: 600 }}>Total</td><td style={{ fontWeight: 600 }}>{money(priced.total)}</td></tr>
             </tfoot>
           </table>
           <div style={{ color: "#888", marginTop: 8, fontSize: 12 }}>
