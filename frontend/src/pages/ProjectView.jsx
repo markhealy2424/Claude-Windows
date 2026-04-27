@@ -7,6 +7,7 @@ import QuotesTab from "./QuotesTab.jsx";
 import ProposalTab from "./ProposalTab.jsx";
 import PlansTab from "./PlansTab.jsx";
 import ProjectInfo from "./ProjectInfo.jsx";
+import { StatusSelect } from "./Dashboard.jsx";
 
 const TABS = ["Project Info", "Plans", "Items", "RFQ", "Quotes", "Proposal"];
 
@@ -43,7 +44,13 @@ export default function ProjectView() {
           </div>
           <h1 style={{ margin: 0 }}>{project.name}</h1>
         </div>
-        <span className="badge accent">{project.status}</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <span className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Status</span>
+          <StatusSelect
+            value={project.status}
+            onChange={(status) => savePatch({ status })}
+          />
+        </div>
       </div>
       <div className="tabs">
         {TABS.map((t) => (

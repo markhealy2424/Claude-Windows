@@ -48,7 +48,7 @@ export function createProject(name) {
   const project = {
     id,
     name,
-    status: "New",
+    status: "Need to make RFQ",
     plans: [],
     items: [],
     quotes: [],
