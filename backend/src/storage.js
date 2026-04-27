@@ -25,3 +25,18 @@ export function savePlanPdf(projectId, planId, buffer) {
 export function planPdfExists(projectId, planId) {
   return existsSync(getPlanPdfPath(projectId, planId));
 }
+
+export function getSchedulePdfPath(projectId, scheduleId) {
+  return resolve(DATA_DIR, "schedules", safe(projectId), `${safe(scheduleId)}.pdf`);
+}
+
+export function saveSchedulePdf(projectId, scheduleId, buffer) {
+  const path = getSchedulePdfPath(projectId, scheduleId);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, buffer);
+  return path;
+}
+
+export function schedulePdfExists(projectId, scheduleId) {
+  return existsSync(getSchedulePdfPath(projectId, scheduleId));
+}

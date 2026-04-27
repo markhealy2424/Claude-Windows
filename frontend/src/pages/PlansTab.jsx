@@ -18,6 +18,7 @@ const FLOOR_KINDS = new Set(["floor"]);
 
 export default function PlansTab({ project, onChange }) {
   const plans = project.plans ?? [];
+  const schedules = project.schedules ?? [];
   const items = project.items ?? [];
   const [activeId, setActiveId] = useState(plans[0]?.id ?? null);
   const [file, setFile] = useState(null);
@@ -28,6 +29,12 @@ export default function PlansTab({ project, onChange }) {
   const [countingMarks, setCountingMarks] = useState(false);
   const [marksPreview, setMarksPreview] = useState(null);
   const [error, setError] = useState("");
+
+  // ── Window schedule state ──
+  const [activeScheduleId, setActiveScheduleId] = useState(schedules[0]?.id ?? null);
+  const [parsingSchedule, setParsingSchedule] = useState(false);
+  const [schedulePreview, setSchedulePreview] = useState(null);
+  const activeSchedule = schedules.find((s) => s.id === activeScheduleId) ?? null;
 
   const active = plans.find((p) => p.id === activeId) ?? null;
   const schedulePages = active
@@ -168,6 +175,110 @@ export default function PlansTab({ project, onChange }) {
     setMarksPreview(null);
   }
 
+  // ── Window schedule handlers ──
+
+  async function handleScheduleFile(e) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setError("");
+    const scheduleId = crypto.randomUUID();
+    let pages = null;
+    let pdfPersisted = false;
+    try {
+      const result = await api.extractScheduleUpload(f, project.id, scheduleId);
+      pages = result.pages ?? [];
+      pdfPersisted = !!result.pdfPersisted;
+    } catch (err) {
+      setError("Schedule upload failed: " + String(err));
+      return;
+    }
+    const schedule = {
+      id: scheduleId,
+      name: f.name,
+      pageCount: pages?.length ?? 0,
+      pages,
+      pdfPersisted,
+      addedAt: new Date().toISOString(),
+    };
+    setActiveScheduleId(schedule.id);
+    onChange({ schedules: [...schedules, schedule] });
+    e.target.value = "";  // allow re-uploading same filename
+  }
+
+  function removeSchedule(id) {
+    const next = schedules.filter((s) => s.id !== id);
+    if (activeScheduleId === id) {
+      setActiveScheduleId(next[0]?.id ?? null);
+      setSchedulePreview(null);
+    }
+    onChange({ schedules: next });
+  }
+
+  async function parseSchedule() {
+    if (!activeSchedule) return;
+    setParsingSchedule(true);
+    setError("");
+    try {
+      const result = await api.parseScheduleVision({
+        projectId: project.id,
+        scheduleId: activeSchedule.id,
+        projectName: project.name,
+        pages: activeSchedule.pages,
+      });
+      setSchedulePreview(result);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setParsingSchedule(false);
+    }
+  }
+
+  // Apply parsed schedule items to project items: matched-by-mark items get
+  // dimensions/type/operation/panels/notes overwritten (quantity preserved
+  // from the floor-plan count); unmatched marks are created as new items.
+  function applySchedule(mode) {
+    if (!schedulePreview) return;
+    const incoming = schedulePreview.items ?? [];
+    const byMark = new Map(items.map((it) => [it.mark, it]));
+    const updated = items.map((it) => it);  // copy refs
+    const newItems = [];
+    for (const inc of incoming) {
+      const existing = byMark.get(inc.mark);
+      if (existing) {
+        const idx = updated.indexOf(existing);
+        updated[idx] = {
+          ...existing,
+          width_in: inc.width_in ?? existing.width_in,
+          height_in: inc.height_in ?? existing.height_in,
+          width_mm: inc.width_mm ?? existing.width_mm,
+          height_mm: inc.height_mm ?? existing.height_mm,
+          type: inc.type || existing.type,
+          operation: inc.operation || existing.operation,
+          panels: inc.panels || existing.panels,
+          notes: inc.notes || existing.notes,
+        };
+      } else if (mode === "create") {
+        newItems.push({
+          mark: inc.mark,
+          quantity: inc.quantity || 1,
+          type: inc.type || "fixed",
+          operation: inc.operation || "",
+          width_in: inc.width_in ?? 36,
+          height_in: inc.height_in ?? 48,
+          width_mm: inc.width_mm ?? 914,
+          height_mm: inc.height_mm ?? 1219,
+          panels: inc.panels || 1,
+          gridRows: 1,
+          operableRow: "all",
+          grid: false,
+          notes: inc.notes || "",
+        });
+      }
+    }
+    onChange({ items: [...updated, ...newItems] });
+    setSchedulePreview(null);
+  }
+
   function applyItems(mode) {
     if (!extractionPreview) return;
     const incoming = extractionPreview.items;
@@ -193,6 +304,10 @@ export default function PlansTab({ project, onChange }) {
 
   return (
     <div>
+      <h3 style={{ marginTop: 0, marginBottom: 8 }}>Floor Plans</h3>
+      <p className="text-muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 12 }}>
+        Upload floor plan PDFs, tag pages, and run the AI mark counter to populate item quantities.
+      </p>
       <div className="row" style={{ marginBottom: 16, flexWrap: "wrap" }}>
         {plans.map((p) => (
           <button
@@ -373,6 +488,67 @@ export default function PlansTab({ project, onChange }) {
       {plans.length === 0 && (
         <div className="card">No plans uploaded yet. Click "+ Upload PDF" to start.</div>
       )}
+
+      {/* ─── Window Schedule section ─── */}
+      <div style={{ marginTop: 40, paddingTop: 24, borderTop: "2px solid var(--color-border)" }}>
+        <h3 style={{ marginTop: 0, marginBottom: 8 }}>Window Schedule</h3>
+        <p className="text-muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 12 }}>
+          Upload the window schedule PDF (the table that lists each mark with its width, height, type, operation, and notes). The AI reads each row and updates matching items in the Items tab — combined with the mark counts from floor plans, you get full item records without manual data entry.
+        </p>
+
+        <div className="row" style={{ marginBottom: 16, flexWrap: "wrap" }}>
+          {schedules.map((s) => (
+            <button
+              key={s.id}
+              className={`pill-toggle${s.id === activeScheduleId ? " active" : ""}`}
+              onClick={() => { setActiveScheduleId(s.id); setSchedulePreview(null); }}
+            >
+              {s.name}{s.pdfPersisted ? " · PDF ✓" : " · PDF ✗"}
+            </button>
+          ))}
+          <label className="pill-upload">
+            + Upload schedule PDF
+            <input type="file" accept="application/pdf" onChange={handleScheduleFile} style={{ display: "none" }} />
+          </label>
+        </div>
+
+        {activeSchedule && (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontWeight: 600 }}>{activeSchedule.name}</div>
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  {activeSchedule.pageCount} page{activeSchedule.pageCount === 1 ? "" : "s"} · uploaded {new Date(activeSchedule.addedAt).toLocaleString()}
+                </div>
+              </div>
+              <div className="row">
+                <button
+                  className="primary"
+                  onClick={parseSchedule}
+                  disabled={parsingSchedule || !activeSchedule.pdfPersisted}
+                  title={!activeSchedule.pdfPersisted ? "Re-upload this schedule — PDF bytes aren't on the server's persistent disk." : ""}
+                >
+                  {parsingSchedule ? "Reading schedule…" : "Parse with AI"}
+                </button>
+                <button onClick={() => removeSchedule(activeSchedule.id)}>Remove schedule</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {schedulePreview && (
+          <SchedulePreview
+            preview={schedulePreview}
+            items={items}
+            onCancel={() => setSchedulePreview(null)}
+            onApply={applySchedule}
+          />
+        )}
+
+        {schedules.length === 0 && (
+          <div className="card">No window schedule uploaded yet. Click "+ Upload schedule PDF" to start.</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -765,6 +941,95 @@ function PageWithDetections({ projectId, planId, pageNumber, detections }) {
             })}
           </svg>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SchedulePreview({ preview, items, onCancel, onApply }) {
+  const incoming = preview.items ?? [];
+  const itemMarks = new Set(items.map((it) => it.mark));
+  const matched = incoming.filter((it) => itemMarks.has(it.mark));
+  const unmatched = incoming.filter((it) => !itemMarks.has(it.mark));
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap" }}>
+        <strong>
+          Read {incoming.length} row{incoming.length === 1 ? "" : "s"} from the schedule
+          {" "}({matched.length} match existing items, {unmatched.length} new)
+        </strong>
+        <div className="row" style={{ flexWrap: "wrap" }}>
+          <button onClick={onCancel}>Cancel</button>
+          <button onClick={() => onApply("update")} disabled={matched.length === 0}>
+            Update {matched.length} existing only
+          </button>
+          <button className="primary" onClick={() => onApply("create")} disabled={incoming.length === 0}>
+            Apply all → {matched.length} updated + {unmatched.length} created
+          </button>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 12, marginBottom: 8 }}>
+        {preview.detector === "vision" ? (
+          <span className="text-success">
+            ✓ Read by AI vision ({preview.model ?? "Claude"}) — extracted directly from the schedule table.
+            {preview.usage && (
+              <span className="text-subtle">
+                {" "}· {preview.usage.input_tokens?.toLocaleString()} input + {preview.usage.output_tokens?.toLocaleString()} output tokens
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="text-warning">
+            ⚠ Read by local text fallback. Vision unavailable — counts from this fallback are best-effort.
+            {preview.visionError && <> Error: <code>{preview.visionError}</code></>}
+          </span>
+        )}
+      </div>
+
+      {incoming.length > 0 ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Mark</th>
+              <th>Width (in)</th>
+              <th>Height (in)</th>
+              <th>Type</th>
+              <th>Operation</th>
+              <th>Panels</th>
+              <th>Schedule qty</th>
+              <th>Existing item?</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {incoming.map((it, i) => {
+              const exists = itemMarks.has(it.mark);
+              return (
+                <tr key={i}>
+                  <td><strong>{it.mark}</strong></td>
+                  <td>{it.width_in ?? <span className="text-subtle">—</span>}</td>
+                  <td>{it.height_in ?? <span className="text-subtle">—</span>}</td>
+                  <td>{it.type}</td>
+                  <td>{it.operation || <span className="text-subtle">—</span>}</td>
+                  <td>{it.panels}</td>
+                  <td>{it.quantity || <span className="text-subtle">—</span>}</td>
+                  <td>{exists ? <span className="text-success">yes</span> : <span className="text-warning">no — will create</span>}</td>
+                  <td className="text-muted" style={{ maxWidth: 220 }}>{it.notes}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      ) : (
+        <div className="text-warning">
+          No rows extracted. The AI couldn't find a window schedule table in this PDF — verify it's the right file, or send the PDF so the prompt can be tuned to your layout.
+        </div>
+      )}
+
+      <div className="text-muted" style={{ fontSize: 12, marginTop: 12 }}>
+        <strong>What "Apply all" does:</strong> for each detected mark that already exists in your Items tab, it updates the dimensions, type, operation, panels, and notes from the schedule (your existing quantity from the floor-plan mark count is preserved). For marks not yet in Items, it creates new entries with the schedule's data and quantity.
       </div>
     </div>
   );

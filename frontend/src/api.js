@@ -34,6 +34,20 @@ export const api = {
       body: JSON.stringify({ pages, floorPageNumbers, projectId, planId, projectName }),
     }).then(json),
   planPdfUrl: (projectId, planId) => `${base}/plans/${projectId}/${planId}.pdf`,
+  extractScheduleUpload: (file, projectId, scheduleId) => {
+    const fd = new FormData();
+    fd.append("pdf", file);
+    if (projectId) fd.append("projectId", projectId);
+    if (scheduleId) fd.append("scheduleId", scheduleId);
+    return fetch(`${base}/plans/schedule-extract`, { method: "POST", body: fd }).then(json);
+  },
+  parseScheduleVision: ({ projectId, scheduleId, projectName, pages, schedulePageNumbers }) =>
+    fetch(`${base}/plans/parse-schedule-vision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, scheduleId, projectName, pages, schedulePageNumbers }),
+    }).then(json),
+  schedulePdfUrl: (projectId, scheduleId) => `${base}/plans/schedule/${projectId}/${scheduleId}.pdf`,
   updateProject: (id, patch) =>
     fetch(`${base}/projects/${id}`, {
       method: "PATCH",
