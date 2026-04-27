@@ -60,11 +60,14 @@ Where:
 - Only include marks with count >= 1. Do not list marks with count 0.
 - Do not include any commentary, explanation, or text outside the JSON.`;
 
+// Anthropic structured outputs don't support numerical constraints
+// (minimum/maximum/multipleOf) — they're rejected at the API. Bounds are
+// enforced in the parsing step below instead.
 const MARK_COUNT_ITEM = {
   type: "object",
   properties: {
     letter: { type: "string" },
-    count: { type: "integer", minimum: 1 },
+    count: { type: "integer" },
   },
   required: ["letter", "count"],
   additionalProperties: false,
@@ -82,7 +85,7 @@ const RESPONSE_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          page: { type: "integer", minimum: 1 },
+          page: { type: "integer" },
           marks: { type: "array", items: MARK_COUNT_ITEM },
         },
         required: ["page", "marks"],
@@ -95,8 +98,8 @@ const RESPONSE_SCHEMA = {
         type: "object",
         properties: {
           mark: { type: "string" },
-          page: { type: "integer", minimum: 1 },
-          hexagonCount: { type: "integer", minimum: 3 },
+          page: { type: "integer" },
+          hexagonCount: { type: "integer" },
         },
         required: ["mark", "page", "hexagonCount"],
         additionalProperties: false,
@@ -196,11 +199,15 @@ Apply the rules from the system prompt and return the JSON object with mark coun
 
   const totalDetected = Object.values(counts).reduce((s, n) => s + Number(n || 0), 0);
 
-  const clusters = (parsed.clusters ?? []).map((c) => ({
-    mark: c.mark,
-    page: Number(c.page),
-    hexagonCount: Number(c.hexagonCount),
-  }));
+  // Filter clusters to the documented threshold (3+) — model occasionally
+  // emits 2-hexagon "clusters" despite the prompt instructions.
+  const clusters = (parsed.clusters ?? [])
+    .map((c) => ({
+      mark: c.mark,
+      page: Number(c.page),
+      hexagonCount: Number(c.hexagonCount),
+    }))
+    .filter((c) => c.mark && c.page >= 1 && c.hexagonCount >= 3);
 
   return {
     counts,
