@@ -4,10 +4,11 @@ import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 const blank = {
   mark: "", quantity: 1, type: "fixed", operation: "",
   width_in: 36, height_in: 48, width_mm: 914, height_mm: 1219,
-  panels: 1, gridRows: 1, grid: false, notes: "",
+  panels: 1, gridRows: 1, operableRow: "all", grid: false, notes: "",
 };
 
 const TYPES = [["fixed", "fixed"], ["casement", "casement"], ["sliding", "sliding"]];
+const OPERABLE_ROWS = [["all", "All rows"], ["top", "Top row"], ["bottom", "Bottom row"]];
 
 function totalWidth(it) {
   return Number(it.width_in ?? 0) * Math.max(1, Math.floor(Number(it.panels ?? 1)));
@@ -69,6 +70,7 @@ export default function ItemEditor({ items = [], onChange }) {
         <NumberField label="Height (in)" value={draft.height_in} onChange={(v) => set("height_in", v)} />
         <NumberField label="Panels" value={draft.panels} onChange={(v) => set("panels", v)} />
         <NumberField label="Grid rows" value={draft.gridRows} onChange={(v) => set("gridRows", v)} />
+        <SelectField label="Operable row" value={draft.operableRow ?? "all"} onChange={(v) => set("operableRow", v)} options={OPERABLE_ROWS} />
         <button className="primary" type="submit">Add</button>
       </form>
       <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
@@ -81,7 +83,7 @@ export default function ItemEditor({ items = [], onChange }) {
           <tr>
             <th>Mark</th><th>Qty</th><th>Type</th><th>Operation</th>
             <th>W/panel</th><th>Total W</th><th>H</th>
-            <th>Panels</th><th>Grid</th><th>Notes</th><th></th>
+            <th>Panels</th><th>Grid</th><th>Operable</th><th>Notes</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -101,6 +103,9 @@ export default function ItemEditor({ items = [], onChange }) {
                   <td><NumberField label="" value={editDraft.height_in} onChange={(v) => setEdit("height_in", v)} inputStyle={{ width: 60 }} /></td>
                   <td><NumberField label="" value={editDraft.panels} onChange={(v) => setEdit("panels", v)} inputStyle={{ width: 50 }} /></td>
                   <td><NumberField label="" value={editDraft.gridRows} onChange={(v) => setEdit("gridRows", v)} inputStyle={{ width: 50 }} /></td>
+                  <td>
+                    <SelectField label="" value={editDraft.operableRow ?? "all"} onChange={(v) => setEdit("operableRow", v)} options={OPERABLE_ROWS} />
+                  </td>
                   <td><TextField label="" value={editDraft.notes} onChange={(v) => setEdit("notes", v)} inputStyle={{ width: 120 }} /></td>
                   <td>
                     <div className="row">
@@ -122,6 +127,7 @@ export default function ItemEditor({ items = [], onChange }) {
                 <td>{it.height_in}"</td>
                 <td>{it.panels}</td>
                 <td>{it.gridRows ?? 1}</td>
+                <td>{it.operableRow ?? "all"}</td>
                 <td style={{ maxWidth: 180, color: "#666" }}>{it.notes}</td>
                 <td>
                   <div className="row">
@@ -133,7 +139,7 @@ export default function ItemEditor({ items = [], onChange }) {
             );
           })}
           {items.length === 0 && (
-            <tr><td colSpan={11} style={{ color: "#888" }}>No items yet.</td></tr>
+            <tr><td colSpan={12} style={{ color: "#888" }}>No items yet.</td></tr>
           )}
         </tbody>
       </table>

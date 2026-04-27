@@ -4,7 +4,8 @@ import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 
 export default function SketchGenerator() {
   const [spec, setSpec] = useState({
-    width_in: 36, height_in: 120, panels: 3, gridRows: 2, type: "fixed", operation: "",
+    width_in: 36, height_in: 120, panels: 3, gridRows: 2, operableRow: "all",
+    type: "casement", operation: "",
   });
   const svg = useMemo(() => generateSketch(spec), [spec]);
   const totalW = Number(spec.width_in ?? 0) * Math.max(1, Math.floor(Number(spec.panels ?? 1)));
@@ -19,6 +20,12 @@ export default function SketchGenerator() {
         <NumberField label="Height (in)" value={spec.height_in} onChange={(v) => set("height_in", v)} />
         <NumberField label="Panels" value={spec.panels} onChange={(v) => set("panels", v)} min={1} />
         <NumberField label="Grid rows" value={spec.gridRows} onChange={(v) => set("gridRows", v)} min={1} />
+        <SelectField
+          label="Operable row"
+          value={spec.operableRow}
+          onChange={(v) => set("operableRow", v)}
+          options={[["all", "All rows"], ["top", "Top row"], ["bottom", "Bottom row"]]}
+        />
         <SelectField
           label="Type"
           value={spec.type}

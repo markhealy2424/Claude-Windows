@@ -16,6 +16,8 @@
 // Grids:
 //   `gridRows` (default 1) draws (gridRows - 1) horizontal grid lines spanning the
 //   full frame, dividing it into evenly-spaced rows.
+//   `operableRow` ("all" default | "top" | "bottom") restricts the casement V glyph
+//   to one row of the grid. Useful for units where only the top or bottom band opens.
 
 function formatInches(n) {
   if (n == null || Number.isNaN(Number(n))) return "?";
@@ -69,7 +71,22 @@ function panelDirections(panels, type, operation = "") {
   return dirs;
 }
 
-export function generateSketch({ width_in, height_in, panels = 1, type = "fixed", operation = "", gridRows = 1 }) {
+function operableYRange(operableRow, gridRows, topPad, frameH) {
+  const gR = Math.max(1, Math.floor(gridRows ?? 1));
+  if (gR <= 1) return [topPad, topPad + frameH];
+  if (operableRow === "top") {
+    return [topPad, topPad + frameH / gR];
+  }
+  if (operableRow === "bottom") {
+    return [topPad + (frameH * (gR - 1)) / gR, topPad + frameH];
+  }
+  return [topPad, topPad + frameH];
+}
+
+export function generateSketch({
+  width_in, height_in, panels = 1, type = "fixed", operation = "",
+  gridRows = 1, operableRow = "all",
+}) {
   const n = Math.max(1, Math.floor(panels));
   const totalWidth = Number(width_in ?? 0) * n;
 
@@ -101,22 +118,24 @@ export function generateSketch({ width_in, height_in, panels = 1, type = "fixed"
   }
 
   // Per-panel casement glyph: V whose apex sits on the SWING (handle) side.
+  // If operableRow ("top" | "bottom") restricts it, the V is drawn inside that
+  // row's vertical band only.
+  const [opTop, opBot] = operableYRange(operableRow, gridRows, topPad, frameH);
   const glyphs = [];
   for (let i = 0; i < n; i++) {
     const px = leftPad + i * panelW;
-    const py = topPad;
     const inset = 3;
-    const cy = py + frameH / 2;
+    const cy = (opTop + opBot) / 2;
     const dir = dirs[i];
     if (dir === "right") {
       glyphs.push(
-        `<line x1="${px + inset}" y1="${py + inset}" x2="${px + panelW - inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>` +
-        `<line x1="${px + inset}" y1="${py + frameH - inset}" x2="${px + panelW - inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>`
+        `<line x1="${px + inset}" y1="${opTop + inset}" x2="${px + panelW - inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>` +
+        `<line x1="${px + inset}" y1="${opBot - inset}" x2="${px + panelW - inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>`
       );
     } else if (dir === "left") {
       glyphs.push(
-        `<line x1="${px + panelW - inset}" y1="${py + inset}" x2="${px + inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>` +
-        `<line x1="${px + panelW - inset}" y1="${py + frameH - inset}" x2="${px + inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>`
+        `<line x1="${px + panelW - inset}" y1="${opTop + inset}" x2="${px + inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>` +
+        `<line x1="${px + panelW - inset}" y1="${opBot - inset}" x2="${px + inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>`
       );
     }
   }
