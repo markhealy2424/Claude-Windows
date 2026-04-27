@@ -447,6 +447,7 @@ function MarksPreview({ preview, items, floorPages, project, plan, onCancel, onA
   }, [preview]);
 
   const matched = marks.filter((m) => itemMarks.has(m) && Number(editedCounts[m] ?? counts[m]) > 0);
+  const unmatched = marks.filter((m) => !itemMarks.has(m));
 
   function handleEdit(mark, value) {
     const n = value === "" ? 0 : Number(value);
