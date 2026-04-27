@@ -48,6 +48,20 @@ export const api = {
       body: JSON.stringify({ projectId, scheduleId, projectName, pages, schedulePageNumbers }),
     }).then(json),
   schedulePdfUrl: (projectId, scheduleId) => `${base}/plans/schedule/${projectId}/${scheduleId}.pdf`,
+  uploadSupplierQuote: (file, projectId, quoteId) => {
+    const fd = new FormData();
+    fd.append("pdf", file);
+    if (projectId) fd.append("projectId", projectId);
+    if (quoteId) fd.append("quoteId", quoteId);
+    return fetch(`${base}/quotes/extract-supplier`, { method: "POST", body: fd }).then(json);
+  },
+  parseSupplierQuoteVision: ({ projectId, quoteId }) =>
+    fetch(`${base}/quotes/parse-supplier-vision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, quoteId }),
+    }).then(json),
+  quoteFileUrl: (projectId, quoteId) => `${base}/quotes/file/${projectId}/${quoteId}.pdf`,
   updateProject: (id, patch) =>
     fetch(`${base}/projects/${id}`, {
       method: "PATCH",

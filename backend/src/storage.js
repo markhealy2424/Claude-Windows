@@ -70,3 +70,36 @@ export const getSchedulePdfPath = getScheduleFilePath;
 export const schedulePdfExists = scheduleFileExists;
 export const saveSchedulePdf = (projectId, scheduleId, buffer) =>
   saveScheduleFile(projectId, scheduleId, buffer, "schedule.pdf");
+
+// Supplier quote files: same shape as schedules — PDF, PNG, JPEG, WebP.
+const QUOTE_EXTS = new Set(["pdf", "png", "jpg", "jpeg", "webp"]);
+
+function pickQuoteExt(originalName, fallback = "pdf") {
+  const raw = String(originalName || "").split(".").pop().toLowerCase();
+  return QUOTE_EXTS.has(raw) ? raw : fallback;
+}
+
+export function getQuoteFilePath(projectId, quoteId) {
+  const dir = resolve(DATA_DIR, "quotes", safe(projectId));
+  if (!existsSync(dir)) return null;
+  const prefix = `${safe(quoteId)}.`;
+  const match = readdirSync(dir).find((f) => f.startsWith(prefix));
+  return match ? resolve(dir, match) : null;
+}
+
+export function saveQuoteFile(projectId, quoteId, buffer, originalName) {
+  const ext = pickQuoteExt(originalName);
+  const dir = resolve(DATA_DIR, "quotes", safe(projectId));
+  mkdirSync(dir, { recursive: true });
+  const existing = getQuoteFilePath(projectId, quoteId);
+  if (existing) {
+    try { unlinkSync(existing); } catch { /* best effort */ }
+  }
+  const path = resolve(dir, `${safe(quoteId)}.${ext}`);
+  writeFileSync(path, buffer);
+  return path;
+}
+
+export function quoteFileExists(projectId, quoteId) {
+  return Boolean(getQuoteFilePath(projectId, quoteId));
+}
