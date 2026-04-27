@@ -25,6 +25,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pages, schedulePageNumbers }),
     }).then(json),
+  countMarks: (pages, floorPageNumbers) =>
+    fetch(`${base}/plans/count-marks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pages, floorPageNumbers }),
+    }).then(json),
   updateProject: (id, patch) =>
     fetch(`${base}/projects/${id}`, {
       method: "PATCH",

@@ -14,6 +14,7 @@ const KINDS = [
 ];
 
 const SCHEDULE_KINDS = new Set(["window_schedule", "door_schedule"]);
+const FLOOR_KINDS = new Set(["floor"]);
 
 export default function PlansTab({ project, onChange }) {
   const plans = project.plans ?? [];
@@ -24,12 +25,20 @@ export default function PlansTab({ project, onChange }) {
   const [loading, setLoading] = useState(false);
   const [extractingItems, setExtractingItems] = useState(false);
   const [extractionPreview, setExtractionPreview] = useState(null);
+  const [countingMarks, setCountingMarks] = useState(false);
+  const [marksPreview, setMarksPreview] = useState(null);
   const [error, setError] = useState("");
 
   const active = plans.find((p) => p.id === activeId) ?? null;
   const schedulePages = active
     ? Object.entries(active.tags ?? {})
         .filter(([, kind]) => SCHEDULE_KINDS.has(kind))
+        .map(([n]) => Number(n))
+        .sort((a, b) => a - b)
+    : [];
+  const floorPages = active
+    ? Object.entries(active.tags ?? {})
+        .filter(([, kind]) => FLOOR_KINDS.has(kind))
         .map(([n]) => Number(n))
         .sort((a, b) => a - b)
     : [];
@@ -128,6 +137,32 @@ export default function PlansTab({ project, onChange }) {
     }
   }
 
+  async function countMarks() {
+    if (!active || !hasExtractedText || floorPages.length === 0) return;
+    setCountingMarks(true);
+    setError("");
+    try {
+      const result = await api.countMarks(active.pages, floorPages);
+      setMarksPreview(result);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setCountingMarks(false);
+    }
+  }
+
+  function applyMarkCounts() {
+    if (!marksPreview) return;
+    const counts = marksPreview.counts ?? {};
+    const updated = items.map((it) => {
+      const c = counts[it.mark];
+      if (c != null && c > 0) return { ...it, quantity: c };
+      return it;
+    });
+    onChange({ items: updated });
+    setMarksPreview(null);
+  }
+
   function applyItems(mode) {
     if (!extractionPreview) return;
     const incoming = extractionPreview.items;
@@ -189,6 +224,19 @@ export default function PlansTab({ project, onChange }) {
               </div>
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <button
+                  onClick={countMarks}
+                  disabled={!hasExtractedText || floorPages.length === 0 || countingMarks}
+                  title={
+                    !hasExtractedText
+                      ? "Re-upload this PDF to enable mark detection"
+                      : floorPages.length === 0
+                      ? "Tag at least one page as Floor first"
+                      : ""
+                  }
+                >
+                  {countingMarks ? "Counting…" : `Count marks (${floorPages.length} floor page${floorPages.length === 1 ? "" : "s"})`}
+                </button>
+                <button
                   className="primary"
                   onClick={extractItems}
                   disabled={!hasExtractedText || schedulePages.length === 0 || extractingItems}
@@ -225,6 +273,16 @@ export default function PlansTab({ project, onChange }) {
             <div className="card" style={{ marginBottom: 12, color: "#a60" }}>
               No extracted text on file for this plan. Re-upload the PDF to enable item extraction.
             </div>
+          )}
+
+          {marksPreview && (
+            <MarksPreview
+              preview={marksPreview}
+              items={items}
+              floorPages={floorPages}
+              onCancel={() => setMarksPreview(null)}
+              onApply={applyMarkCounts}
+            />
           )}
 
           {extractionPreview && (
@@ -352,6 +410,80 @@ function ExtractionPreview({ preview, schedulePages, existingItemCount, onCancel
       ) : (
         <div style={{ color: "#a60" }}>
           No items detected. The schedule may use a layout the parser doesn't recognize yet (no header row found, or columns we don't classify).
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
+  const counts = preview.counts ?? {};
+  const marks = Object.keys(counts).sort();
+  const itemMarks = new Set(items.map((it) => it.mark));
+  const matched = marks.filter((m) => itemMarks.has(m));
+  const unmatched = marks.filter((m) => !itemMarks.has(m));
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap" }}>
+        <strong>
+          Detected {preview.totalDetected} mark instance{preview.totalDetected === 1 ? "" : "s"} across{" "}
+          {floorPages.length} floor page{floorPages.length === 1 ? "" : "s"}{" "}
+          ({marks.length} unique mark{marks.length === 1 ? "" : "s"})
+        </strong>
+        <div className="row">
+          <button onClick={onCancel}>Cancel</button>
+          <button
+            className="primary"
+            onClick={onApply}
+            disabled={matched.length === 0}
+            title={matched.length === 0 ? "No detected marks match any existing item" : ""}
+          >
+            Apply quantities to {matched.length} matching item{matched.length === 1 ? "" : "s"}
+          </button>
+        </div>
+      </div>
+
+      {preview.decoded && (
+        <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
+          PDF used a custom font with no Unicode map; auto-decoded by shifting glyphs +{preview.shift}.
+        </div>
+      )}
+
+      <table>
+        <thead>
+          <tr>
+            <th>Mark</th>
+            <th>Count</th>
+            {floorPages.map((p) => (
+              <th key={p}>Page {p}</th>
+            ))}
+            <th>Existing item?</th>
+            <th>Current qty → new qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          {marks.map((m) => {
+            const item = items.find((it) => it.mark === m);
+            return (
+              <tr key={m}>
+                <td><strong>{m}</strong></td>
+                <td>{counts[m]}</td>
+                {floorPages.map((p) => (
+                  <td key={p}>{preview.perPage?.[p]?.[m] ?? 0}</td>
+                ))}
+                <td>{item ? "yes" : <span style={{ color: "#a60" }}>no — add it in Items</span>}</td>
+                <td>{item ? `${item.quantity} → ${counts[m]}` : "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {unmatched.length > 0 && (
+        <div style={{ fontSize: 12, color: "#a60", marginTop: 8 }}>
+          {unmatched.length} mark{unmatched.length === 1 ? "" : "s"} found in floor plans with no matching item: {unmatched.join(", ")}.
+          Add them in the Items tab to capture their counts.
         </div>
       )}
     </div>
