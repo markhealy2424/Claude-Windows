@@ -3,12 +3,28 @@ import multer from "multer";
 import { extractPlan } from "../engines/planExtraction.js";
 import { parseSchedule } from "../engines/scheduleMatching.js";
 import { detectMarks } from "../engines/markDetection.js";
-import { detectMarksWithVision } from "../engines/visionMarkDetection.js";
-import { parseScheduleWithVision } from "../engines/visionScheduleExtraction.js";
 import {
   savePlanPdf, getPlanPdfPath, planPdfExists,
   saveSchedulePdf, getSchedulePdfPath, schedulePdfExists,
 } from "../storage.js";
+
+// Vision modules are lazy-loaded so an issue importing the Anthropic SDK
+// (version mismatch, missing module, etc.) only breaks vision endpoints,
+// not the whole server. /health and the rest of the API stay alive.
+let _markDetector = null;
+async function loadMarkDetector() {
+  if (_markDetector) return _markDetector;
+  const m = await import("../engines/visionMarkDetection.js");
+  _markDetector = m.detectMarksWithVision;
+  return _markDetector;
+}
+let _scheduleParser = null;
+async function loadScheduleParser() {
+  if (_scheduleParser) return _scheduleParser;
+  const m = await import("../engines/visionScheduleExtraction.js");
+  _scheduleParser = m.parseScheduleWithVision;
+  return _scheduleParser;
+}
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -48,6 +64,7 @@ router.post("/count-marks", async (req, res) => {
 
   if (visionAvailable && pdfOnDisk) {
     try {
+      const detectMarksWithVision = await loadMarkDetector();
       const result = await detectMarksWithVision({
         pdfPath: getPlanPdfPath(projectId, planId),
         floorPageNumbers,
@@ -118,6 +135,7 @@ router.post("/parse-schedule-vision", async (req, res) => {
 
   if (visionAvailable && pdfOnDisk) {
     try {
+      const parseScheduleWithVision = await loadScheduleParser();
       const result = await parseScheduleWithVision({
         pdfPath: getSchedulePdfPath(projectId, scheduleId),
         projectName,

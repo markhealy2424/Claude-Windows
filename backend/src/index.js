@@ -16,6 +16,40 @@ app.use(express.json({ limit: "25mb" }));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+// Diagnostic endpoint — surfaces which optional modules loaded and what env
+// vars are present (key names only, never values). Helps debug deploy issues
+// without needing access to logs.
+app.get("/diag", async (_req, res) => {
+  const out = {
+    ok: true,
+    node: process.version,
+    pid: process.pid,
+    env: {
+      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? "set" : "missing",
+      DATA_DIR: process.env.DATA_DIR ?? "(unset, defaulting to backend/data)",
+      NODE_ENV: process.env.NODE_ENV ?? "(unset)",
+      PORT: process.env.PORT ?? "(unset, defaulting to 4000)",
+    },
+    modules: {},
+  };
+  for (const [name, path] of [
+    ["@anthropic-ai/sdk", "@anthropic-ai/sdk"],
+    ["pdfjs-dist", "pdfjs-dist/legacy/build/pdf.mjs"],
+    ["pdfkit", "pdfkit"],
+    ["svg-to-pdfkit", "svg-to-pdfkit"],
+    ["visionMarkDetection", "./engines/visionMarkDetection.js"],
+    ["visionScheduleExtraction", "./engines/visionScheduleExtraction.js"],
+  ]) {
+    try {
+      await import(path);
+      out.modules[name] = "ok";
+    } catch (err) {
+      out.modules[name] = `error: ${err.message}`;
+    }
+  }
+  res.json(out);
+});
+
 app.use("/api/projects", projects);
 app.use("/api/plans", plans);
 app.use("/api/rfq", rfq);
