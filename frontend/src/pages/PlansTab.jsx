@@ -6,11 +6,11 @@ import { api } from "../api.js";
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const KINDS = [
-  ["unknown", "Unknown"],
-  ["floor", "Floor Plan"],
-  ["elevation", "Elevation"],
-  ["window_schedule", "Window Schedule"],
-  ["door_schedule", "Door Schedule"],
+  { value: "unknown", label: "—", color: "#eee", text: "#666" },
+  { value: "floor", label: "Floor", color: "#dbeafe", text: "#1e3a8a" },
+  { value: "elevation", label: "Elev.", color: "#e0e7ff", text: "#3730a3" },
+  { value: "window_schedule", label: "Win Sched", color: "#fde68a", text: "#92400e" },
+  { value: "door_schedule", label: "Door Sched", color: "#fecaca", text: "#991b1b" },
 ];
 
 const SCHEDULE_KINDS = new Set(["window_schedule", "door_schedule"]);
@@ -55,7 +55,7 @@ export default function PlansTab({ project, onChange }) {
       setThumbs(out);
       return out.length;
     } catch (e) {
-      setError(String(e));
+      setError("Failed to render PDF preview: " + String(e));
       return 0;
     } finally {
       setLoading(false);
@@ -75,7 +75,7 @@ export default function PlansTab({ project, onChange }) {
       const result = await api.extractPlan(f);
       extractedPages = result.pages ?? [];
     } catch (e) {
-      setError("Text extraction failed: " + String(e) + " (you can still tag pages manually)");
+      setError("Text extraction failed (you can still tag pages, but won't be able to auto-extract items): " + String(e));
     }
 
     const plan = {
@@ -92,7 +92,14 @@ export default function PlansTab({ project, onChange }) {
 
   function setTag(pageNumber, kind) {
     if (!active) return;
-    const tags = { ...active.tags, [pageNumber]: kind };
+    const tags = { ...(active.tags ?? {}), [pageNumber]: kind };
+    onChange({ plans: plans.map((p) => (p.id === active.id ? { ...p, tags } : p)) });
+  }
+
+  function setAllTags(kind) {
+    if (!active) return;
+    const tags = {};
+    for (let i = 1; i <= active.pageCount; i++) tags[i] = kind;
     onChange({ plans: plans.map((p) => (p.id === active.id ? { ...p, tags } : p)) });
   }
 
@@ -124,10 +131,7 @@ export default function PlansTab({ project, onChange }) {
   function applyItems(mode) {
     if (!extractionPreview) return;
     const incoming = extractionPreview.items;
-    const next =
-      mode === "replace"
-        ? incoming
-        : mergeByMark(items, incoming);
+    const next = mode === "replace" ? incoming : mergeByMark(items, incoming);
     onChange({ items: next });
     setExtractionPreview(null);
   }
@@ -139,6 +143,13 @@ export default function PlansTab({ project, onChange }) {
       setExtractionPreview(null);
     }
   }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tagCounts = active
+    ? KINDS.reduce((acc, k) => {
+        acc[k.value] = Object.values(active.tags ?? {}).filter((v) => v === k.value).length;
+        return acc;
+      }, {})
+    : {};
 
   return (
     <div>
@@ -167,27 +178,46 @@ export default function PlansTab({ project, onChange }) {
 
       {active && (
         <>
-          <div className="row" style={{ marginBottom: 12, justifyContent: "space-between", flexWrap: "wrap" }}>
-            <div style={{ color: "#666" }}>
-              {active.name} · {active.pageCount} pages
-              {schedulePages.length > 0 && <> · {schedulePages.length} schedule page{schedulePages.length === 1 ? "" : "s"} tagged</>}
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontWeight: 600 }}>{active.name}</div>
+                <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                  {active.pageCount} pages ·{" "}
+                  {KINDS.filter((k) => tagCounts[k.value] > 0).map((k) => `${tagCounts[k.value]} ${k.label}`).join(", ") || "none tagged yet"}
+                </div>
+              </div>
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <button
+                  className="primary"
+                  onClick={extractItems}
+                  disabled={!hasExtractedText || schedulePages.length === 0 || extractingItems}
+                  title={
+                    !hasExtractedText
+                      ? "Re-upload this PDF to enable extraction"
+                      : schedulePages.length === 0
+                      ? "Tag at least one page as Win Sched or Door Sched first"
+                      : ""
+                  }
+                >
+                  {extractingItems ? "Extracting…" : `Extract items (${schedulePages.length} schedule page${schedulePages.length === 1 ? "" : "s"})`}
+                </button>
+                <button onClick={() => removePlan(active.id)}>Remove plan</button>
+              </div>
             </div>
-            <div className="row">
-              <button
-                className="primary"
-                onClick={extractItems}
-                disabled={!hasExtractedText || schedulePages.length === 0 || extractingItems}
-                title={
-                  !hasExtractedText
-                    ? "Re-upload this PDF to enable extraction"
-                    : schedulePages.length === 0
-                    ? "Tag at least one page as Window Schedule or Door Schedule first"
-                    : ""
-                }
-              >
-                {extractingItems ? "Extracting…" : "Extract items from schedules"}
-              </button>
-              <button onClick={() => removePlan(active.id)}>Remove plan</button>
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee" }}>
+              <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Bulk: mark every page as</div>
+              <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+                {KINDS.map((k) => (
+                  <button
+                    key={k.value}
+                    onClick={() => setAllTags(k.value)}
+                    style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #ccc", background: k.color, color: k.text, cursor: "pointer", fontSize: 12 }}
+                  >
+                    {k.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -209,21 +239,61 @@ export default function PlansTab({ project, onChange }) {
 
           {thumbs.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-              {thumbs.map((pg) => (
-                <div key={pg.pageNumber} className="card">
-                  <div style={{ marginBottom: 6, fontSize: 12, color: "#666" }}>Page {pg.pageNumber}</div>
-                  <img src={pg.dataUrl} alt={`Page ${pg.pageNumber}`} style={{ width: "100%", border: "1px solid #eee" }} />
-                  <select
-                    value={active.tags[pg.pageNumber] ?? "unknown"}
-                    onChange={(e) => setTag(pg.pageNumber, e.target.value)}
-                    style={{ marginTop: 8, width: "100%" }}
+              {thumbs.map((pg) => {
+                const currentKind = active.tags?.[pg.pageNumber] ?? "unknown";
+                const kindMeta = KINDS.find((k) => k.value === currentKind) ?? KINDS[0];
+                return (
+                  <div
+                    key={pg.pageNumber}
+                    className="card"
+                    style={{
+                      borderColor: SCHEDULE_KINDS.has(currentKind) ? kindMeta.text : "#eee",
+                      borderWidth: SCHEDULE_KINDS.has(currentKind) ? 2 : 1,
+                    }}
                   >
-                    {KINDS.map(([v, label]) => (
-                      <option key={v} value={v}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+                    <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, color: "#666" }}>Page {pg.pageNumber}</span>
+                      <span
+                        style={{
+                          fontSize: 11, padding: "2px 6px", borderRadius: 10,
+                          background: kindMeta.color, color: kindMeta.text, fontWeight: 600,
+                        }}
+                      >
+                        {kindMeta.label}
+                      </span>
+                    </div>
+                    <img
+                      src={pg.dataUrl}
+                      alt={`Page ${pg.pageNumber}`}
+                      style={{ width: "100%", border: "1px solid #eee", display: "block" }}
+                    />
+                    <div className="row" style={{ flexWrap: "wrap", gap: 4, marginTop: 8 }}>
+                      {KINDS.map((k) => {
+                        const selected = currentKind === k.value;
+                        return (
+                          <button
+                            key={k.value}
+                            onClick={() => setTag(pg.pageNumber, k.value)}
+                            style={{
+                              flex: "1 1 auto",
+                              padding: "4px 6px",
+                              borderRadius: 4,
+                              border: selected ? `2px solid ${k.text}` : "1px solid #ddd",
+                              background: selected ? k.color : "#fff",
+                              color: selected ? k.text : "#333",
+                              cursor: "pointer",
+                              fontSize: 11,
+                              fontWeight: selected ? 600 : 400,
+                            }}
+                          >
+                            {k.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </>
@@ -240,7 +310,7 @@ function ExtractionPreview({ preview, schedulePages, existingItemCount, onCancel
   const { items, meta } = preview;
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap" }}>
         <strong>Extracted {items.length} item{items.length === 1 ? "" : "s"} from {schedulePages.length} schedule page{schedulePages.length === 1 ? "" : "s"}</strong>
         <div className="row">
           <button onClick={onCancel}>Cancel</button>

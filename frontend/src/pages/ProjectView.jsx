@@ -18,14 +18,19 @@ export default function ProjectView() {
 
   if (!project) return <div>Loading…</div>;
 
-  async function saveItems(items) {
-    const updated = await api.updateProject(id, { items });
-    setProject(updated);
+  async function savePatch(patch) {
+    setProject((p) => (p ? { ...p, ...patch } : p));
+    try {
+      const updated = await api.updateProject(id, patch);
+      setProject(updated);
+    } catch (err) {
+      console.error("savePatch failed:", err);
+      api.getProject(id).then(setProject).catch(() => {});
+    }
   }
 
-  async function savePatch(patch) {
-    const updated = await api.updateProject(id, patch);
-    setProject(updated);
+  async function saveItems(items) {
+    return savePatch({ items });
   }
 
   return (
