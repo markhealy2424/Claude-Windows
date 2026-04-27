@@ -1,0 +1,21 @@
+# Fly.io config — run `fly launch --no-deploy` first to claim an app name,
+# then `fly volumes create data --size 1 --region <region>` and `fly deploy`.
+app = "claude-windows"
+primary_region = "iad"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+  DATA_DIR = "/data"
+
+[[mounts]]
+  source = "data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0

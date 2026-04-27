@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api.js";
 import ItemEditor from "./ItemEditor.jsx";
+import RFQTab from "./RFQTab.jsx";
+import QuotesTab from "./QuotesTab.jsx";
+import ProposalTab from "./ProposalTab.jsx";
+import PlansTab from "./PlansTab.jsx";
 
 const TABS = ["Plans", "Items", "RFQ", "Quotes", "Proposal"];
 
@@ -19,6 +23,11 @@ export default function ProjectView() {
     setProject(updated);
   }
 
+  async function savePatch(patch) {
+    const updated = await api.updateProject(id, patch);
+    setProject(updated);
+  }
+
   return (
     <div>
       <h1>{project.name} <small style={{ color: "#888" }}>· {project.status}</small></h1>
@@ -27,11 +36,11 @@ export default function ProjectView() {
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t}</button>
         ))}
       </div>
-      {tab === "Plans" && <div className="card">Plan upload + page tagging — TODO.</div>}
+      {tab === "Plans" && <PlansTab project={project} onChange={savePatch} />}
       {tab === "Items" && <ItemEditor items={project.items} onChange={saveItems} />}
-      {tab === "RFQ" && <div className="card">Generate RFQ → PDF/Excel — TODO.</div>}
-      {tab === "Quotes" && <div className="card">Upload supplier quote + run discrepancy check — TODO.</div>}
-      {tab === "Proposal" && <div className="card">Apply markup + branded proposal — TODO.</div>}
+      {tab === "RFQ" && <RFQTab project={project} />}
+      {tab === "Quotes" && <QuotesTab project={project} onChange={savePatch} />}
+      {tab === "Proposal" && <ProposalTab project={project} onChange={savePatch} />}
     </div>
   );
 }
