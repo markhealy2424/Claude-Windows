@@ -1,83 +1,89 @@
-// Vision-based window-schedule extraction using Claude Sonnet 4.6 + native PDF input.
+// Vision-based window-schedule extraction using Claude Opus 4.7 + native PDF input.
 // Reads each row of a window schedule and returns a structured items array with
-// dimensions, type, operation, panels, etc. Designed to be applied to existing
-// project items (matched by mark) so quantity from the floor-plan mark count and
-// dimensions/type from the schedule combine into a complete record.
+// dimensions, type, operation, panels, etc.
+//
+// Why Opus 4.7 for this (vs Sonnet for the mark detector): schedule tables are
+// dense small-text tabular data where row-alignment and digit accuracy matter
+// at the per-pixel level. Opus 4.7 has 2576px max image resolution (vs 1568 on
+// Sonnet 4.6) and is much more careful at structured table reading. Cost is
+// ~5× higher (~$0.10 per schedule vs $0.02), but schedule parsing happens
+// once per project, not per click — accuracy is the right tradeoff.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { readFile } from "node:fs/promises";
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "claude-opus-4-7";
 
-const SYSTEM_PROMPT = `You are reading a WINDOW SCHEDULE from an architectural PDF.
+const SYSTEM_PROMPT = `You are reading a WINDOW SCHEDULE table from an architectural PDF and extracting one structured item per row.
 
-A window schedule is a table where each row describes one window mark. The exact column set varies by architect; common columns include:
-- Mark / Tag / Type / ID — single uppercase letter or short code (A, B, D1, ...)
-- Qty — how many windows of this mark exist
-- Panel / Lites — number of panels in the unit
-- Width — horizontal dimension (e.g. 3'-0", 36", or 914 mm)
-- Height — vertical dimension
-- Description / Type — window type plus modifiers (e.g. "CASEMENT, MULLED EGRESS", "FIXED UNIT, BLACK OUT")
-- Notes / Remarks — any extra info (tempered, dual glazing, etc.)
+This is a DATA TRANSCRIPTION task, not an interpretation task. The schedule is a table with clearly-labeled columns. Your job is to read each row's cells exactly as printed and return them as JSON. Accuracy matters more than speed — these values feed straight into a window-quote workflow.
 
-The schedule may also contain Header (header height) and Wall (framing) columns. **Ignore those columns entirely** — they're not needed for downstream workflow.
+==========
+EXTRACTION METHOD — follow these steps in order, every time:
+==========
 
-CRITICAL: IGNORE THE DOOR SCHEDULE.
+STEP 1. Locate the WINDOW SCHEDULE.
+   - Find the table whose title/header says "WINDOW SCHEDULE" (or similar).
+   - Identify the column headers, typically: MARK, QTY, PANEL, WIDTH, HEIGHT, DESCRIPTION. Other columns (HEADER, WALL, etc.) may be present — ignore them.
+   - Note exactly which column is WIDTH and which is HEIGHT — different architects order them differently.
 
-If the page contains BOTH a window schedule AND a door schedule (very common — they're often on the same sheet), you must extract ONLY the window schedule rows. The door schedule is identifiable by:
-  - A "DOOR" or "DOOR NO." column (numeric IDs like 1, 2, 3)
-  - A header that says "DOOR SCHEDULE"
-  - Descriptions like "EXTERIOR FRONT DOOR", "FRENCH DOOR", "PANEL DOOR"
-The window schedule is identifiable by:
-  - A "MARK" column with letter codes (A, B, C, ...)
-  - A header that says "WINDOW SCHEDULE"
-  - Descriptions involving "FIXED", "CASEMENT", "SLIDING", etc.
-DO NOT include any door schedule rows in your output.
+STEP 2. Count the data rows.
+   - The data rows are everything below the header until the table ends.
+   - Count them. Remember the count. Your output will have exactly this many items.
+   - Note the FIRST mark (top row) and the LAST mark (bottom row).
 
-EXTRACTION RULES:
+STEP 3. For EACH ROW, top to bottom, extract these fields:
+   a. mark — the letter in the MARK column (e.g. "A", "C", "D1").
+   b. quantity — the integer in the QTY column. If blank, return 0.
+   c. panels — the integer in the PANEL column. Read it DIRECTLY from that column's cell. Do NOT infer panels from anywhere else. If the cell shows "1", panels=1. If "2", panels=2. If blank, return 1.
+   d. width_in — the value in the WIDTH column, converted to inches (see CONVERSION RULES below). This is the per-panel width — return it as printed in the cell. Do NOT multiply or divide.
+   e. height_in — the value in the HEIGHT column, converted to inches.
+   f. type — read the DESCRIPTION column and normalize (see TYPE RULES).
+   g. operation — read the DESCRIPTION column for swing direction ("left", "right"). MULLED is NOT an operation. If none, return "".
+   h. notes — modifier words from DESCRIPTION (MULLED, EGRESS, BLACK OUT, TEMP, DUAL GLAZING) plus any remarks. Comma-separated. Empty string if none.
 
-1. **One window-schedule row → one item.** Skip the header row of the window schedule, any title bars, footer notes (e.g. "NOTES:" lists), elevation drawings, and any door-schedule rows.
+STEP 4. Verify before returning.
+   - Count the items in your output array. It MUST equal the row count from step 2.
+   - The first item's mark MUST equal the first mark from step 2.
+   - The last item's mark MUST equal the last mark from step 2.
+   - If any of these don't match, RE-READ the schedule and fix.
 
-2. **Convert ALL dimensions to inches.**
-   - Feet-inches like 3'-0" → 36
-   - Feet-inches like 5'-6" → 66 (5×12 + 6)
-   - Feet-inches like 2'-0" → 24 (NOT 60, NOT 120 — just 24)
-   - Feet-inches like 10'-0" → 120 (10×12 + 0)
-   - Bare inches like 36" or 36 in → 36
-   - Millimeters like 914 mm → 36 (divide by 25.4, round to 1 decimal)
-   - If a cell is blank or unreadable, return 0.
+==========
+CONVERSION RULES (dimensions → inches):
+==========
+- 3'-0"  → 36   (3×12 + 0)
+- 5'-6"  → 66   (5×12 + 6)
+- 2'-0"  → 24   (NOT 60. Just 24.)
+- 4'-0"  → 48
+- 10'-0" → 120
+- 36"     → 36
+- 914 mm → 36   (divide by 25.4)
+- Blank or unreadable → 0
 
-   READ THE VALUE EXACTLY AS PRINTED. Look at the digits in the row's WIDTH cell, then the row's HEIGHT cell, then convert. Do NOT do any extra math (no multiplying by panel count, no dividing, no swapping). Double-check that you are reading the cell that lines up with the row's mark.
+==========
+TYPE RULES (DESCRIPTION → normalized lowercase type):
+==========
+- FIXED UNIT / Fixed / Picture / FX  → "fixed"
+- CASEMENT / CSMT                     → "casement"
+- SLIDING / Slider / SL               → "sliding"
+- AWNING / AWN                        → "awning"
+- Single Hung / Double Hung / DH      → "hung"
+- Closest match if unclear; "" if truly unknown.
 
-   The WIDTH value in the schedule is the value to return directly in the width_in field — it is the per-panel width and the downstream app multiplies by panels itself. Do not divide.
+==========
+IGNORE THE DOOR SCHEDULE.
+==========
+If the page contains a separate DOOR SCHEDULE table, you must NOT include any door rows. The door schedule has:
+  - A DOOR / DOOR NO. column with numeric IDs (1, 2, 3, ...)
+  - Header "DOOR SCHEDULE"
+  - Descriptions like "EXTERIOR FRONT DOOR", "FRENCH DOOR"
+The window schedule has letter codes in the MARK column. Output ONLY window-schedule rows.
 
-   **CRITICAL — column order:** Different architects order WIDTH and HEIGHT differently. Before extracting any row, locate the column header and identify exactly which column is labeled WIDTH (or W, WD) and which is labeled HEIGHT (or H, HT). Some schedules go WIDTH-then-HEIGHT, others HEIGHT-then-WIDTH. Don't assume — match each value to the column its position falls under. If you can't find a header, prefer to leave the row out and let the user enter it manually.
+==========
+OUTPUT FORMAT
+==========
 
-3. **Normalize the type field** to lowercase from the description column:
-   - "FIXED UNIT" / "Fixed" / "Picture" / "FX" → "fixed"
-   - "CASEMENT" / "CSMT" → "casement"
-   - "SLIDING" / "Slider" / "SL" → "sliding"
-   - "AWNING" / "AWN" → "awning"
-   - "Single Hung" / "Double Hung" / "DH" → "hung"
-   - If unsure, use the closest of the above. Use empty string "" only if truly unknown.
-
-4. **operation** captures swing direction if explicitly stated ("left", "right"). The "MULLED" modifier is NOT an operation — it goes in notes. If no swing direction is given, return "".
-
-5. **panels** comes from the Panel/Lites column. Default to 1 if absent.
-
-6. **quantity** comes from the Qty column. If absent or blank, return 0 (the floor-plan mark count is the authoritative source for quantity; the schedule provides dimensions/type).
-
-7. **notes** captures every modifier word from the description column AND any other remarks. Keep short and comma-separated. Common modifiers to capture:
-   - MULLED — multiple panels joined as one assembly
-   - EGRESS — meets emergency egress requirements
-   - BLACK OUT — no light passes (often shower/bathroom)
-   - TEMP / TEMPERED — tempered glass
-   - DUAL GLAZING / DG
-   So a description like "CASEMENT, MULLED EGRESS" → type: "casement", notes: "Mulled, Egress".
-
-OUTPUT FORMAT:
-
-Return ONLY a JSON object with this exact shape:
+Return ONLY this JSON object — no commentary, no text outside the JSON:
 
 {
   "items": [
@@ -94,9 +100,7 @@ Return ONLY a JSON object with this exact shape:
   ]
 }
 
-- Every required field must appear in every item, even if the value is 0 or "".
-- One item per WINDOW schedule row. Do not include door rows.
-- Do not include commentary, explanation, or text outside the JSON.`;
+Every field must be present in every item, even if 0 or "". One item per WINDOW schedule row, in the same order as the rows appear top-to-bottom in the table.`;
 
 const SCHEDULE_ITEM_SCHEMA = {
   type: "object",
@@ -131,11 +135,14 @@ export async function parseScheduleWithVision({ pdfPath, projectName }) {
   const pdfBytes = await readFile(pdfPath);
   const pdfBase64 = pdfBytes.toString("base64");
 
-  const userInstruction = `Read every row of the window schedule in the attached PDF and return the items array per the system prompt's rules.${projectName ? `\n\nProject: ${projectName}.` : ""}`;
+  const userInstruction = `Read every row of the WINDOW SCHEDULE in the attached PDF and return the items array per the system prompt's procedure (locate table → count rows → row-by-row extraction → verify count).${projectName ? `\n\nProject: ${projectName}.` : ""}`;
 
   const stream = client.messages.stream({
     model: MODEL,
-    max_tokens: 8192,
+    max_tokens: 16384,
+    // Adaptive thinking is off by default on Opus 4.7 — enable explicitly so
+    // the model reasons through dense rows before committing to JSON.
+    thinking: { type: "adaptive" },
     system: [
       {
         type: "text",
@@ -144,6 +151,10 @@ export async function parseScheduleWithVision({ pdfPath, projectName }) {
       },
     ],
     output_config: {
+      // xhigh is the Opus 4.7 sweet spot — best for intelligence-sensitive
+      // structured-data extraction. Higher than Sonnet's high; less thrashy
+      // than max.
+      effort: "xhigh",
       format: { type: "json_schema", schema: RESPONSE_SCHEMA },
     },
     messages: [
