@@ -53,9 +53,9 @@ export function generateSketch({ width_in, height_in, panels = 1, type = "fixed"
     );
   }
 
-  // Per-panel casement glyph: V whose apex sits on the HINGE side.
-  // Open-right panel → hinge on left → apex at panel's LEFT edge.
-  // Open-left panel  → hinge on right → apex at panel's RIGHT edge.
+  // Per-panel casement glyph: V whose apex sits on the SWING (handle) side.
+  // Open-right panel → apex at panel's RIGHT edge.
+  // Open-left panel  → apex at panel's LEFT edge.
   const glyphs = [];
   for (let i = 0; i < n; i++) {
     const px = leftPad + i * panelW;
@@ -65,13 +65,13 @@ export function generateSketch({ width_in, height_in, panels = 1, type = "fixed"
     const dir = dirs[i];
     if (dir === "right") {
       glyphs.push(
-        `<line x1="${px + panelW - inset}" y1="${py + inset}" x2="${px + inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>` +
-        `<line x1="${px + panelW - inset}" y1="${py + frameH - inset}" x2="${px + inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>`
+        `<line x1="${px + inset}" y1="${py + inset}" x2="${px + panelW - inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>` +
+        `<line x1="${px + inset}" y1="${py + frameH - inset}" x2="${px + panelW - inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>`
       );
     } else if (dir === "left") {
       glyphs.push(
-        `<line x1="${px + inset}" y1="${py + inset}" x2="${px + panelW - inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>` +
-        `<line x1="${px + inset}" y1="${py + frameH - inset}" x2="${px + panelW - inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>`
+        `<line x1="${px + panelW - inset}" y1="${py + inset}" x2="${px + inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>` +
+        `<line x1="${px + panelW - inset}" y1="${py + frameH - inset}" x2="${px + inset}" y2="${cy}" stroke="black" stroke-dasharray="4 3"/>`
       );
     }
   }
