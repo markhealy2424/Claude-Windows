@@ -39,7 +39,8 @@ router.post("/count-marks", async (req, res) => {
   }
 
   const visionAvailable = Boolean(process.env.ANTHROPIC_API_KEY);
-  const pdfOnDisk = projectId && planId && planPdfExists(projectId, planId);
+  const pdfOnDisk = Boolean(projectId && planId && planPdfExists(projectId, planId));
+  let visionError = null;
 
   if (visionAvailable && pdfOnDisk) {
     try {
@@ -51,7 +52,7 @@ router.post("/count-marks", async (req, res) => {
       return res.json(result);
     } catch (err) {
       console.error("[plans/count-marks/vision]", err);
-      // fall through to local detector
+      visionError = err?.message ?? String(err);
     }
   }
 
@@ -60,6 +61,7 @@ router.post("/count-marks", async (req, res) => {
       error: "pages array required for local detection",
       visionAvailable,
       pdfOnDisk,
+      visionError,
     });
   }
   try {
@@ -69,6 +71,7 @@ router.post("/count-marks", async (req, res) => {
       detector: "local",
       visionAvailable,
       pdfOnDisk,
+      visionError,
     });
   } catch (err) {
     console.error("[plans/count-marks/local]", err);

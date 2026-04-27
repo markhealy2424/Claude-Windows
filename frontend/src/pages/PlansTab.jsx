@@ -470,9 +470,24 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
           </span>
         ) : (
           <span style={{ color: "#a60" }}>
-            ⚠ Counted by local text fallback (no API key, or PDF not on disk).
-            Local detection counts every standalone letter and over-counts grid labels, legend entries, and any short-letter glyph it finds.
-            For reliable counts: (1) set <code>ANTHROPIC_API_KEY</code> in Railway, AND (2) <strong>remove this plan and re-upload the PDF</strong> — older uploads don't have bytes saved on the server's persistent volume, which vision needs.
+            ⚠ Counted by local text fallback. Local detection over-counts grid labels, legend entries, and any short-letter glyph it finds — counts here are unreliable.
+            <br /><br />
+            <strong>Why vision didn't run:</strong>{" "}
+            {!preview.visionAvailable ? (
+              <>
+                The <code>ANTHROPIC_API_KEY</code> environment variable is not set on the server. Add it in Railway → Variables (the value should start with <code>sk-ant-</code>), then wait for the redeploy to show <strong>Active</strong>.
+              </>
+            ) : !preview.pdfOnDisk ? (
+              <>
+                The PDF bytes aren't on the server's persistent disk. <strong>Click "Remove plan" and re-upload this PDF</strong> — only PDFs uploaded after the persistence code shipped are saved on the volume.
+              </>
+            ) : preview.visionError ? (
+              <>
+                Vision was attempted but the API call failed: <code>{preview.visionError}</code>. Most common causes: the API key is invalid, billing isn't set up at console.anthropic.com, or the PDF exceeds 32&nbsp;MB / 100 pages.
+              </>
+            ) : (
+              <>Reason unknown — check the backend logs in Railway.</>
+            )}
             {preview.decoded && (
               <> Auto-decoded font shift: +{preview.shift}.</>
             )}
