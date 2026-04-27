@@ -147,12 +147,13 @@ export default function ProposalTab({ project, onChange }) {
             <tbody>
               {priced.items.map((it, i) => {
                 const lineTotal = Number(it.client_price ?? 0) * Number(it.quantity ?? 1);
+                const totalW = it.width_in != null ? Number(it.width_in) * Math.max(1, Math.floor(Number(it.panels ?? 1))) : null;
                 return (
                   <tr key={i}>
                     <td>{it.mark}</td>
                     <td>{it.quantity}</td>
                     <td>{[it.type, it.operation].filter(Boolean).join(", ")}</td>
-                    <td>{it.width_in != null ? `${it.width_in}"` : "?"}</td>
+                    <td>{totalW != null ? `${totalW}"` : "?"}</td>
                     <td>{it.height_in != null ? `${it.height_in}"` : "?"}</td>
                     <td>{money(it.cost)}</td>
                     <td>

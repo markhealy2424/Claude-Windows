@@ -52,15 +52,17 @@ function panelDirections(panels, type, operation = "") {
   return dirs;
 }
 
-export function generateSketch({ width_in, height_in, panels = 1, type = "fixed", operation = "" }) {
+export function generateSketch({ width_in, height_in, panels = 1, type = "fixed", operation = "", gridRows = 1 }) {
+  const n = Math.max(1, Math.floor(panels));
+  const totalWidth = Number(width_in ?? 0) * n;
+
   const frameW = 240;
-  const aspect = Number(height_in) / Math.max(Number(width_in), 1);
-  const frameH = Math.max(80, Math.round(frameW * (Number.isFinite(aspect) ? aspect : 0.6)));
+  const aspect = Number(height_in) / Math.max(totalWidth, 1);
+  const frameH = Math.max(80, Math.round(frameW * (Number.isFinite(aspect) && aspect > 0 ? aspect : 0.6)));
   const leftPad = 36, topPad = 22, rightPad = 12, bottomPad = 14;
   const W = leftPad + frameW + rightPad;
   const H = topPad + frameH + bottomPad;
 
-  const n = Math.max(1, Math.floor(panels));
   const panelW = frameW / n;
   const dirs = panelDirections(n, type, operation);
 
@@ -68,7 +70,16 @@ export function generateSketch({ width_in, height_in, panels = 1, type = "fixed"
   for (let i = 1; i < n; i++) {
     const x = leftPad + i * panelW;
     dividers.push(
-      `<line x1="${x}" y1="${topPad}" x2="${x}" y2="${topPad + frameH}" stroke="black" stroke-width="1"/>`
+      `<line x1="${x}" y1="${topPad}" x2="${x}" y2="${topPad + frameH}" stroke="black" stroke-width="1.5"/>`
+    );
+  }
+
+  const gR = Math.max(1, Math.floor(gridRows));
+  const gridLines = [];
+  for (let i = 1; i < gR; i++) {
+    const y = topPad + (frameH * i) / gR;
+    gridLines.push(
+      `<line x1="${leftPad}" y1="${y}" x2="${leftPad + frameW}" y2="${y}" stroke="black" stroke-width="1"/>`
     );
   }
 
@@ -100,7 +111,7 @@ export function generateSketch({ width_in, height_in, panels = 1, type = "fixed"
   }
 
   const widthLabel =
-    `<text x="${leftPad + frameW / 2}" y="${topPad - 6}" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#111">${formatInches(width_in)}</text>`;
+    `<text x="${leftPad + frameW / 2}" y="${topPad - 6}" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#111">${formatInches(totalWidth)}</text>`;
   const hCenter = topPad + frameH / 2;
   const heightLabel =
     `<text x="${leftPad - 10}" y="${hCenter + 4}" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#111" transform="rotate(-90 ${leftPad - 10} ${hCenter})">${formatInches(height_in)}</text>`;
@@ -110,6 +121,7 @@ export function generateSketch({ width_in, height_in, panels = 1, type = "fixed"
       <path d="M0,0 L10,5 L0,10 Z" fill="black"/></marker></defs>
     <rect x="${leftPad + 0.5}" y="${topPad + 0.5}" width="${frameW - 1}" height="${frameH - 1}" fill="white" stroke="black" stroke-width="2"/>
     ${dividers.join("")}
+    ${gridLines.join("")}
     ${glyphs.join("")}
     ${slidingArrow}
     ${widthLabel}

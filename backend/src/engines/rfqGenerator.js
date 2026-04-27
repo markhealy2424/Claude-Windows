@@ -1,11 +1,7 @@
 import PDFDocument from "pdfkit";
 import SVGtoPDF from "svg-to-pdfkit";
 import { generateSketch } from "./sketchGenerator.js";
-
-function inchesToMm(n) {
-  if (n == null || Number.isNaN(Number(n))) return null;
-  return Math.round(Number(n) * 25.4);
-}
+import { totalWidthIn, totalWidthMm, heightMm } from "./dimensions.js";
 
 function dimCell(inches, mm) {
   const inPart = inches == null ? "?" : `${inches}"`;
@@ -14,22 +10,18 @@ function dimCell(inches, mm) {
 }
 
 export function generateRFQ({ items, projectName }) {
-  const rows = items.map((it) => {
-    const wMm = it.width_mm ?? inchesToMm(it.width_in);
-    const hMm = it.height_mm ?? inchesToMm(it.height_in);
-    return {
-      mark: it.mark,
-      qty: it.quantity,
-      sketch: generateSketch(it),
-      type: it.type,
-      width_in: it.width_in,
-      height_in: it.height_in,
-      width_mm: wMm,
-      height_mm: hMm,
-      operation: it.operation,
-      notes: it.notes ?? "",
-    };
-  });
+  const rows = items.map((it) => ({
+    mark: it.mark,
+    qty: it.quantity,
+    sketch: generateSketch(it),
+    type: it.type,
+    width_in: totalWidthIn(it),
+    height_in: it.height_in ?? null,
+    width_mm: totalWidthMm(it),
+    height_mm: heightMm(it),
+    operation: it.operation,
+    notes: it.notes ?? "",
+  }));
   return { projectName, rows, generatedAt: new Date().toISOString() };
 }
 
@@ -82,8 +74,9 @@ export function renderRFQPdf({ items, projectName }, stream) {
       doc.text(String(text ?? ""), x + 4, yTop + 6, { width: w - 8, height: rowH - 12 });
     };
 
-    const wMm = it.width_mm ?? inchesToMm(it.width_in);
-    const hMm = it.height_mm ?? inchesToMm(it.height_in);
+    const wIn = totalWidthIn(it);
+    const wMm = totalWidthMm(it);
+    const hMm = heightMm(it);
 
     cellText(it.mark, cols[0].w); x += cols[0].w;
     cellText(it.quantity, cols[1].w); x += cols[1].w;
@@ -97,7 +90,7 @@ export function renderRFQPdf({ items, projectName }, stream) {
     x += cols[2].w;
 
     cellText(it.type, cols[3].w); x += cols[3].w;
-    cellText(dimCell(it.width_in, wMm), cols[4].w); x += cols[4].w;
+    cellText(dimCell(wIn, wMm), cols[4].w); x += cols[4].w;
     cellText(dimCell(it.height_in, hMm), cols[5].w); x += cols[5].w;
     cellText(it.operation, cols[6].w); x += cols[6].w;
     cellText(it.notes, cols[7].w);

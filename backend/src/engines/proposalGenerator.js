@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import SVGtoPDF from "svg-to-pdfkit";
 import { generateSketch } from "./sketchGenerator.js";
+import { totalWidthIn } from "./dimensions.js";
 
 export function generateProposal({ items, projectName, branding = {} }) {
   const rows = items.map((it) => ({
@@ -94,8 +95,9 @@ export function renderProposalPdf({ items, projectName, branding = {}, totals = 
     }
     x += cols[2].w;
 
+    const wIn = totalWidthIn(it);
     cellText([it.type, it.operation].filter(Boolean).join(", "), cols[3].w); x += cols[3].w;
-    cellText(it.width_in != null ? `${it.width_in}"` : "?", cols[4].w); x += cols[4].w;
+    cellText(wIn != null ? `${wIn}"` : "?", cols[4].w); x += cols[4].w;
     cellText(it.height_in != null ? `${it.height_in}"` : "?", cols[5].w); x += cols[5].w;
     cellText(money(price), cols[6].w); x += cols[6].w;
     cellText(money(lineTotal), cols[7].w);
