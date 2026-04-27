@@ -88,7 +88,9 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
   row("Date", dateLabel);
 
   // Requirements checklist — only render rows the user has answered
-  // (yes/no). Skip blanks so the PDF doesn't get padded with N/As.
+  // (yes/no). Each row prints as "Label:  Yes" with the value immediately
+  // adjacent to the question so the reader's eye doesn't have to track
+  // across whitespace to a right-aligned column.
   const reqs = safe.requirements ?? {};
   const answered = RFQ_REQUIREMENTS.filter((r) => reqs[r.key] === "yes" || reqs[r.key] === "no");
   if (answered.length > 0) {
@@ -102,20 +104,16 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
       .text("PROJECT REQUIREMENTS");
     doc.font("Helvetica").moveDown(0.2);
 
-    const valueColX = doc.page.width - doc.page.margins.right - 60;
     for (const req of answered) {
       const value = reqs[req.key];
       const spec = req.hasSpec && value === "no" ? (reqs[`${req.key}Spec`] || "").trim() : "";
-      const label = spec ? `${req.label} — ${spec}` : req.label;
-      const y = doc.y;
+      const labelText = spec ? `${req.label} — ${spec}: ` : `${req.label}: `;
       doc.fontSize(9).fillColor("#000")
-        .text(label, doc.page.margins.left, y, { width: valueColX - doc.page.margins.left - 10 });
-      const labelHeight = doc.heightOfString(label, { width: valueColX - doc.page.margins.left - 10 });
-      doc.fontSize(9).fillColor(value === "yes" ? "#15623F" : "#94251A")
-        .text(value === "yes" ? "Yes" : "No", valueColX, y, { width: 60, align: "right" });
-      doc.fillColor("#000");
-      // Make sure the cursor is below whichever block was taller.
-      doc.y = y + labelHeight + 3;
+        .text(labelText, doc.page.margins.left, doc.y, { continued: true });
+      doc.font("Helvetica-Bold")
+        .fillColor(value === "yes" ? "#15623F" : "#94251A")
+        .text(value === "yes" ? "Yes" : "No");
+      doc.font("Helvetica").fillColor("#000");
     }
   }
 

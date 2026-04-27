@@ -123,19 +123,18 @@ function RFQHeader({ info, projectName }) {
           <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600, marginBottom: 8 }}>
             Project requirements
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", columnGap: 12, rowGap: 4, fontSize: 13 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
             {answeredReqs.map((req) => {
               const value = reqs[req.key];
               const spec = req.hasSpec && value === "no" ? reqs[`${req.key}Spec`] : null;
               return (
-                <div key={req.key} style={{ display: "contents" }}>
-                  <span>
-                    {req.label}
-                    {spec && <span className="text-muted" style={{ fontStyle: "italic" }}> — {spec}</span>}
-                  </span>
-                  <span style={{ fontWeight: 600, color: value === "yes" ? "var(--color-success)" : "var(--color-error)" }}>
+                <div key={req.key}>
+                  {req.label}
+                  {spec && <span className="text-muted" style={{ fontStyle: "italic" }}> — {spec}</span>}
+                  <span style={{ marginLeft: 4 }}>: </span>
+                  <strong style={{ color: value === "yes" ? "var(--color-success)" : "var(--color-error)" }}>
                     {value === "yes" ? "Yes" : "No"}
-                  </span>
+                  </strong>
                 </div>
               );
             })}
