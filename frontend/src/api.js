@@ -14,9 +14,11 @@ export const api = {
       body: JSON.stringify({ name }),
     }).then(json),
   getProject: (id) => fetch(`${base}/projects/${id}`).then(json),
-  extractPlan: (file) => {
+  extractPlan: (file, projectId, planId) => {
     const fd = new FormData();
     fd.append("pdf", file);
+    if (projectId) fd.append("projectId", projectId);
+    if (planId) fd.append("planId", planId);
     return fetch(`${base}/plans/extract`, { method: "POST", body: fd }).then(json);
   },
   parseSchedule: (pages, schedulePageNumbers) =>
@@ -25,11 +27,11 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pages, schedulePageNumbers }),
     }).then(json),
-  countMarks: (pages, floorPageNumbers) =>
+  countMarks: ({ pages, floorPageNumbers, projectId, planId, projectName }) =>
     fetch(`${base}/plans/count-marks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pages, floorPageNumbers }),
+      body: JSON.stringify({ pages, floorPageNumbers, projectId, planId, projectName }),
     }).then(json),
   updateProject: (id, patch) =>
     fetch(`${base}/projects/${id}`, {

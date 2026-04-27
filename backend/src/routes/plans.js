@@ -3,32 +3,75 @@ import multer from "multer";
 import { extractPlan } from "../engines/planExtraction.js";
 import { parseSchedule } from "../engines/scheduleMatching.js";
 import { detectMarks } from "../engines/markDetection.js";
+import { detectMarksWithVision } from "../engines/visionMarkDetection.js";
+import { savePlanPdf, getPlanPdfPath, planPdfExists } from "../storage.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 router.post("/extract", upload.single("pdf"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "pdf required" });
+  const { projectId, planId } = req.body ?? {};
   try {
     const pages = await extractPlan(req.file.buffer);
-    res.json({ pages });
+
+    let pdfPersisted = false;
+    if (projectId && planId) {
+      try {
+        savePlanPdf(projectId, planId, req.file.buffer);
+        pdfPersisted = true;
+      } catch (err) {
+        console.error("[plans/extract] failed to persist PDF:", err);
+      }
+    }
+
+    res.json({ pages, pdfPersisted });
   } catch (err) {
     console.error("[plans/extract]", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post("/count-marks", (req, res) => {
-  const { pages, floorPageNumbers } = req.body ?? {};
-  if (!Array.isArray(pages)) return res.status(400).json({ error: "pages array required" });
+router.post("/count-marks", async (req, res) => {
+  const { pages, floorPageNumbers, projectId, planId, projectName } = req.body ?? {};
   if (!Array.isArray(floorPageNumbers) || floorPageNumbers.length === 0) {
     return res.status(400).json({ error: "floorPageNumbers array required" });
   }
+
+  const visionAvailable = Boolean(process.env.ANTHROPIC_API_KEY);
+  const pdfOnDisk = projectId && planId && planPdfExists(projectId, planId);
+
+  if (visionAvailable && pdfOnDisk) {
+    try {
+      const result = await detectMarksWithVision({
+        pdfPath: getPlanPdfPath(projectId, planId),
+        floorPageNumbers,
+        projectName,
+      });
+      return res.json(result);
+    } catch (err) {
+      console.error("[plans/count-marks/vision]", err);
+      // fall through to local detector
+    }
+  }
+
+  if (!Array.isArray(pages)) {
+    return res.status(400).json({
+      error: "pages array required for local detection",
+      visionAvailable,
+      pdfOnDisk,
+    });
+  }
   try {
     const result = detectMarks(pages, floorPageNumbers);
-    res.json(result);
+    res.json({
+      ...result,
+      detector: "local",
+      visionAvailable,
+      pdfOnDisk,
+    });
   } catch (err) {
-    console.error("[plans/count-marks]", err);
+    console.error("[plans/count-marks/local]", err);
     res.status(500).json({ error: err.message });
   }
 });

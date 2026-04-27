@@ -79,20 +79,25 @@ export default function PlansTab({ project, onChange }) {
     const count = await renderThumbs(f);
     if (count === 0) return;
 
+    const planId = crypto.randomUUID();
+
     let extractedPages = null;
+    let pdfPersisted = false;
     try {
-      const result = await api.extractPlan(f);
+      const result = await api.extractPlan(f, project.id, planId);
       extractedPages = result.pages ?? [];
+      pdfPersisted = !!result.pdfPersisted;
     } catch (e) {
       setError("Text extraction failed (you can still tag pages, but won't be able to auto-extract items): " + String(e));
     }
 
     const plan = {
-      id: crypto.randomUUID(),
+      id: planId,
       name: f.name,
       pageCount: count,
       tags: {},
       pages: extractedPages,
+      pdfPersisted,
       addedAt: new Date().toISOString(),
     };
     setActiveId(plan.id);
@@ -138,11 +143,17 @@ export default function PlansTab({ project, onChange }) {
   }
 
   async function countMarks() {
-    if (!active || !hasExtractedText || floorPages.length === 0) return;
+    if (!active || floorPages.length === 0) return;
     setCountingMarks(true);
     setError("");
     try {
-      const result = await api.countMarks(active.pages, floorPages);
+      const result = await api.countMarks({
+        pages: active.pages,
+        floorPageNumbers: floorPages,
+        projectId: project.id,
+        planId: active.id,
+        projectName: project.name,
+      });
       setMarksPreview(result);
     } catch (e) {
       setError(String(e));
@@ -225,12 +236,12 @@ export default function PlansTab({ project, onChange }) {
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <button
                   onClick={countMarks}
-                  disabled={!hasExtractedText || floorPages.length === 0 || countingMarks}
+                  disabled={floorPages.length === 0 || countingMarks || (!hasExtractedText && !active.pdfPersisted)}
                   title={
-                    !hasExtractedText
-                      ? "Re-upload this PDF to enable mark detection"
-                      : floorPages.length === 0
+                    floorPages.length === 0
                       ? "Tag at least one page as Floor first"
+                      : !hasExtractedText && !active.pdfPersisted
+                      ? "Re-upload this PDF to enable mark detection"
                       : ""
                   }
                 >
@@ -444,11 +455,28 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
         </div>
       </div>
 
-      {preview.decoded && (
-        <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
-          PDF used a custom font with no Unicode map; auto-decoded by shifting glyphs +{preview.shift}.
-        </div>
-      )}
+      <div style={{ fontSize: 12, marginBottom: 8 }}>
+        {preview.detector === "vision" ? (
+          <span style={{ color: "#0a0" }}>
+            ✓ Counted by AI vision ({preview.model ?? "Claude"}) — reads hexagons directly from the rendered PDF.
+            {preview.usage && (
+              <span style={{ color: "#888" }}>
+                {" "}· {preview.usage.input_tokens?.toLocaleString()} input + {preview.usage.output_tokens?.toLocaleString()} output tokens
+                {preview.usage.cache_read_input_tokens > 0 && ` (${preview.usage.cache_read_input_tokens.toLocaleString()} cached)`}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span style={{ color: "#a60" }}>
+            ⚠ Counted by local text fallback (no API key, or PDF not on disk).
+            Local detection counts every standalone letter and over-counts when legend entries or grid labels are present.
+            For reliable counts, set <code>ANTHROPIC_KEY</code> in Railway and re-upload this PDF.
+            {preview.decoded && (
+              <> Auto-decoded font shift: +{preview.shift}.</>
+            )}
+          </span>
+        )}
+      </div>
 
       <table>
         <thead>
