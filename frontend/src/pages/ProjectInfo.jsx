@@ -1,29 +1,35 @@
 import { useState, useEffect } from "react";
 import { TextField } from "../lib/Fields.jsx";
+import { REQUIREMENTS } from "../lib/projectRequirements.js";
 
 const blank = {
   address: "",
   buyerName: "",
   company: "",
   date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+  requirements: {},  // { dualGlazed: "yes"|"no", narrowFrame: "yes"|"no", narrowFrameSpec: "...", ... }
 };
 
 export default function ProjectInfo({ project, onChange }) {
   const [info, setInfo] = useState({ ...blank, ...(project.info ?? {}) });
 
-  // Reset local state when navigating between projects.
   useEffect(() => {
     setInfo({ ...blank, ...(project.info ?? {}) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
-  // Auto-save: every change pushes to the parent's optimistic-savePatch
-  // path, so values persist as you type — no Save button to remember.
   function set(key, value) {
     const next = { ...info, [key]: value };
     setInfo(next);
     onChange({ info: next });
   }
+
+  function setReq(key, value) {
+    const nextReqs = { ...(info.requirements ?? {}), [key]: value };
+    set("requirements", nextReqs);
+  }
+
+  const reqs = info.requirements ?? {};
 
   return (
     <div>
@@ -31,7 +37,8 @@ export default function ProjectInfo({ project, onChange }) {
         These details appear in the header of every RFQ PDF you export for this project. Changes save automatically.
       </p>
 
-      <div className="card" style={{ maxWidth: 640 }}>
+      <div className="card" style={{ maxWidth: 720, marginBottom: 24 }}>
+        <h3 style={{ marginTop: 0 }}>Project details</h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--s-4)" }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <TextField
@@ -68,6 +75,45 @@ export default function ProjectInfo({ project, onChange }) {
             />
           </label>
         </div>
+      </div>
+
+      <div className="card" style={{ maxWidth: 720, marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>Project requirements</h3>
+        <p className="text-muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 16 }}>
+          These appear as a checklist on the RFQ so suppliers know exactly what spec to quote against. Leave blank for any you don't have a preference on.
+        </p>
+        {REQUIREMENTS.map((req) => {
+          const value = reqs[req.key] ?? "";
+          const showSpec = req.hasSpec && value === "no";
+          const specKey = `${req.key}Spec`;
+          return (
+            <div key={req.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--color-divider)" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14 }}>{req.label}</div>
+                {showSpec && (
+                  <input
+                    placeholder={req.specLabel}
+                    value={reqs[specKey] ?? ""}
+                    onChange={(e) => setReq(specKey, e.target.value)}
+                    style={{ width: "100%", marginTop: 6, fontSize: 13 }}
+                  />
+                )}
+              </div>
+              <div className="yn-toggle">
+                <button
+                  type="button"
+                  className={value === "yes" ? "active" : ""}
+                  onClick={() => setReq(req.key, value === "yes" ? "" : "yes")}
+                >Yes</button>
+                <button
+                  type="button"
+                  className={value === "no" ? "active" : ""}
+                  onClick={() => setReq(req.key, value === "no" ? "" : "no")}
+                >No</button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <p className="text-muted" style={{ fontSize: 12, marginTop: 16, fontStyle: "italic" }}>

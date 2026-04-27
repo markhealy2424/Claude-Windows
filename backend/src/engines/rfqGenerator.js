@@ -40,6 +40,22 @@ function formatRfqDate(isoOrUndefined) {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
+// Mirrors frontend/src/lib/projectRequirements.js. Backend doesn't import
+// from frontend, so we duplicate the small list here. Keep these in sync if
+// the labels/keys ever change.
+const RFQ_REQUIREMENTS = [
+  { key: "dualGlazed",        label: "All windows dual glazed" },
+  { key: "argonFilled",       label: "All windows argon filled" },
+  { key: "thermallyBroken",   label: "All aluminum thermally broken" },
+  { key: "nfrc",              label: "All windows NFRC certified" },
+  { key: "aamaCertified",     label: "All windows AAMA certified" },
+  { key: "modernHardware",    label: "Modern styled hardware" },
+  { key: "narrowFrame",       label: "Narrow styled frame", hasSpec: true },
+  { key: "retractableScreen", label: "Retractable folded screen" },
+  { key: "nailFin",           label: "New construction style (with nail fin)" },
+  { key: "powderCoatedBlack", label: "Powder coated black color", hasSpec: true },
+];
+
 export function renderRFQPdf({ items, projectName, info }, stream) {
   // Landscape A4 — 10 columns + sketches need the extra width.
   const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
@@ -70,6 +86,38 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
   row("Buyer", safe.buyerName);
   row("Company", safe.company);
   row("Date", dateLabel);
+
+  // Requirements checklist — only render rows the user has answered
+  // (yes/no). Skip blanks so the PDF doesn't get padded with N/As.
+  const reqs = safe.requirements ?? {};
+  const answered = RFQ_REQUIREMENTS.filter((r) => reqs[r.key] === "yes" || reqs[r.key] === "no");
+  if (answered.length > 0) {
+    doc.moveDown(0.6);
+    const startY = doc.y;
+    doc.moveTo(doc.page.margins.left, startY)
+      .lineTo(doc.page.width - doc.page.margins.right, startY)
+      .strokeColor("#888").lineWidth(0.5).stroke().strokeColor("#000");
+    doc.moveDown(0.4);
+    doc.font("Helvetica-Bold").fontSize(10).fillColor("#000")
+      .text("PROJECT REQUIREMENTS");
+    doc.font("Helvetica").moveDown(0.2);
+
+    const valueColX = doc.page.width - doc.page.margins.right - 60;
+    for (const req of answered) {
+      const value = reqs[req.key];
+      const spec = req.hasSpec && value === "no" ? (reqs[`${req.key}Spec`] || "").trim() : "";
+      const label = spec ? `${req.label} — ${spec}` : req.label;
+      const y = doc.y;
+      doc.fontSize(9).fillColor("#000")
+        .text(label, doc.page.margins.left, y, { width: valueColX - doc.page.margins.left - 10 });
+      const labelHeight = doc.heightOfString(label, { width: valueColX - doc.page.margins.left - 10 });
+      doc.fontSize(9).fillColor(value === "yes" ? "#15623F" : "#94251A")
+        .text(value === "yes" ? "Yes" : "No", valueColX, y, { width: 60, align: "right" });
+      doc.fillColor("#000");
+      // Make sure the cursor is below whichever block was taller.
+      doc.y = y + labelHeight + 3;
+    }
+  }
 
   doc.moveDown(0.8);
   doc.fillColor("#000");

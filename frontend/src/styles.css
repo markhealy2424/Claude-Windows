@@ -470,6 +470,38 @@ code {
   color: var(--color-accent);
 }
 
+/* ─── Yes/No segmented toggle (Project Info requirements) ─── */
+
+.yn-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.yn-toggle button {
+  border: none;
+  border-radius: 0;
+  padding: 6px 16px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.yn-toggle button + button {
+  border-left: 1px solid var(--color-border-strong);
+}
+.yn-toggle button:hover:not(.active) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+.yn-toggle button.active {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font-weight: 600;
+}
+
 /* ─── Row + card states ─── */
 
 tr.warning,

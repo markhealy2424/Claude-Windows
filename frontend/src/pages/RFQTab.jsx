@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { REQUIREMENTS } from "../lib/projectRequirements.js";
 
 export default function RFQTab({ project }) {
   const [preview, setPreview] = useState(null);
@@ -94,10 +95,13 @@ export default function RFQTab({ project }) {
 
 function RFQHeader({ info, projectName }) {
   const filled = info.address || info.buyerName || info.company || info.date;
-  if (!filled) {
+  const reqs = info.requirements ?? {};
+  const answeredReqs = REQUIREMENTS.filter((r) => reqs[r.key] === "yes" || reqs[r.key] === "no");
+
+  if (!filled && answeredReqs.length === 0) {
     return (
       <div className="card warning" style={{ marginBottom: 16 }}>
-        Project info not filled in yet. Open the <strong>Project Info</strong> tab to add the address, buyer, company, and date — these appear in the RFQ header.
+        Project info not filled in yet. Open the <strong>Project Info</strong> tab to add the address, buyer, company, date, and project requirements — these appear in the RFQ header.
       </div>
     );
   }
@@ -113,6 +117,31 @@ function RFQHeader({ info, projectName }) {
         {info.company && (<><span className="text-muted">Company:</span><span>{info.company}</span></>)}
         {info.date && (<><span className="text-muted">Date:</span><span>{dateLabel}</span></>)}
       </div>
+
+      {answeredReqs.length > 0 && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--color-divider)" }}>
+          <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600, marginBottom: 8 }}>
+            Project requirements
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", columnGap: 12, rowGap: 4, fontSize: 13 }}>
+            {answeredReqs.map((req) => {
+              const value = reqs[req.key];
+              const spec = req.hasSpec && value === "no" ? reqs[`${req.key}Spec`] : null;
+              return (
+                <div key={req.key} style={{ display: "contents" }}>
+                  <span>
+                    {req.label}
+                    {spec && <span className="text-muted" style={{ fontStyle: "italic" }}> — {spec}</span>}
+                  </span>
+                  <span style={{ fontWeight: 600, color: value === "yes" ? "var(--color-success)" : "var(--color-error)" }}>
+                    {value === "yes" ? "Yes" : "No"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
