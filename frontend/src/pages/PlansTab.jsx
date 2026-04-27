@@ -433,6 +433,8 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
   const itemMarks = new Set(items.map((it) => it.mark));
   const matched = marks.filter((m) => itemMarks.has(m));
   const unmatched = marks.filter((m) => !itemMarks.has(m));
+  const clusters = preview.clusters ?? [];
+  const clusteredMarks = new Set(clusters.map((c) => c.mark));
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
@@ -478,6 +480,32 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
         )}
       </div>
 
+      {clusters.length > 0 && (
+        <div style={{
+          background: "#fff8e1",
+          border: "1px solid #f0c040",
+          borderRadius: 4,
+          padding: 12,
+          marginBottom: 12,
+        }}>
+          <strong style={{ color: "#92400e" }}>
+            ⚠ {clusters.length} cluster{clusters.length === 1 ? "" : "s"} of 3+ same-letter hexagons detected — verify against the schedule
+          </strong>
+          <div style={{ fontSize: 12, color: "#666", marginTop: 4, marginBottom: 8 }}>
+            A cluster of 3+ adjacent hexagons with the same letter is usually a single multi-panel window assembly (total quantity = 1 with that many panels), not N separate windows. Check each one against the schedule's panel count for that mark and adjust the quantity manually after applying.
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
+            {clusters.map((c, i) => (
+              <li key={i} style={{ marginBottom: 4 }}>
+                <strong>{c.mark}</strong> on page {c.page} — {c.hexagonCount} hexagons clustered.
+                {" "}If the schedule lists mark {c.mark} as a {c.hexagonCount}-panel window, set quantity = <strong>1</strong> with panels = <strong>{c.hexagonCount}</strong>.
+                {" "}If they're {c.hexagonCount} separate single-panel windows, leave the count as <strong>{c.hexagonCount}</strong>.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <table>
         <thead>
           <tr>
@@ -493,9 +521,13 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
         <tbody>
           {marks.map((m) => {
             const item = items.find((it) => it.mark === m);
+            const isClustered = clusteredMarks.has(m);
             return (
-              <tr key={m}>
-                <td><strong>{m}</strong></td>
+              <tr key={m} style={isClustered ? { background: "#fff8e1" } : undefined}>
+                <td>
+                  <strong>{m}</strong>
+                  {isClustered && <span title="Cluster detected — verify against schedule" style={{ marginLeft: 6, color: "#92400e" }}>⚠</span>}
+                </td>
                 <td>{counts[m]}</td>
                 {floorPages.map((p) => (
                   <td key={p}>{preview.perPage?.[p]?.[m] ?? 0}</td>

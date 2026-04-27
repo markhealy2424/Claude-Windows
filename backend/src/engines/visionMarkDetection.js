@@ -16,13 +16,11 @@ CRITICAL COUNTING RULES — read carefully:
 
 1. **The hexagon is the disambiguator.** Each hexagon contains exactly ONE letter. There are NEVER multiple letters inside a single hexagon.
 
-2. **Count hexagons.** count(letter X) = the number of hexagons that contain X. Nothing more complicated.
+2. **Count every hexagon.** count(letter X) = the number of hexagons that contain X. Nothing more complicated. Always return the raw hexagon count — do not attempt to collapse clusters into a smaller number on your own.
 
-3. **Adjacent hexagons mean adjacent windows.** If 4 hexagons appear next to each other and they all contain the letter "H", the count for H is 4 — they are 4 separate windows positioned side-by-side, NOT one multi-panel assembly. Do NOT collapse adjacent same-letter hexagons into a single count.
+3. **Empty pages are valid.** If a page in the PDF has no hexagons (e.g., a 3rd-floor sheet with no windows placed yet), it contributes zero marks. Do not invent marks to fill in.
 
-4. **Empty pages are valid.** If a page in the PDF has no hexagons (e.g., a 3rd-floor sheet with no windows placed yet), it contributes zero marks. Do not invent marks to fill in.
-
-5. **Letters NOT inside a hexagon are NOT marks.** Ignore them entirely. Common false-positive sources you must IGNORE:
+4. **Letters NOT inside a hexagon are NOT marks.** Ignore them entirely. Common false-positive sources you must IGNORE:
    - Grid-line labels at the page edges (architectural reference grid)
    - Room labels (BEDROOM, KITCHEN, M. BATH, GARAGE, etc.)
    - Dimension numbers and dimension callouts
@@ -30,18 +28,28 @@ CRITICAL COUNTING RULES — read carefully:
    - Sheet titles, footnote references, schedule/notes text
    - Letters that appear inside or next to a window symbol but are NOT enclosed in their own hexagon (those are panel sub-labels, not marks)
 
+5. **Detect CLUSTERS for human verification.** A "cluster" is 3 OR MORE hexagons containing the SAME letter, positioned tightly together (immediately adjacent, touching or nearly so, with no other hexagons between them). A cluster usually represents ONE multi-panel window assembly (e.g., a 5-hexagon cluster of "G" is typically one 5-panel window, total quantity = 1), but it can also be N separate side-by-side windows. The window schedule resolves the ambiguity. Always still return the raw hexagon count in "marks" and "perPage" — the cluster info is an additional flag for the human to verify.
+
+   - 1 standalone hexagon with letter X → just count it; not a cluster.
+   - 2 adjacent hexagons of same letter (e.g., "II" or "NN") → just count them as 2; not a cluster.
+   - 3+ adjacent hexagons of same letter → REPORT IT in the "clusters" array.
+
 OUTPUT FORMAT:
 
 Return ONLY a JSON object with this exact shape:
 
 {
   "marks": { "A": 3, "B": 1, "C": 2, ... },
-  "perPage": { "1": { "A": 3, "B": 1 }, "2": { "C": 2 } }
+  "perPage": { "1": { "A": 3, "B": 1 }, "2": { "C": 2 } },
+  "clusters": [
+    { "mark": "G", "page": 1, "hexagonCount": 5 }
+  ]
 }
 
 Where:
-- "marks" maps each detected mark (letter or letter+digit code) to its TOTAL count across all analyzed pages.
+- "marks" maps each detected mark to its TOTAL raw hexagon count across all analyzed pages.
 - "perPage" maps each page number (1-indexed string keys) to the per-page mark counts.
+- "clusters" lists every cluster of 3+ same-letter adjacent hexagons. Empty array if none.
 - Only include marks with count >= 1. Do not list marks with count 0.
 - Do not include any commentary, explanation, or text outside the JSON.`;
 
@@ -59,8 +67,21 @@ const RESPONSE_SCHEMA = {
         additionalProperties: { type: "integer", minimum: 1 },
       },
     },
+    clusters: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          mark: { type: "string" },
+          page: { type: "integer", minimum: 1 },
+          hexagonCount: { type: "integer", minimum: 3 },
+        },
+        required: ["mark", "page", "hexagonCount"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["marks", "perPage"],
+  required: ["marks", "perPage", "clusters"],
   additionalProperties: false,
 };
 
@@ -141,10 +162,16 @@ Apply the rules from the system prompt and return the JSON object with mark coun
     perPage[Number(pageStr)] = pageCounts;
   }
   const totalDetected = Object.values(counts).reduce((s, n) => s + Number(n || 0), 0);
+  const clusters = (parsed.clusters ?? []).map((c) => ({
+    mark: c.mark,
+    page: Number(c.page),
+    hexagonCount: Number(c.hexagonCount),
+  }));
 
   return {
     counts,
     perPage,
+    clusters,
     decoded: false,
     shift: 0,
     totalDetected,
