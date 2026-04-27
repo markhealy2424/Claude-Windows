@@ -65,11 +65,8 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
   row("Company", safe.company);
   row("Date", dateLabel);
 
-  // Generation timestamp (small, right-aligned-ish)
-  doc.moveDown(0.4);
-  doc.fontSize(9).fillColor("#888")
-    .text(`Generated: ${new Date().toLocaleString()}`);
-  doc.fillColor("#000").moveDown(0.6);
+  doc.moveDown(0.8);
+  doc.fillColor("#000");
 
   const cols = [
     { key: "mark", label: "Mark", w: 42 },
