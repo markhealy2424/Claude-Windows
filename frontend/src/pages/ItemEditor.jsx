@@ -2,13 +2,14 @@ import { useState } from "react";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 
 const blank = {
-  mark: "", quantity: 1, type: "fixed", operation: "",
+  mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
   width_in: 36, height_in: 48, width_mm: 914, height_mm: 1219,
   panels: 1, gridRows: 1, operableRow: "all", grid: false, notes: "",
 };
 
 const TYPES = [["fixed", "fixed"], ["casement", "casement"], ["sliding", "sliding"]];
 const OPERABLE_ROWS = [["all", "All rows"], ["top", "Top row"], ["bottom", "Bottom row"]];
+const MATERIALS = [["Aluminum", "Aluminum"], ["Iron", "Iron"], ["Wood", "Wood"]];
 
 function totalWidth(it) {
   return Number(it.width_in ?? 0) * Math.max(1, Math.floor(Number(it.panels ?? 1)));
@@ -65,6 +66,7 @@ export default function ItemEditor({ items = [], onChange }) {
         <TextField label="Mark" value={draft.mark} onChange={(v) => set("mark", v)} />
         <NumberField label="Qty" value={draft.quantity} onChange={(v) => set("quantity", v)} />
         <SelectField label="Type" value={draft.type} onChange={(v) => set("type", v)} options={TYPES} />
+        <SelectField label="Material" value={draft.material ?? "Aluminum"} onChange={(v) => set("material", v)} options={MATERIALS} />
         <TextField label="Operation (left/right)" value={draft.operation} onChange={(v) => set("operation", v)} />
         <NumberField label="Width per panel (in)" value={draft.width_in} onChange={(v) => set("width_in", v)} />
         <NumberField label="Height (in)" value={draft.height_in} onChange={(v) => set("height_in", v)} />
@@ -81,7 +83,7 @@ export default function ItemEditor({ items = [], onChange }) {
       <table>
         <thead>
           <tr>
-            <th>Mark</th><th>Qty</th><th>Type</th><th>Operation</th>
+            <th>Mark</th><th>Qty</th><th>Type</th><th>Material</th><th>Operation</th>
             <th>W/panel</th><th>Total W</th><th>H</th>
             <th>Panels</th><th>Grid</th><th>Operable</th><th>Notes</th><th></th>
           </tr>
@@ -96,6 +98,9 @@ export default function ItemEditor({ items = [], onChange }) {
                   <td><NumberField label="" value={editDraft.quantity} onChange={(v) => setEdit("quantity", v)} inputStyle={{ width: 50 }} /></td>
                   <td>
                     <SelectField label="" value={editDraft.type} onChange={(v) => setEdit("type", v)} options={TYPES} />
+                  </td>
+                  <td>
+                    <SelectField label="" value={editDraft.material ?? "Aluminum"} onChange={(v) => setEdit("material", v)} options={MATERIALS} />
                   </td>
                   <td><TextField label="" value={editDraft.operation} onChange={(v) => setEdit("operation", v)} inputStyle={{ width: 80 }} /></td>
                   <td><NumberField label="" value={editDraft.width_in} onChange={(v) => setEdit("width_in", v)} inputStyle={{ width: 60 }} /></td>
@@ -121,6 +126,7 @@ export default function ItemEditor({ items = [], onChange }) {
                 <td>{it.mark}</td>
                 <td>{it.quantity}</td>
                 <td>{it.type}</td>
+                <td>{it.material ?? "Aluminum"}</td>
                 <td>{it.operation}</td>
                 <td>{it.width_in}"</td>
                 <td>{totalWidth(it)}"</td>
@@ -139,7 +145,7 @@ export default function ItemEditor({ items = [], onChange }) {
             );
           })}
           {items.length === 0 && (
-            <tr><td colSpan={12} className="text-subtle">No items yet.</td></tr>
+            <tr><td colSpan={13} className="text-subtle">No items yet.</td></tr>
           )}
         </tbody>
       </table>

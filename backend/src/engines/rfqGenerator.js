@@ -15,10 +15,12 @@ export function generateRFQ({ items, projectName }) {
     qty: it.quantity,
     sketch: generateSketch(it),
     type: it.type,
+    material: it.material ?? "Aluminum",
     width_in: totalWidthIn(it),
     height_in: it.height_in ?? null,
     width_mm: totalWidthMm(it),
     height_mm: heightMm(it),
+    panels: it.panels ?? 1,
     operation: it.operation,
     notes: it.notes ?? "",
   }));
@@ -34,14 +36,16 @@ export function renderRFQPdf({ items, projectName }, stream) {
   doc.moveDown(0.8).fillColor("#000");
 
   const cols = [
-    { key: "mark", label: "Mark", w: 36 },
-    { key: "qty", label: "Qty", w: 28 },
-    { key: "sketch", label: "Sketch", w: 100 },
-    { key: "type", label: "Type", w: 55 },
-    { key: "width", label: "Width", w: 55 },
-    { key: "height", label: "Height", w: 55 },
-    { key: "operation", label: "Operation", w: 60 },
-    { key: "notes", label: "Notes", w: 126 },
+    { key: "mark", label: "Mark", w: 32 },
+    { key: "qty", label: "Qty", w: 26 },
+    { key: "sketch", label: "Sketch", w: 90 },
+    { key: "type", label: "Type", w: 50 },
+    { key: "material", label: "Material", w: 55 },
+    { key: "width", label: "Width", w: 50 },
+    { key: "height", label: "Height", w: 50 },
+    { key: "panels", label: "Panels", w: 36 },
+    { key: "operation", label: "Operation", w: 55 },
+    { key: "notes", label: "Notes", w: 71 },
   ];
   const xStart = doc.page.margins.left;
   const tableWidth = cols.reduce((s, c) => s + c.w, 0);
@@ -90,10 +94,12 @@ export function renderRFQPdf({ items, projectName }, stream) {
     x += cols[2].w;
 
     cellText(it.type, cols[3].w); x += cols[3].w;
-    cellText(dimCell(wIn, wMm), cols[4].w); x += cols[4].w;
-    cellText(dimCell(it.height_in, hMm), cols[5].w); x += cols[5].w;
-    cellText(it.operation, cols[6].w); x += cols[6].w;
-    cellText(it.notes, cols[7].w);
+    cellText(it.material ?? "Aluminum", cols[4].w); x += cols[4].w;
+    cellText(dimCell(wIn, wMm), cols[5].w); x += cols[5].w;
+    cellText(dimCell(it.height_in, hMm), cols[6].w); x += cols[6].w;
+    cellText(it.panels ?? 1, cols[7].w); x += cols[7].w;
+    cellText(it.operation, cols[8].w); x += cols[8].w;
+    cellText(it.notes, cols[9].w);
 
     const yBot = yTop + rowH;
     doc.moveTo(xStart, yBot).lineTo(xStart + tableWidth, yBot).strokeColor("#ddd").stroke().strokeColor("#000");

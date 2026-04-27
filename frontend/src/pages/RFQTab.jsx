@@ -53,8 +53,8 @@ export default function RFQTab({ project }) {
         <table>
           <thead>
             <tr>
-              <th>Mark</th><th>Qty</th><th>Sketch</th><th>Type</th>
-              <th>Width</th><th>Height</th><th>Operation</th><th>Notes</th>
+              <th>Mark</th><th>Qty</th><th>Sketch</th><th>Type</th><th>Material</th>
+              <th>Width</th><th>Height</th><th>Panels</th><th>Operation</th><th>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -64,6 +64,7 @@ export default function RFQTab({ project }) {
                 <td>{r.qty}</td>
                 <td style={{ width: 120 }} dangerouslySetInnerHTML={{ __html: r.sketch }} />
                 <td>{r.type}</td>
+                <td>{r.material ?? "Aluminum"}</td>
                 <td>
                   {r.width_in ?? "?"}"
                   {r.width_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_mm} mm</div>}
@@ -72,6 +73,7 @@ export default function RFQTab({ project }) {
                   {r.height_in ?? "?"}"
                   {r.height_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.height_mm} mm</div>}
                 </td>
+                <td>{r.panels ?? 1}</td>
                 <td>{r.operation}</td>
                 <td>{r.notes}</td>
               </tr>
