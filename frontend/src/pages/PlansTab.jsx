@@ -210,7 +210,7 @@ export default function PlansTab({ project, onChange }) {
               color: p.id === activeId ? "#fff" : "#111", cursor: "pointer",
             }}
           >
-            {p.name} · {p.pageCount}p{p.pages?.length ? " · text ✓" : ""}
+            {p.name} · {p.pageCount}p{p.pages?.length ? " · text ✓" : ""}{p.pdfPersisted ? " · PDF ✓" : " · PDF ✗"}
           </button>
         ))}
         <label style={{ padding: "6px 10px", border: "1px dashed #888", borderRadius: 4, cursor: "pointer" }}>
@@ -469,8 +469,8 @@ function MarksPreview({ preview, items, floorPages, onCancel, onApply }) {
         ) : (
           <span style={{ color: "#a60" }}>
             ⚠ Counted by local text fallback (no API key, or PDF not on disk).
-            Local detection counts every standalone letter and over-counts when legend entries or grid labels are present.
-            For reliable counts, set <code>ANTHROPIC_KEY</code> in Railway and re-upload this PDF.
+            Local detection counts every standalone letter and over-counts grid labels, legend entries, and any short-letter glyph it finds.
+            For reliable counts: (1) set <code>ANTHROPIC_API_KEY</code> in Railway, AND (2) <strong>remove this plan and re-upload the PDF</strong> — older uploads don't have bytes saved on the server's persistent volume, which vision needs.
             {preview.decoded && (
               <> Auto-decoded font shift: +{preview.shift}.</>
             )}
