@@ -1,7 +1,16 @@
 import PDFDocument from "pdfkit";
 import SVGtoPDF from "svg-to-pdfkit";
+import { existsSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { generateSketch } from "./sketchGenerator.js";
 import { totalWidthIn } from "./dimensions.js";
+
+// Cover-page banner ships with the backend at backend/assets/cover-banner.png.
+// Resolved once at module load; falls back to a brand-mark block if missing.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const COVER_BANNER_PATH = resolve(__dirname, "../../assets/cover-banner.png");
+const COVER_BANNER_AVAILABLE = existsSync(COVER_BANNER_PATH);
 
 const ACCENT = "#B85C38";
 const RED = "#C0392B";
@@ -319,37 +328,23 @@ function drawCoverPage(doc, ctx) {
   const y = margin;
   const w = pageW - margin * 2;
 
-  // Banner box
-  const bannerH = 240;
-  doc.lineWidth(1).strokeColor("#000").rect(x, y, w, bannerH).stroke();
-
-  // Brand mark centered
-  const brandSize = 100;
-  drawBrandMark(doc, x + (w - brandSize) / 2, y + 32, brandSize, ctx);
-
-  // Company name + tagline
-  doc
-    .fillColor("#000")
-    .font("Helvetica-Bold")
-    .fontSize(24)
-    .text(ctx.company, x, y + 150, { width: w, align: "center" });
-  doc
-    .font("Helvetica")
-    .fontSize(11)
-    .fillColor(SUBTLE)
-    .text("AAMA Certified · Energy Star Partner", x, y + 182, {
-      width: w,
-      align: "center",
-    });
-  const tagParts = [ctx.companyAddress, ctx.companyPhone].filter(Boolean);
-  if (tagParts.length) {
+  // Banner: 914×610 source, fit into width preserving aspect ratio.
+  const bannerH = Math.round(w * (610 / 914));
+  if (COVER_BANNER_AVAILABLE) {
+    doc.image(COVER_BANNER_PATH, x, y, { width: w, height: bannerH });
+  } else {
+    // Fallback path if the asset isn't bundled (shouldn't happen in prod).
+    doc.lineWidth(1).strokeColor("#000").rect(x, y, w, bannerH).stroke();
+    const brandSize = 100;
+    drawBrandMark(doc, x + (w - brandSize) / 2, y + 32, brandSize, ctx);
     doc
-      .fontSize(10)
-      .text(tagParts.join("  ·  "), x, y + 200, { width: w, align: "center" });
+      .fillColor("#000")
+      .font("Helvetica-Bold")
+      .fontSize(24)
+      .text(ctx.company, x, y + 150, { width: w, align: "center" });
   }
-  doc.fillColor("#000");
 
-  // Body copy
+  // Body copy below the banner
   const padX = 60;
   let by = y + bannerH + 50;
   doc
