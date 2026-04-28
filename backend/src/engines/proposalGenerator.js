@@ -6,11 +6,16 @@ import { fileURLToPath } from "node:url";
 import { generateSketch } from "./sketchGenerator.js";
 import { totalWidthIn } from "./dimensions.js";
 
-// Cover-page banner ships with the backend at backend/assets/cover-banner.png.
-// Resolved once at module load; falls back to a brand-mark block if missing.
+// Bundled cover banner + small per-page header logo. Resolved once at module
+// load; if either is missing we fall back to the drawn brand-mark block so
+// the PDF still renders.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const COVER_BANNER_PATH = resolve(__dirname, "../../assets/cover-banner.png");
 const COVER_BANNER_AVAILABLE = existsSync(COVER_BANNER_PATH);
+const HEADER_LOGO_PATH = resolve(__dirname, "../../assets/header-logo.png");
+const HEADER_LOGO_AVAILABLE = existsSync(HEADER_LOGO_PATH);
+// Source image is 750 × 416 (logo crest + "A1 CONSTRUCTION & DESIGNS INC." text).
+const HEADER_LOGO_ASPECT = 750 / 416;
 
 const ACCENT = "#B85C38";
 const RED = "#C0392B";
@@ -130,14 +135,26 @@ function drawPageHeader(doc, ctx) {
 
   doc.lineWidth(1).strokeColor("#000").rect(x0, y0, w, headerH).stroke();
 
-  // Brand mark on the left
-  const brandSize = 60;
-  const brandX = x0 + 16;
-  const brandY = y0 + (headerH - brandSize) / 2;
-  drawBrandMark(doc, brandX, brandY, brandSize, ctx);
+  // Logo on the left. Scale the bundled PNG to fit the header bar while
+  // preserving its 750×416 aspect ratio. Falls back to the H brand mark if
+  // the asset is missing from the deploy.
+  const logoBoxH = headerH - 16;
+  const logoBoxW = Math.min(140, Math.round(logoBoxH * HEADER_LOGO_ASPECT));
+  const logoX = x0 + 12;
+  const logoY = y0 + (headerH - logoBoxH) / 2;
+  if (HEADER_LOGO_AVAILABLE) {
+    doc.image(HEADER_LOGO_PATH, logoX, logoY, {
+      fit: [logoBoxW, logoBoxH],
+      align: "center",
+      valign: "center",
+    });
+  } else {
+    const brandSize = 60;
+    drawBrandMark(doc, logoX, y0 + (headerH - brandSize) / 2, brandSize, ctx);
+  }
 
-  // Vertical divider
-  const divX = brandX + brandSize + 16;
+  // Vertical divider just to the right of the logo
+  const divX = logoX + logoBoxW + 14;
   doc
     .strokeColor("#000")
     .lineWidth(0.8)
