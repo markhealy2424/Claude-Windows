@@ -47,14 +47,16 @@ STEP 2. For each product, extract:
    c. width_in — width converted to inches. If "Width(mm)" or only mm shown, divide by 25.4 and round to nearest integer (e.g. 914 mm → 36, 1828.8 mm → 72, 533.4 mm → 21).
    d. height_in — height/length converted to inches. The HEIGHT column may be labeled "Length", "Height", or "H".
    e. type — normalize the window/door type to one of:
-        "fixed"          ← "Fixed window", "Picture", "FX", "Fixed window (circle)"
-        "casement"       ← "Casement window", "CSMT" (any orientation)
-        "sliding"        ← "Sliding window", "Slider"
-        "awning"         ← "Awning window", "Top-hung window" (top-hung IS awning, normalize to awning)
-        "hung"           ← "Single Hung", "Double Hung"
-        "folding-door"   ← "Folding Door"
-        "casement-door"  ← "Casement Door"
-        "sliding-door"   ← "Sliding door"
+        "fixed"               ← "Fixed window", "Picture", "FX", "Fixed window (circle)"
+        "casement"            ← "Casement window", "CSMT" (any orientation)
+        "sliding"             ← "Sliding window", "Slider"
+        "awning"              ← "Awning window", "Top-hung window" (top-hung IS awning, normalize to awning)
+        "hung"                ← "Single Hung", "Double Hung"
+        "sliding-door"        ← "Sliding door", "Patio sliding door", "Multi-track sliding door"
+        "french-door"         ← "French door", "Casement door" with glass panels (for double-leaf, set panels=2)
+        "bifold-door"         ← "Bi-fold door", "Folding door", "Accordion door"
+        "single-hinged-door"  ← "Single hinged door", "Hinged door (1 panel)", solid entry door (1 leaf)
+        "double-hinged-door"  ← "Double hinged door", "Hinged door (2 panel)", solid entry door (2 leaves)
       Choose the closest match. Empty string only if truly unrecognizable.
    f. operation — swing direction if the spec says "(Right)" / "(Left)" (Format B) or "Open to outside" / "Open to inside" / "Fold to outside". One of: "left", "right", "in", "out", "" (empty if not specified).
    g. material — "Aluminum" if the product mentions "Aluminum" or "Aluminium" anywhere (most do). Else infer ("Iron", "Wood"), else "". Include the construction descriptor when stated, e.g. "Thermally Broken, Aluminum".

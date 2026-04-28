@@ -25,13 +25,20 @@ const TYPE_NAMES = {
   awning: "Awning Window",
   hung: "Hung Window",
   sliding: "Sliding Window",
-  "folding-door": "Folding Door",
   "sliding-door": "Sliding Door",
+  "bifold-door": "Bi-Fold Door",
+  "single-hinged-door": "Single-Hinged Door",
+  "double-hinged-door": "Double-Hinged Door",
+  // Legacy: "folding-door" was the original Bi-Fold slug.
+  "folding-door": "Bi-Fold Door",
 };
 
 function typeDisplayName(item) {
   const t = (item.type || "").toLowerCase();
-  if (t === "casement-door") {
+  // French door label switches based on panel count for both the new
+  // explicit "french-door" slug and the legacy "casement-door" slug that
+  // earlier extractions / project items may still carry.
+  if (t === "french-door" || t === "casement-door") {
     return Number(item.panels ?? 1) >= 2 ? "Double French Door" : "French Door";
   }
   if (TYPE_NAMES[t]) return TYPE_NAMES[t];

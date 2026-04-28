@@ -7,7 +7,16 @@ const blank = {
   panels: 1, gridRows: 1, operableRow: "all", grid: false, notes: "",
 };
 
-const TYPES = [["fixed", "fixed"], ["casement", "casement"], ["sliding", "sliding"]];
+const TYPES = [
+  ["fixed", "Fixed window"],
+  ["casement", "Casement window"],
+  ["sliding", "Sliding window"],
+  ["sliding-door", "Sliding door"],
+  ["french-door", "French door"],
+  ["bifold-door", "Bi-Fold door"],
+  ["single-hinged-door", "Single-Hinged door"],
+  ["double-hinged-door", "Double-Hinged door"],
+];
 const OPERABLE_ROWS = [["all", "All rows"], ["top", "Top row"], ["bottom", "Bottom row"]];
 const MATERIALS = [["Aluminum", "Aluminum"], ["Iron", "Iron"], ["Wood", "Wood"]];
 
