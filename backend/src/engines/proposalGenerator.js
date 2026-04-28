@@ -162,52 +162,44 @@ function drawPageHeader(doc, ctx) {
     .lineTo(divX, y0 + headerH - 10)
     .stroke();
 
-  // Center column: company name + address + phone
+  // Center column: company name + tagline + address + phone. Each line uses
+  // an explicit doc.y advance so wrapping never overlaps the next line.
   const rightStart = x0 + w * 0.66;
   const centerX = divX + 12;
   const centerW = rightStart - centerX - 12;
 
-  doc
-    .fillColor("#000")
-    .font("Helvetica-Bold")
-    .fontSize(13)
-    .text(ctx.company, centerX, y0 + 10, { width: centerW, align: "center" });
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(11)
-    .text("Windows and Doors", centerX, y0 + 28, { width: centerW, align: "center" });
+  let cy = y0 + 10;
+  doc.fillColor("#000").font("Helvetica-Bold").fontSize(13)
+    .text(ctx.company, centerX, cy, { width: centerW, align: "center" });
+  cy = doc.y + 4;
+
+  doc.font("Helvetica-Bold").fontSize(11)
+    .text("Windows and Doors", centerX, cy, { width: centerW, align: "center" });
+  cy = doc.y + 4;
+
   doc.font("Helvetica").fontSize(9).fillColor("#000");
-  let cy = y0 + 46;
   if (ctx.companyAddress) {
     doc.text(ctx.companyAddress, centerX, cy, { width: centerW, align: "center" });
-    cy += 12;
+    cy = doc.y + 1;
   }
   if (ctx.companyPhone) {
     doc.text(ctx.companyPhone, centerX, cy, { width: centerW, align: "center" });
   }
 
-  // Right column: customer / quote # / site
+  // Right column: Address of Build (project site) + Quote #
   const rx = rightStart + 10;
   const rw = w - (rightStart - x0) - 20;
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(11)
-    .fillColor("#000")
-    .text(ctx.customerName || "—", rx, y0 + 12, { width: rw });
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(10)
-    .text("Quote #: ", rx, y0 + 32, { continued: true })
-    .font("Helvetica")
-    .text(ctx.quoteNumber || "—");
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(10)
-    .text("Site: ", rx, y0 + 50, { continued: true })
-    .font("Helvetica")
-    .fillColor(SUBTLE)
+  let ry = y0 + 14;
+  doc.font("Helvetica-Bold").fontSize(10).fillColor("#000")
+    .text("Address of Build: ", rx, ry, { continued: true, width: rw });
+  doc.font("Helvetica").fillColor("#000")
     .text(ctx.siteAddress || "—", { width: rw });
-  doc.fillColor("#000");
+  ry = doc.y + 6;
+
+  doc.font("Helvetica-Bold").fontSize(10).fillColor("#000")
+    .text("Quote #: ", rx, ry, { continued: true, width: rw });
+  doc.font("Helvetica").fillColor("#000")
+    .text(ctx.quoteNumber || "—", { width: rw });
 
   return y0 + headerH;
 }
