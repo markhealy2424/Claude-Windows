@@ -171,11 +171,7 @@ function drawPageHeader(doc, ctx) {
   let cy = y0 + 10;
   doc.fillColor("#000").font("Helvetica-Bold").fontSize(13)
     .text(ctx.company, centerX, cy, { width: centerW, align: "center" });
-  cy = doc.y + 4;
-
-  doc.font("Helvetica-Bold").fontSize(11)
-    .text("Windows and Doors", centerX, cy, { width: centerW, align: "center" });
-  cy = doc.y + 4;
+  cy = doc.y + 6;
 
   doc.font("Helvetica").fontSize(9).fillColor("#000");
   if (ctx.companyAddress) {
