@@ -50,6 +50,20 @@ const TYPE_NAMES = {
   "folding-door": "Bi-Fold Door",
 };
 
+// Decode a base64 image data URL to a Buffer that PDFKit's doc.image()
+// accepts. Returns null if the field is empty or malformed so the caller
+// can fall back to the auto-generated sketch.
+function sketchImageBuffer(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== "string") return null;
+  const m = /^data:image\/(?:png|jpeg|jpg|webp);base64,(.+)$/i.exec(dataUrl);
+  if (!m) return null;
+  try {
+    return Buffer.from(m[1], "base64");
+  } catch {
+    return null;
+  }
+}
+
 function typeDisplayName(item) {
   const t = (item.type || "").toLowerCase();
   // French door label switches based on panel count for both the new
@@ -255,19 +269,35 @@ function drawItemCard(doc, item, lineNumber, ctx, x, y, w, h) {
   const sketchW = Math.min(170, w * 0.32);
   const sketchX = x + 8;
 
-  try {
-    SVGtoPDF(doc, generateSketch(item), sketchX, bodyTop, {
-      width: sketchW - 4,
-      height: bodyH - 4,
-      preserveAspectRatio: "xMidYMid meet",
-    });
-  } catch {
-    doc
-      .fillColor(SUBTLE)
-      .font("Helvetica")
-      .fontSize(9)
-      .text("(sketch error)", sketchX, bodyTop);
-    doc.fillColor("#000");
+  // If the user uploaded a screenshot for this item, use it as the sketch.
+  // Otherwise fall back to the parametric SVG drawn from width/panels/type.
+  const customSketch = sketchImageBuffer(item.sketchImage);
+  let sketchPlaced = false;
+  if (customSketch) {
+    try {
+      doc.image(customSketch, sketchX, bodyTop, {
+        fit: [sketchW - 4, bodyH - 4],
+        align: "center",
+        valign: "center",
+      });
+      sketchPlaced = true;
+    } catch { /* fall through to auto sketch */ }
+  }
+  if (!sketchPlaced) {
+    try {
+      SVGtoPDF(doc, generateSketch(item), sketchX, bodyTop, {
+        width: sketchW - 4,
+        height: bodyH - 4,
+        preserveAspectRatio: "xMidYMid meet",
+      });
+    } catch {
+      doc
+        .fillColor(SUBTLE)
+        .font("Helvetica")
+        .fontSize(9)
+        .text("(sketch error)", sketchX, bodyTop);
+      doc.fillColor("#000");
+    }
   }
 
   // Spec block
@@ -606,7 +636,7 @@ export function generateProposal({ items, projectName, branding = {} }) {
     description: typeDisplayName(it),
     size: `${inchStr(totalWidthIn(it) ?? it.width_in)} x ${inchStr(it.height_in)}`,
     price: it.client_price,
-    sketch: generateSketch(it),
+    sketch: it.sketchImage || generateSketch(it),
   }));
   return { projectName, branding, rows, generatedAt: new Date().toISOString() };
 }

@@ -3,6 +3,19 @@ import SVGtoPDF from "svg-to-pdfkit";
 import { generateSketch } from "./sketchGenerator.js";
 import { totalWidthIn, totalWidthMm, heightMm } from "./dimensions.js";
 
+// Decode an item's optional sketchImage data URL into a Buffer. Returns
+// null if no override is set so callers can fall back to the auto sketch.
+function sketchImageBuffer(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== "string") return null;
+  const m = /^data:image\/(?:png|jpeg|jpg|webp);base64,(.+)$/i.exec(dataUrl);
+  if (!m) return null;
+  try {
+    return Buffer.from(m[1], "base64");
+  } catch {
+    return null;
+  }
+}
+
 function dimCell(inches, mm) {
   const inPart = inches == null ? "?" : `${inches}"`;
   const mmPart = mm == null ? "" : `\n${mm} mm`;
@@ -16,7 +29,7 @@ export function generateRFQ({ items, projectName, info }) {
     return {
       mark: it.mark,
       qty: it.quantity,
-      sketch: generateSketch(it),
+      sketch: it.sketchImage || generateSketch(it),
       type: it.type,
       material: it.material ?? "Aluminum",
       width_per_panel_in: wPerPanelIn,
@@ -171,11 +184,24 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
     cellText(it.mark, cols[0].w); x += cols[0].w;
     cellText(it.quantity, cols[1].w); x += cols[1].w;
 
-    const sketch = generateSketch(it);
-    try {
-      SVGtoPDF(doc, sketch, x + 4, yTop + 6, { width: cols[2].w - 8, height: rowH - 12, preserveAspectRatio: "xMidYMid meet" });
-    } catch {
-      doc.text("(sketch err)", x + 4, yTop + 6);
+    const customSketch = sketchImageBuffer(it.sketchImage);
+    let sketchPlaced = false;
+    if (customSketch) {
+      try {
+        doc.image(customSketch, x + 4, yTop + 6, {
+          fit: [cols[2].w - 8, rowH - 12],
+          align: "center",
+          valign: "center",
+        });
+        sketchPlaced = true;
+      } catch { /* fall through to auto sketch */ }
+    }
+    if (!sketchPlaced) {
+      try {
+        SVGtoPDF(doc, generateSketch(it), x + 4, yTop + 6, { width: cols[2].w - 8, height: rowH - 12, preserveAspectRatio: "xMidYMid meet" });
+      } catch {
+        doc.text("(sketch err)", x + 4, yTop + 6);
+      }
     }
     x += cols[2].w;
 

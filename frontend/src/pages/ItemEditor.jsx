@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
+import { compressImageToDataUrl } from "../lib/imageCompress.js";
 
 const blank = {
   mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
   width_in: 36, height_in: 48, width_mm: 914, height_mm: 1219,
   panels: 1, gridRows: 1, operableRow: "all", grid: false, notes: "",
+  sketchImage: "",
 };
 
 const TYPES = [
@@ -23,8 +25,103 @@ const TYPES = [
 const OPERABLE_ROWS = [["all", "All rows"], ["top", "Top row"], ["bottom", "Bottom row"]];
 const MATERIALS = [["Aluminum", "Aluminum"], ["Iron", "Iron"], ["Wood", "Wood"]];
 
+const ACCEPTED_IMAGE_TYPES = "image/png,image/jpeg,image/webp";
+
 function totalWidth(it) {
   return Number(it.width_in ?? 0) * Math.max(1, Math.floor(Number(it.panels ?? 1)));
+}
+
+function SketchDrop({ value, onChange, label = "Drop image", height = 56 }) {
+  const inputRef = useRef(null);
+  const [over, setOver] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function handleFile(file) {
+    if (!file || !file.type?.startsWith("image/")) return;
+    setBusy(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      onChange(dataUrl);
+    } catch (err) {
+      console.error("Sketch upload failed:", err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    setOver(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  function onPick(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) handleFile(file);
+  }
+
+  function clear(e) {
+    e.stopPropagation();
+    onChange("");
+  }
+
+  if (value) {
+    return (
+      <div
+        onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+        onDragLeave={() => setOver(false)}
+        onDrop={onDrop}
+        style={{
+          position: "relative", width: 80, height,
+          border: `1px solid ${over ? "#444" : "#ddd"}`,
+          borderRadius: 4, overflow: "hidden", background: "#fff",
+        }}
+        title="Drop a new image to replace"
+      >
+        <img src={value} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+        <button
+          type="button"
+          onClick={clear}
+          title="Remove custom sketch"
+          style={{
+            position: "absolute", top: 1, right: 1,
+            padding: "0 5px", fontSize: 11, lineHeight: "16px",
+            background: "rgba(255,255,255,0.85)", border: "1px solid #bbb",
+            borderRadius: 3, cursor: "pointer",
+          }}
+        >×</button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+      onDragLeave={() => setOver(false)}
+      onDrop={onDrop}
+      style={{
+        width: 80, height,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: `1px dashed ${over ? "#444" : "#bbb"}`,
+        borderRadius: 4,
+        background: over ? "#f3f3f3" : "transparent",
+        cursor: "pointer", fontSize: 11, color: "#666", textAlign: "center", padding: 4,
+      }}
+      title="Drop image or click to pick"
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPTED_IMAGE_TYPES}
+        onChange={onPick}
+        style={{ display: "none" }}
+      />
+      {busy ? "…" : (over ? "Drop" : label)}
+    </div>
+  );
 }
 
 export default function ItemEditor({ items = [], onChange }) {
@@ -70,6 +167,12 @@ export default function ItemEditor({ items = [], onChange }) {
     setEditDraft({ ...editDraft, [key]: value });
   }
 
+  // Allow drag-drop / click-upload directly on a non-editing row so users
+  // can attach a sketch without opening the row's edit form.
+  function setSketchAt(idx, dataUrl) {
+    onChange(items.map((it, i) => (i === idx ? { ...it, sketchImage: dataUrl } : it)));
+  }
+
   const draftTotalW = totalWidth(draft);
 
   return (
@@ -85,11 +188,19 @@ export default function ItemEditor({ items = [], onChange }) {
         <NumberField label="Panels" value={draft.panels} onChange={(v) => set("panels", v)} />
         <NumberField label="Grid rows" value={draft.gridRows} onChange={(v) => set("gridRows", v)} />
         <SelectField label="Operable row" value={draft.operableRow ?? "all"} onChange={(v) => set("operableRow", v)} options={OPERABLE_ROWS} />
+        <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+          <span style={{ color: "#666" }}>Sketch image</span>
+          <SketchDrop
+            value={draft.sketchImage || ""}
+            onChange={(dataUrl) => set("sketchImage", dataUrl)}
+          />
+        </label>
         <button className="primary" type="submit">Add</button>
       </form>
       <div className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
         Total width = per-panel width × panels. Currently: {Number(draft.width_in) || 0}" × {draft.panels || 1} = <strong>{draftTotalW}"</strong>.
         Grid rows = how many horizontal divisions to draw across the unit (1 = no grid).
+        Drop a screenshot in the <strong>Sketch</strong> column to override the auto-generated drawing on the proposal.
       </div>
 
       <table>
@@ -97,7 +208,7 @@ export default function ItemEditor({ items = [], onChange }) {
           <tr>
             <th>Mark</th><th>Qty</th><th>Type</th><th>Material</th><th>Operation</th>
             <th>W/panel</th><th>Total W</th><th>H</th>
-            <th>Panels</th><th>Grid</th><th>Operable</th><th>Notes</th><th></th>
+            <th>Panels</th><th>Grid</th><th>Operable</th><th>Sketch</th><th>Notes</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -123,6 +234,12 @@ export default function ItemEditor({ items = [], onChange }) {
                   <td>
                     <SelectField label="" value={editDraft.operableRow ?? "all"} onChange={(v) => setEdit("operableRow", v)} options={OPERABLE_ROWS} />
                   </td>
+                  <td>
+                    <SketchDrop
+                      value={editDraft.sketchImage || ""}
+                      onChange={(dataUrl) => setEdit("sketchImage", dataUrl)}
+                    />
+                  </td>
                   <td><TextField label="" value={editDraft.notes} onChange={(v) => setEdit("notes", v)} inputStyle={{ width: 120 }} /></td>
                   <td>
                     <div className="row">
@@ -146,6 +263,12 @@ export default function ItemEditor({ items = [], onChange }) {
                 <td>{it.panels}</td>
                 <td>{it.gridRows ?? 1}</td>
                 <td>{it.operableRow ?? "all"}</td>
+                <td>
+                  <SketchDrop
+                    value={it.sketchImage || ""}
+                    onChange={(dataUrl) => setSketchAt(i, dataUrl)}
+                  />
+                </td>
                 <td className="text-muted" style={{ maxWidth: 180 }}>{it.notes}</td>
                 <td>
                   <div className="row">
@@ -157,7 +280,7 @@ export default function ItemEditor({ items = [], onChange }) {
             );
           })}
           {items.length === 0 && (
-            <tr><td colSpan={13} className="text-subtle">No items yet.</td></tr>
+            <tr><td colSpan={14} className="text-subtle">No items yet.</td></tr>
           )}
         </tbody>
       </table>
