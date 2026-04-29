@@ -85,7 +85,7 @@ function operableYRange(operableRow, gridRows, topPad, frameH) {
 
 export function generateSketch({
   width_in, height_in, panels = 1, type = "fixed", operation = "",
-  gridRows = 1, operableRow = "all",
+  gridRows = 1, gridCols = 1, operableRow = "all",
 }) {
   const n = Math.max(1, Math.floor(panels));
   const totalWidth = Number(width_in ?? 0) * n;
@@ -109,12 +109,24 @@ export function generateSketch({
   }
 
   const gR = Math.max(1, Math.floor(gridRows));
+  const gC = Math.max(1, Math.floor(gridCols));
   const gridLines = [];
   for (let i = 1; i < gR; i++) {
     const y = topPad + (frameH * i) / gR;
     gridLines.push(
       `<line x1="${leftPad}" y1="${y}" x2="${leftPad + frameW}" y2="${y}" stroke="black" stroke-width="1"/>`
     );
+  }
+  // Per-panel vertical lite divisions (muntins). Drawn inside each panel,
+  // not at the panel boundaries (those are the existing dividers).
+  for (let p = 0; p < n; p++) {
+    const px = leftPad + p * panelW;
+    for (let c = 1; c < gC; c++) {
+      const x = px + (panelW * c) / gC;
+      gridLines.push(
+        `<line x1="${x}" y1="${topPad}" x2="${x}" y2="${topPad + frameH}" stroke="black" stroke-width="1"/>`
+      );
+    }
   }
 
   // Per-panel casement glyph: V whose apex sits on the SWING (handle) side.

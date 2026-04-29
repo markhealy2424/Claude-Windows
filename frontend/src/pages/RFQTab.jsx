@@ -66,7 +66,13 @@ export default function RFQTab({ project }) {
               <tr key={i}>
                 <td>{r.mark}</td>
                 <td>{r.qty}</td>
-                <td style={{ width: 120 }} dangerouslySetInnerHTML={{ __html: r.sketch }} />
+                <td style={{ width: 120 }}>
+                  {typeof r.sketch === "string" && r.sketch.startsWith("data:image/") ? (
+                    <img src={r.sketch} alt="" style={{ width: 110, maxHeight: 90, objectFit: "contain" }} />
+                  ) : (
+                    <div dangerouslySetInnerHTML={{ __html: r.sketch }} />
+                  )}
+                </td>
                 <td>{r.type}</td>
                 <td>{r.material ?? "Aluminum"}</td>
                 <td>

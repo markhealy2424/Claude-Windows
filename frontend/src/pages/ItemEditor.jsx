@@ -1,13 +1,27 @@
 import { useRef, useState } from "react";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 import { compressImageToDataUrl } from "../lib/imageCompress.js";
+import { generateSketch } from "../lib/sketch.js";
 
 const blank = {
   mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
   width_in: 36, height_in: 48, width_mm: 914, height_mm: 1219,
-  panels: 1, gridRows: 1, operableRow: "all", grid: false, notes: "",
+  panels: 1, gridRows: 1, gridCols: 1, operableRow: "all", notes: "",
   sketchImage: "",
 };
+
+// "ColsxRows" — e.g. "2x4" = 2 lite columns, 4 lite rows.
+function gridToString(item) {
+  const c = Math.max(1, Math.floor(Number(item?.gridCols ?? 1)));
+  const r = Math.max(1, Math.floor(Number(item?.gridRows ?? 1)));
+  return `${c}x${r}`;
+}
+
+function parseGridString(str) {
+  const m = /^\s*(\d+)\s*[x×]\s*(\d+)\s*$/i.exec(String(str ?? ""));
+  if (!m) return null;
+  return { gridCols: Math.max(1, parseInt(m[1], 10)), gridRows: Math.max(1, parseInt(m[2], 10)) };
+}
 
 const TYPES = [
   ["fixed", "Fixed window"],
@@ -31,7 +45,7 @@ function totalWidth(it) {
   return Number(it.width_in ?? 0) * Math.max(1, Math.floor(Number(it.panels ?? 1)));
 }
 
-function SketchDrop({ value, onChange, label = "Drop image", height = 56 }) {
+function SketchDrop({ value, item, onChange, height = 56 }) {
   const inputRef = useRef(null);
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -67,6 +81,7 @@ function SketchDrop({ value, onChange, label = "Drop image", height = 56 }) {
     onChange("");
   }
 
+  // Custom screenshot uploaded — show it with an × to revert.
   if (value) {
     return (
       <div
@@ -84,7 +99,7 @@ function SketchDrop({ value, onChange, label = "Drop image", height = 56 }) {
         <button
           type="button"
           onClick={clear}
-          title="Remove custom sketch"
+          title="Remove custom sketch (revert to auto-generated)"
           style={{
             position: "absolute", top: 1, right: 1,
             padding: "0 5px", fontSize: 11, lineHeight: "16px",
@@ -96,6 +111,11 @@ function SketchDrop({ value, onChange, label = "Drop image", height = 56 }) {
     );
   }
 
+  // No upload — render the auto-generated SVG sketch (same one used in the
+  // proposal PDF) and overlay an upload affordance so dropping an image
+  // replaces it. Click to open the file picker.
+  const autoSvg = item ? generateSketch(item) : "";
+
   return (
     <div
       onClick={() => inputRef.current?.click()}
@@ -103,14 +123,15 @@ function SketchDrop({ value, onChange, label = "Drop image", height = 56 }) {
       onDragLeave={() => setOver(false)}
       onDrop={onDrop}
       style={{
+        position: "relative",
         width: 80, height,
         display: "flex", alignItems: "center", justifyContent: "center",
-        border: `1px dashed ${over ? "#444" : "#bbb"}`,
+        border: `1px ${over ? "dashed" : "solid"} ${over ? "#444" : "#ddd"}`,
         borderRadius: 4,
-        background: over ? "#f3f3f3" : "transparent",
-        cursor: "pointer", fontSize: 11, color: "#666", textAlign: "center", padding: 4,
+        background: over ? "#f3f3f3" : "#fff",
+        cursor: "pointer", overflow: "hidden",
       }}
-      title="Drop image or click to pick"
+      title="Auto-generated sketch — drop an image or click to replace"
     >
       <input
         ref={inputRef}
@@ -119,7 +140,17 @@ function SketchDrop({ value, onChange, label = "Drop image", height = 56 }) {
         onChange={onPick}
         style={{ display: "none" }}
       />
-      {busy ? "…" : (over ? "Drop" : label)}
+      {autoSvg && !over && !busy && (
+        <div
+          style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+          dangerouslySetInnerHTML={{ __html: autoSvg }}
+        />
+      )}
+      {(over || busy) && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#444", background: "rgba(243,243,243,0.85)" }}>
+          {busy ? "…" : "Drop"}
+        </div>
+      )}
     </div>
   );
 }
@@ -186,12 +217,22 @@ export default function ItemEditor({ items = [], onChange }) {
         <NumberField label="Width per panel (in)" value={draft.width_in} onChange={(v) => set("width_in", v)} />
         <NumberField label="Height (in)" value={draft.height_in} onChange={(v) => set("height_in", v)} />
         <NumberField label="Panels" value={draft.panels} onChange={(v) => set("panels", v)} />
-        <NumberField label="Grid rows" value={draft.gridRows} onChange={(v) => set("gridRows", v)} />
+        <TextField
+          label="Grid (CxR)"
+          value={gridToString(draft)}
+          onChange={(v) => {
+            const g = parseGridString(v);
+            if (g) setDraft({ ...draft, ...g });
+            else setDraft({ ...draft, gridCols: draft.gridCols, gridRows: draft.gridRows });
+          }}
+          inputStyle={{ width: 70 }}
+        />
         <SelectField label="Operable row" value={draft.operableRow ?? "all"} onChange={(v) => set("operableRow", v)} options={OPERABLE_ROWS} />
         <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
           <span style={{ color: "#666" }}>Sketch image</span>
           <SketchDrop
             value={draft.sketchImage || ""}
+            item={draft}
             onChange={(dataUrl) => set("sketchImage", dataUrl)}
           />
         </label>
@@ -199,7 +240,7 @@ export default function ItemEditor({ items = [], onChange }) {
       </form>
       <div className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
         Total width = per-panel width × panels. Currently: {Number(draft.width_in) || 0}" × {draft.panels || 1} = <strong>{draftTotalW}"</strong>.
-        Grid rows = how many horizontal divisions to draw across the unit (1 = no grid).
+        Grid is <strong>cols × rows</strong> of divided lites per panel (e.g. <code>2x4</code> = 2 muntin columns, 4 muntin rows; <code>1x1</code> = no grid).
         Drop a screenshot in the <strong>Sketch</strong> column to override the auto-generated drawing on the proposal.
       </div>
 
@@ -230,13 +271,24 @@ export default function ItemEditor({ items = [], onChange }) {
                   <td className="text-muted">{editTotal}"</td>
                   <td><NumberField label="" value={editDraft.height_in} onChange={(v) => setEdit("height_in", v)} inputStyle={{ width: 60 }} /></td>
                   <td><NumberField label="" value={editDraft.panels} onChange={(v) => setEdit("panels", v)} inputStyle={{ width: 50 }} /></td>
-                  <td><NumberField label="" value={editDraft.gridRows} onChange={(v) => setEdit("gridRows", v)} inputStyle={{ width: 50 }} /></td>
+                  <td>
+                    <TextField
+                      label=""
+                      value={gridToString(editDraft)}
+                      onChange={(v) => {
+                        const g = parseGridString(v);
+                        if (g) setEditDraft({ ...editDraft, ...g });
+                      }}
+                      inputStyle={{ width: 50 }}
+                    />
+                  </td>
                   <td>
                     <SelectField label="" value={editDraft.operableRow ?? "all"} onChange={(v) => setEdit("operableRow", v)} options={OPERABLE_ROWS} />
                   </td>
                   <td>
                     <SketchDrop
                       value={editDraft.sketchImage || ""}
+                      item={editDraft}
                       onChange={(dataUrl) => setEdit("sketchImage", dataUrl)}
                     />
                   </td>
@@ -261,11 +313,12 @@ export default function ItemEditor({ items = [], onChange }) {
                 <td>{totalWidth(it)}"</td>
                 <td>{it.height_in}"</td>
                 <td>{it.panels}</td>
-                <td>{it.gridRows ?? 1}</td>
+                <td>{gridToString(it)}</td>
                 <td>{it.operableRow ?? "all"}</td>
                 <td>
                   <SketchDrop
                     value={it.sketchImage || ""}
+                    item={it}
                     onChange={(dataUrl) => setSketchAt(i, dataUrl)}
                   />
                 </td>
