@@ -34,8 +34,10 @@ const TYPES = [
   ["sliding-door", "Sliding door"],
   ["french-door", "French door"],
   ["bifold-door", "Bi-Fold door"],
+  ["multi-fold-door", "Multi-Fold door"],
   ["single-hinged-door", "Single-Hinged door"],
   ["double-hinged-door", "Double-Hinged door"],
+  ["entry-door", "Entry door"],
 ];
 const OPERABLE_ROWS = [["all", "All rows"], ["top", "Top row"], ["bottom", "Bottom row"]];
 const MATERIALS = [["Aluminum", "Aluminum"], ["Iron", "Iron"], ["Wood", "Wood"]];

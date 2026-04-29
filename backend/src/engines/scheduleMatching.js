@@ -119,6 +119,9 @@ function parseDimension(str) {
 
 function inferType(str) {
   const s = (str || "").toLowerCase();
+  if (/entry|front\s*door/.test(s)) return "entry-door";
+  if (/multi[\s-]?fold|accordion/.test(s)) return "multi-fold-door";
+  if (/bi[\s-]?fold/.test(s)) return "bifold-door";
   if (/casement/.test(s)) return "casement";
   if (/slider/.test(s)) return "slider";
   if (/slid/.test(s)) return "sliding";

@@ -45,8 +45,10 @@ const TYPE_NAMES = {
   slider: "Slider Window",
   "sliding-door": "Sliding Door",
   "bifold-door": "Bi-Fold Door",
+  "multi-fold-door": "Multi-Fold Door",
   "single-hinged-door": "Single-Hinged Door",
   "double-hinged-door": "Double-Hinged Door",
+  "entry-door": "Entry Door",
   // Legacy: "folding-door" was the original Bi-Fold slug.
   "folding-door": "Bi-Fold Door",
 };

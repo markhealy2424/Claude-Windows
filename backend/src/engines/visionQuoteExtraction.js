@@ -57,9 +57,11 @@ STEP 2. For each product, extract:
         "double-hung"         ← "Double Hung", "DH"
         "sliding-door"        ← "Sliding door", "Patio sliding door", "Multi-track sliding door"
         "french-door"         ← "French door", "Casement door" with glass panels (for double-leaf, set panels=2)
-        "bifold-door"         ← "Bi-fold door", "Folding door", "Accordion door"
-        "single-hinged-door"  ← "Single hinged door", "Hinged door (1 panel)", solid entry door (1 leaf)
-        "double-hinged-door"  ← "Double hinged door", "Hinged door (2 panel)", solid entry door (2 leaves)
+        "bifold-door"         ← "Bi-fold door" (2 panels)
+        "multi-fold-door"     ← "Multi-fold door", "Folding door", "Accordion door" (3+ panels)
+        "single-hinged-door"  ← "Single hinged door", "Hinged door (1 panel)" (1 leaf, NOT explicitly an entry door)
+        "double-hinged-door"  ← "Double hinged door", "Hinged door (2 panel)" (2 leaves, NOT explicitly an entry door)
+        "entry-door"          ← "Entry door", "Front door", "Main entry", "Exterior entry door" (typically solid/insulated, not glazed-panel)
       Choose the closest match. Empty string only if truly unrecognizable.
    f. operation — swing direction if the spec says "(Right)" / "(Left)" (Format B) or "Open to outside" / "Open to inside" / "Fold to outside". One of: "left", "right", "in", "out", "" (empty if not specified).
    g. material — "Aluminum" if the product mentions "Aluminum" or "Aluminium" anywhere (most do). Else infer ("Iron", "Wood"), else "". Include the construction descriptor when stated, e.g. "Thermally Broken, Aluminum".

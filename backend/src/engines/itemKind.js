@@ -7,8 +7,10 @@ const DOOR_SLUGS = new Set([
   "sliding-door",
   "french-door",
   "bifold-door",
+  "multi-fold-door",
   "single-hinged-door",
   "double-hinged-door",
+  "entry-door",
   // Legacy slugs from older extractions / projects.
   "folding-door",
   "casement-door",

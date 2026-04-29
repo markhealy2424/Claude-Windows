@@ -27,8 +27,10 @@ const TYPE_OPTIONS = [
   ["sliding-door", "sliding door"],
   ["french-door", "french door"],
   ["bifold-door", "bi-fold door"],
+  ["multi-fold-door", "multi-fold door"],
   ["single-hinged-door", "single-hinged door"],
   ["double-hinged-door", "double-hinged door"],
+  ["entry-door", "entry door"],
   // Legacy slugs kept so older quotes/extractions still match a known label.
   ["folding-door", "folding door"],
   ["casement-door", "casement door"],
