@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import SVGtoPDF from "svg-to-pdfkit";
 import { generateSketch } from "./sketchGenerator.js";
 import { totalWidthIn, totalWidthMm, heightMm } from "./dimensions.js";
+import { partitionByKind } from "./itemKind.js";
 
 // Decode an item's optional sketchImage data URL into a Buffer. Returns
 // null if no override is set so callers can fall back to the auto sketch.
@@ -166,7 +167,25 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
 
   drawHeader();
 
-  items.forEach((it) => {
+  // Render a section title spanning the full table width — used to
+  // separate the Windows and Doors blocks within the same RFQ table.
+  function drawSectionTitle(label) {
+    const titleH = 24;
+    if (doc.y + titleH > doc.page.height - doc.page.margins.bottom) {
+      doc.addPage();
+      drawHeader();
+    }
+    const yTop = doc.y;
+    doc.rect(xStart, yTop, tableWidth, titleH).fill("#f2f2f2");
+    doc.fillColor("#000").font("Helvetica-Bold").fontSize(11)
+      .text(label.toUpperCase(), xStart + 6, yTop + 7, { width: tableWidth - 12 });
+    doc.font("Helvetica").fontSize(9);
+    doc.y = yTop + titleH;
+    doc.x = xStart;
+  }
+
+  const { windows: windowItems, doors: doorItems } = partitionByKind(items);
+  const renderRow = (it) => {
     if (doc.y + rowH > doc.page.height - doc.page.margins.bottom) {
       doc.addPage();
       drawHeader();
@@ -221,7 +240,16 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
     doc.moveTo(xStart, yBot).lineTo(xStart + tableWidth, yBot).strokeColor("#ddd").stroke().strokeColor("#000");
     doc.y = yBot + 2;
     doc.x = xStart;
-  });
+  };
+
+  if (windowItems.length > 0) {
+    drawSectionTitle("Windows");
+    windowItems.forEach(renderRow);
+  }
+  if (doorItems.length > 0) {
+    drawSectionTitle("Doors");
+    doorItems.forEach(renderRow);
+  }
 
   doc.end();
 }

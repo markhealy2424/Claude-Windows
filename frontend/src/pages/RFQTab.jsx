@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { REQUIREMENTS } from "../lib/projectRequirements.js";
+import { isDoor } from "../lib/itemKind.js";
 
 export default function RFQTab({ project }) {
   const [preview, setPreview] = useState(null);
@@ -53,48 +54,63 @@ export default function RFQTab({ project }) {
       {preview && (
         <RFQHeader info={project.info ?? {}} projectName={project.name} />
       )}
-      {preview && (
-        <table>
-          <thead>
-            <tr>
-              <th>Mark</th><th>Qty</th><th>Sketch</th><th>Type</th><th>Material</th>
-              <th>W/Panel</th><th>Total W</th><th>Height</th><th>Panels</th><th>Operation</th><th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {preview.rows.map((r, i) => (
-              <tr key={i}>
-                <td>{r.mark}</td>
-                <td>{r.qty}</td>
-                <td style={{ width: 120 }}>
-                  {typeof r.sketch === "string" && r.sketch.startsWith("data:image/") ? (
-                    <img src={r.sketch} alt="" style={{ width: 110, maxHeight: 90, objectFit: "contain" }} />
-                  ) : (
-                    <div dangerouslySetInnerHTML={{ __html: r.sketch }} />
-                  )}
-                </td>
-                <td>{r.type}</td>
-                <td>{r.material ?? "Aluminum"}</td>
-                <td>
-                  {r.width_per_panel_in ?? "?"}"
-                  {r.width_per_panel_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_per_panel_mm} mm</div>}
-                </td>
-                <td>
-                  {r.width_in ?? "?"}"
-                  {r.width_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_mm} mm</div>}
-                </td>
-                <td>
-                  {r.height_in ?? "?"}"
-                  {r.height_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.height_mm} mm</div>}
-                </td>
-                <td>{r.panels ?? 1}</td>
-                <td>{r.operation}</td>
-                <td>{r.notes}</td>
+      {preview && (() => {
+        const windowRows = preview.rows.filter((r) => !isDoor(r.type));
+        const doorRows = preview.rows.filter((r) => isDoor(r.type));
+        const renderRow = (r, key) => (
+          <tr key={key}>
+            <td>{r.mark}</td>
+            <td>{r.qty}</td>
+            <td style={{ width: 120 }}>
+              {typeof r.sketch === "string" && r.sketch.startsWith("data:image/") ? (
+                <img src={r.sketch} alt="" style={{ width: 110, maxHeight: 90, objectFit: "contain" }} />
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: r.sketch }} />
+              )}
+            </td>
+            <td>{r.type}</td>
+            <td>{r.material ?? "Aluminum"}</td>
+            <td>
+              {r.width_per_panel_in ?? "?"}"
+              {r.width_per_panel_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_per_panel_mm} mm</div>}
+            </td>
+            <td>
+              {r.width_in ?? "?"}"
+              {r.width_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_mm} mm</div>}
+            </td>
+            <td>
+              {r.height_in ?? "?"}"
+              {r.height_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.height_mm} mm</div>}
+            </td>
+            <td>{r.panels ?? 1}</td>
+            <td>{r.operation}</td>
+            <td>{r.notes}</td>
+          </tr>
+        );
+        const sectionHeader = (label, count) => (
+          <tr>
+            <td colSpan={11} style={{ background: "#f2f2f2", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid #ddd" }}>
+              {label} <span className="text-muted" style={{ fontWeight: 400, marginLeft: 6 }}>({count})</span>
+            </td>
+          </tr>
+        );
+        return (
+          <table>
+            <thead>
+              <tr>
+                <th>Mark</th><th>Qty</th><th>Sketch</th><th>Type</th><th>Material</th>
+                <th>W/Panel</th><th>Total W</th><th>Height</th><th>Panels</th><th>Operation</th><th>Notes</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {windowRows.length > 0 && sectionHeader("Windows", windowRows.length)}
+              {windowRows.map((r, i) => renderRow(r, `w-${i}`))}
+              {doorRows.length > 0 && sectionHeader("Doors", doorRows.length)}
+              {doorRows.map((r, i) => renderRow(r, `d-${i}`))}
+            </tbody>
+          </table>
+        );
+      })()}
     </div>
   );
 }

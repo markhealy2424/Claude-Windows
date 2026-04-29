@@ -5,6 +5,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateSketch } from "./sketchGenerator.js";
 import { totalWidthIn } from "./dimensions.js";
+import { partitionByKind } from "./itemKind.js";
 
 // Bundled cover banner + small per-page header logo. Resolved once at module
 // load; if either is missing we fall back to the drawn brand-mark block so
@@ -594,30 +595,55 @@ export function renderProposalPdf(
   // 1) Cover page
   drawCoverPage(doc, ctx);
 
-  // 2) Detail pages — 3 cards per page
+  // 2) Detail pages — 3 cards per page, split into Windows then Doors.
+  // Items are grouped by kind so all windows render first (with a section
+  // banner on the first windows page) followed by doors on a fresh page
+  // (with their own banner). Line numbers are continuous across both
+  // sections so they match the summary page.
+  const { windows: windowItems, doors: doorItems } = partitionByKind(items);
+  const orderedItems = [...windowItems, ...doorItems];
   const cardsPerPage = 3;
   const pageH = 842; // A4 portrait pt
   const pageW = 595;
   const usableW = pageW - margin * 2;
 
-  for (let i = 0; i < items.length; i += cardsPerPage) {
-    doc.addPage();
-    const headerBottom = drawPageHeader(doc, ctx);
-    const footerReserve = 36;
-    const usableH = pageH - margin - footerReserve - (headerBottom - margin);
-    const gap = 14;
-    const cardH = (usableH - (cardsPerPage - 1) * gap) / cardsPerPage;
+  function renderItemSection(sectionItems, startNumber, sectionTitle) {
+    if (sectionItems.length === 0) return;
+    for (let i = 0; i < sectionItems.length; i += cardsPerPage) {
+      doc.addPage();
+      const headerBottom = drawPageHeader(doc, ctx);
+      const footerReserve = 36;
+      const isFirstPageOfSection = i === 0;
+      let cardsTop = headerBottom + 14;
 
-    const slice = items.slice(i, i + cardsPerPage);
-    slice.forEach((it, j) => {
-      const cardY = headerBottom + 14 + j * (cardH + gap);
-      drawItemCard(doc, it, i + j + 1, ctx, margin, cardY, usableW, cardH);
-    });
+      if (isFirstPageOfSection) {
+        doc.font("Helvetica-Bold").fontSize(16).fillColor("#000")
+          .text(sectionTitle.toUpperCase(), margin, cardsTop, { width: usableW, align: "left" });
+        cardsTop = doc.y + 6;
+        doc.moveTo(margin, cardsTop - 2).lineTo(margin + usableW, cardsTop - 2)
+          .strokeColor(BORDER).lineWidth(0.5).stroke().strokeColor("#000");
+        cardsTop += 6;
+      }
+
+      const usableH = pageH - margin - footerReserve - (cardsTop - margin);
+      const gap = 14;
+      const cardH = (usableH - (cardsPerPage - 1) * gap) / cardsPerPage;
+
+      const slice = sectionItems.slice(i, i + cardsPerPage);
+      slice.forEach((it, j) => {
+        const cardY = cardsTop + j * (cardH + gap);
+        drawItemCard(doc, it, startNumber + i + j, ctx, margin, cardY, usableW, cardH);
+      });
+    }
   }
 
-  // 3) Summary page
+  renderItemSection(windowItems, 1, "Windows");
+  renderItemSection(doorItems, windowItems.length + 1, "Doors");
+
+  // 3) Summary page (uses the same windows-first ordering so line numbers
+  // align with the detail pages).
   doc.addPage();
-  const summary = drawSummaryPage(doc, items, ctx);
+  const summary = drawSummaryPage(doc, orderedItems, ctx);
 
   // 4) Signature page
   doc.addPage();

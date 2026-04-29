@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 import { compressImageToDataUrl } from "../lib/imageCompress.js";
 import { generateSketch } from "../lib/sketch.js";
+import { isDoor } from "../lib/itemKind.js";
 
 const blank = {
   mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
@@ -244,99 +245,146 @@ export default function ItemEditor({ items = [], onChange }) {
         Drop a screenshot in the <strong>Sketch</strong> column to override the auto-generated drawing on the proposal.
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Mark</th><th>Qty</th><th>Type</th><th>Material</th><th>Operation</th>
-            <th>W/panel</th><th>Total W</th><th>H</th>
-            <th>Panels</th><th>Grid</th><th>Operable</th><th>Sketch</th><th>Notes</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((it, i) => {
-            if (i === editIndex && editDraft) {
-              const editTotal = totalWidth(editDraft);
-              return (
-                <tr key={i} className="editing">
-                  <td><TextField label="" value={editDraft.mark} onChange={(v) => setEdit("mark", v)} inputStyle={{ width: 60 }} /></td>
-                  <td><NumberField label="" value={editDraft.quantity} onChange={(v) => setEdit("quantity", v)} inputStyle={{ width: 50 }} /></td>
-                  <td>
-                    <SelectField label="" value={editDraft.type} onChange={(v) => setEdit("type", v)} options={TYPES} />
-                  </td>
-                  <td>
-                    <SelectField label="" value={editDraft.material ?? "Aluminum"} onChange={(v) => setEdit("material", v)} options={MATERIALS} />
-                  </td>
-                  <td><TextField label="" value={editDraft.operation} onChange={(v) => setEdit("operation", v)} inputStyle={{ width: 80 }} /></td>
-                  <td><NumberField label="" value={editDraft.width_in} onChange={(v) => setEdit("width_in", v)} inputStyle={{ width: 60 }} /></td>
-                  <td className="text-muted">{editTotal}"</td>
-                  <td><NumberField label="" value={editDraft.height_in} onChange={(v) => setEdit("height_in", v)} inputStyle={{ width: 60 }} /></td>
-                  <td><NumberField label="" value={editDraft.panels} onChange={(v) => setEdit("panels", v)} inputStyle={{ width: 50 }} /></td>
-                  <td>
-                    <TextField
-                      label=""
-                      value={gridToString(editDraft)}
-                      onChange={(v) => {
-                        const g = parseGridString(v);
-                        if (g) setEditDraft({ ...editDraft, ...g });
-                      }}
-                      inputStyle={{ width: 50 }}
-                    />
-                  </td>
-                  <td>
-                    <SelectField label="" value={editDraft.operableRow ?? "all"} onChange={(v) => setEdit("operableRow", v)} options={OPERABLE_ROWS} />
-                  </td>
-                  <td>
-                    <SketchDrop
-                      value={editDraft.sketchImage || ""}
-                      item={editDraft}
-                      onChange={(dataUrl) => setEdit("sketchImage", dataUrl)}
-                    />
-                  </td>
-                  <td><TextField label="" value={editDraft.notes} onChange={(v) => setEdit("notes", v)} inputStyle={{ width: 120 }} /></td>
-                  <td>
-                    <div className="row">
-                      <button className="primary" onClick={saveEdit} disabled={!editDraft.mark} type="button">Save</button>
-                      <button onClick={cancelEdit} type="button">Cancel</button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            }
-            return (
-              <tr key={i}>
-                <td>{it.mark}</td>
-                <td>{it.quantity}</td>
-                <td>{it.type}</td>
-                <td>{it.material ?? "Aluminum"}</td>
-                <td>{it.operation}</td>
-                <td>{it.width_in}"</td>
-                <td>{totalWidth(it)}"</td>
-                <td>{it.height_in}"</td>
-                <td>{it.panels}</td>
-                <td>{gridToString(it)}</td>
-                <td>{it.operableRow ?? "all"}</td>
-                <td>
-                  <SketchDrop
-                    value={it.sketchImage || ""}
-                    item={it}
-                    onChange={(dataUrl) => setSketchAt(i, dataUrl)}
-                  />
-                </td>
-                <td className="text-muted" style={{ maxWidth: 180 }}>{it.notes}</td>
-                <td>
-                  <div className="row">
-                    <button onClick={() => startEdit(i)} disabled={editIndex >= 0 && editIndex !== i}>Edit</button>
-                    <button onClick={() => removeItem(i)}>Remove</button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-          {items.length === 0 && (
-            <tr><td colSpan={14} className="text-subtle">No items yet.</td></tr>
-          )}
-        </tbody>
-      </table>
+      <ItemTable
+        items={items}
+        editIndex={editIndex}
+        editDraft={editDraft}
+        setEditDraft={setEditDraft}
+        setEdit={setEdit}
+        startEdit={startEdit}
+        cancelEdit={cancelEdit}
+        saveEdit={saveEdit}
+        removeItem={removeItem}
+        setSketchAt={setSketchAt}
+      />
     </div>
+  );
+}
+
+const TABLE_COLSPAN = 14;
+
+function ItemTable({
+  items,
+  editIndex, editDraft, setEditDraft, setEdit,
+  startEdit, cancelEdit, saveEdit, removeItem, setSketchAt,
+}) {
+  // Carry the original index alongside each item so edits, removals, and
+  // sketch uploads still mutate the correct slot in the canonical array.
+  const indexed = items.map((it, i) => [it, i]);
+  const windowEntries = indexed.filter(([it]) => !isDoor(it));
+  const doorEntries = indexed.filter(([it]) => isDoor(it));
+
+  const renderRow = ([it, i]) => {
+    if (i === editIndex && editDraft) {
+      const editTotal = totalWidth(editDraft);
+      return (
+        <tr key={i} className="editing">
+          <td><TextField label="" value={editDraft.mark} onChange={(v) => setEdit("mark", v)} inputStyle={{ width: 60 }} /></td>
+          <td><NumberField label="" value={editDraft.quantity} onChange={(v) => setEdit("quantity", v)} inputStyle={{ width: 50 }} /></td>
+          <td>
+            <SelectField label="" value={editDraft.type} onChange={(v) => setEdit("type", v)} options={TYPES} />
+          </td>
+          <td>
+            <SelectField label="" value={editDraft.material ?? "Aluminum"} onChange={(v) => setEdit("material", v)} options={MATERIALS} />
+          </td>
+          <td><TextField label="" value={editDraft.operation} onChange={(v) => setEdit("operation", v)} inputStyle={{ width: 80 }} /></td>
+          <td><NumberField label="" value={editDraft.width_in} onChange={(v) => setEdit("width_in", v)} inputStyle={{ width: 60 }} /></td>
+          <td className="text-muted">{editTotal}"</td>
+          <td><NumberField label="" value={editDraft.height_in} onChange={(v) => setEdit("height_in", v)} inputStyle={{ width: 60 }} /></td>
+          <td><NumberField label="" value={editDraft.panels} onChange={(v) => setEdit("panels", v)} inputStyle={{ width: 50 }} /></td>
+          <td>
+            <TextField
+              label=""
+              value={gridToString(editDraft)}
+              onChange={(v) => {
+                const g = parseGridString(v);
+                if (g) setEditDraft({ ...editDraft, ...g });
+              }}
+              inputStyle={{ width: 50 }}
+            />
+          </td>
+          <td>
+            <SelectField label="" value={editDraft.operableRow ?? "all"} onChange={(v) => setEdit("operableRow", v)} options={OPERABLE_ROWS} />
+          </td>
+          <td>
+            <SketchDrop
+              value={editDraft.sketchImage || ""}
+              item={editDraft}
+              onChange={(dataUrl) => setEdit("sketchImage", dataUrl)}
+            />
+          </td>
+          <td><TextField label="" value={editDraft.notes} onChange={(v) => setEdit("notes", v)} inputStyle={{ width: 120 }} /></td>
+          <td>
+            <div className="row">
+              <button className="primary" onClick={saveEdit} disabled={!editDraft.mark} type="button">Save</button>
+              <button onClick={cancelEdit} type="button">Cancel</button>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+    return (
+      <tr key={i}>
+        <td>{it.mark}</td>
+        <td>{it.quantity}</td>
+        <td>{it.type}</td>
+        <td>{it.material ?? "Aluminum"}</td>
+        <td>{it.operation}</td>
+        <td>{it.width_in}"</td>
+        <td>{totalWidth(it)}"</td>
+        <td>{it.height_in}"</td>
+        <td>{it.panels}</td>
+        <td>{gridToString(it)}</td>
+        <td>{it.operableRow ?? "all"}</td>
+        <td>
+          <SketchDrop
+            value={it.sketchImage || ""}
+            item={it}
+            onChange={(dataUrl) => setSketchAt(i, dataUrl)}
+          />
+        </td>
+        <td className="text-muted" style={{ maxWidth: 180 }}>{it.notes}</td>
+        <td>
+          <div className="row">
+            <button onClick={() => startEdit(i)} disabled={editIndex >= 0 && editIndex !== i}>Edit</button>
+            <button onClick={() => removeItem(i)}>Remove</button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  const sectionHeader = (label, count) => (
+    <tr className="section-header">
+      <td colSpan={TABLE_COLSPAN} style={{ background: "#f2f2f2", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid #ddd" }}>
+        {label} <span className="text-muted" style={{ fontWeight: 400, marginLeft: 6 }}>({count})</span>
+      </td>
+    </tr>
+  );
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Mark</th><th>Qty</th><th>Type</th><th>Material</th><th>Operation</th>
+          <th>W/panel</th><th>Total W</th><th>H</th>
+          <th>Panels</th><th>Grid</th><th>Operable</th><th>Sketch</th><th>Notes</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {sectionHeader("Windows", windowEntries.length)}
+        {windowEntries.length === 0 ? (
+          <tr><td colSpan={TABLE_COLSPAN} className="text-subtle">No windows yet.</td></tr>
+        ) : (
+          windowEntries.map(renderRow)
+        )}
+        {sectionHeader("Doors", doorEntries.length)}
+        {doorEntries.length === 0 ? (
+          <tr><td colSpan={TABLE_COLSPAN} className="text-subtle">No doors yet.</td></tr>
+        ) : (
+          doorEntries.map(renderRow)
+        )}
+      </tbody>
+    </table>
   );
 }
