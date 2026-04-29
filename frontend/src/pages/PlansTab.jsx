@@ -1100,8 +1100,11 @@ function SchedulePreview({ preview, items, onCancel, onApply }) {
                       <option value="fixed">fixed</option>
                       <option value="casement">casement</option>
                       <option value="sliding">sliding</option>
+                      <option value="slider">slider</option>
                       <option value="awning">awning</option>
+                      <option value="hopper">hopper</option>
                       <option value="hung">hung</option>
+                      <option value="double-hung">double hung</option>
                     </select>
                   </td>
                   <td>

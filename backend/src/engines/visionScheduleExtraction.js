@@ -65,9 +65,12 @@ TYPE RULES (DESCRIPTION → normalized lowercase type):
 ==========
 - FIXED UNIT / Fixed / Picture / FX  → "fixed"
 - CASEMENT / CSMT                     → "casement"
-- SLIDING / Slider / SL               → "sliding"
+- SLIDING / SL                        → "sliding"
+- Slider                              → "slider"
 - AWNING / AWN                        → "awning"
-- Single Hung / Double Hung / DH      → "hung"
+- HOPPER                              → "hopper"
+- Single Hung / SH                    → "hung"
+- Double Hung / DH                    → "double-hung"
 - Closest match if unclear; "" if truly unknown.
 
 ==========

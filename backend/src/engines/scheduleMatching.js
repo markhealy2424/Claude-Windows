@@ -120,8 +120,11 @@ function parseDimension(str) {
 function inferType(str) {
   const s = (str || "").toLowerCase();
   if (/casement/.test(s)) return "casement";
-  if (/slid|slider/.test(s)) return "sliding";
+  if (/slider/.test(s)) return "slider";
+  if (/slid/.test(s)) return "sliding";
   if (/awning/.test(s)) return "awning";
+  if (/hopper/.test(s)) return "hopper";
+  if (/double[\s-]?hung|\bdh\b/.test(s)) return "double-hung";
   if (/hung|sash/.test(s)) return "hung";
   if (/fix/.test(s)) return "fixed";
   if (/picture/.test(s)) return "fixed";

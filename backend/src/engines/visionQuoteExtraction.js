@@ -49,9 +49,12 @@ STEP 2. For each product, extract:
    e. type — normalize the window/door type to one of:
         "fixed"               ← "Fixed window", "Picture", "FX", "Fixed window (circle)"
         "casement"            ← "Casement window", "CSMT" (any orientation)
-        "sliding"             ← "Sliding window", "Slider"
+        "sliding"             ← "Sliding window"
+        "slider"              ← "Slider", "Slider window" (when supplier writes "Slider" specifically)
         "awning"              ← "Awning window", "Top-hung window" (top-hung IS awning, normalize to awning)
-        "hung"                ← "Single Hung", "Double Hung"
+        "hopper"              ← "Hopper window", "Hopper" (bottom-hinged, opens inward)
+        "hung"                ← "Single Hung", "SH"
+        "double-hung"         ← "Double Hung", "DH"
         "sliding-door"        ← "Sliding door", "Patio sliding door", "Multi-track sliding door"
         "french-door"         ← "French door", "Casement door" with glass panels (for double-leaf, set panels=2)
         "bifold-door"         ← "Bi-fold door", "Folding door", "Accordion door"

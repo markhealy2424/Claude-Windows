@@ -21,7 +21,9 @@ const blankQuote = () => ({
 
 const TYPE_OPTIONS = [
   ["fixed", "fixed"], ["casement", "casement"], ["sliding", "sliding"],
-  ["awning", "awning"], ["hung", "hung"],
+  ["slider", "slider"],
+  ["awning", "awning"], ["hopper", "hopper"],
+  ["hung", "hung"], ["double-hung", "double hung"],
   ["sliding-door", "sliding door"],
   ["french-door", "french door"],
   ["bifold-door", "bi-fold door"],
