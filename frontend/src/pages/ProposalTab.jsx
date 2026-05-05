@@ -1,6 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
+
+// Mirror of backend/src/engines/pricing.js — keep in sync. Lives client-side
+// so the proposal preview is always live: any edit to items, markup,
+// overrides, delivery, fees, or round recomputes immediately without an
+// API round-trip or stale snapshot.
+function applyPricingLocal(items, { markup = 0, overrides = {}, delivery = 0, fees = 0, round = 0 }) {
+  const priced = items.map((it) => {
+    const ov = overrides[it.mark];
+    const m = (ov !== "" && ov != null && !Number.isNaN(Number(ov))) ? Number(ov) / 100 : markup;
+    const supplier = Number(it.cost ?? 0);
+    let client = supplier * (1 + m);
+    if (round > 0) client = Math.round(client / round) * round;
+    return { ...it, markup: m, client_price: client };
+  });
+  const subtotal = priced.reduce((s, it) => s + it.client_price * Number(it.quantity ?? 1), 0);
+  return { items: priced, subtotal, delivery, fees, total: subtotal + delivery + fees };
+}
 
 const defaultBranding = {
   company: "",
@@ -127,8 +144,6 @@ export default function ProposalTab({ project, onChange }) {
   const [round, setRound] = useState(saved.round ?? 0);
   const [overrides, setOverrides] = useState(saved.overrides ?? {});
   const [branding, setBranding] = useState({ ...defaultBranding, ...(saved.branding ?? {}) });
-  const [priced, setPriced] = useState(saved.priced ?? null);
-  const [pricing, setPricing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
 
@@ -157,34 +172,34 @@ export default function ProposalTab({ project, onChange }) {
     if (!quoteId && quotes[0]?.id) setQuoteId(quotes[0].id);
   }, [quotes, quoteId]);
 
-  async function runPricing() {
-    setPricing(true);
-    setError("");
-    try {
-      const result = await api.applyPricing(itemsWithCost, {
-        markup: Number(markup) / 100,
-        overrides: Object.fromEntries(
-          Object.entries(overrides)
-            .filter(([, v]) => v !== "" && v != null)
-            .map(([k, v]) => [k, { markup: Number(v) / 100 }])
-        ),
-        delivery: Number(delivery),
-        fees: Number(fees),
-        round: Number(round),
-      });
-      setPriced(result);
-      onChange({
-        proposal: {
-          quoteId, markup, delivery, fees, round, overrides, branding,
-          priced: result, updatedAt: new Date().toISOString(),
-        },
-      });
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setPricing(false);
-    }
-  }
+  // Live-priced preview. Recomputes on every change to items, the active
+  // quote, markup, overrides, delivery, fees, or round — so an edit in
+  // the Items tab is reflected here the next render with no "Apply"
+  // button to click.
+  const priced = useMemo(() => applyPricingLocal(itemsWithCost, {
+    markup: Number(markup) / 100,
+    overrides,
+    delivery: Number(delivery),
+    fees: Number(fees),
+    round: Number(round),
+  }), [itemsWithCost, markup, overrides, delivery, fees, round]);
+
+  // Persist the user-controlled settings (not the priced snapshot, since
+  // that's now derived) so they survive across sessions. Skip the very
+  // first render so we don't write back the same values we just loaded.
+  const firstSettingsRender = useRef(true);
+  useEffect(() => {
+    if (firstSettingsRender.current) { firstSettingsRender.current = false; return; }
+    onChange({
+      proposal: {
+        quoteId, markup, delivery, fees, round, overrides, branding,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+    // onChange is stable per ProjectView render; intentionally omitted to
+    // avoid re-firing on every parent re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteId, markup, delivery, fees, round, overrides, branding]);
 
   async function downloadPdf() {
     if (!priced) return;
@@ -279,9 +294,9 @@ export default function ProposalTab({ project, onChange }) {
           <NumberField label="Delivery ($)" value={delivery} onChange={setDelivery} inputStyle={{ width: 90 }} />
           <NumberField label="Fees ($)" value={fees} onChange={setFees} inputStyle={{ width: 90 }} />
           <NumberField label="Round to" value={round} onChange={setRound} inputStyle={{ width: 80 }} />
-          <button className="primary" onClick={runPricing} disabled={pricing}>
-            {pricing ? "Pricing…" : "Apply pricing"}
-          </button>
+        </div>
+        <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
+          Preview updates live as you edit pricing or items in the Items tab.
         </div>
       </div>
 
@@ -328,15 +343,13 @@ export default function ProposalTab({ project, onChange }) {
 
       {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
 
-      {priced && (
-        <>
-          <div className="row" style={{ marginBottom: 12, justifyContent: "space-between" }}>
-            <strong>Preview</strong>
-            <button className="primary" onClick={downloadPdf} disabled={downloading}>
-              {downloading ? "Building PDF…" : "Download proposal PDF"}
-            </button>
-          </div>
-          <table>
+      <div className="row" style={{ marginBottom: 12, justifyContent: "space-between" }}>
+        <strong>Preview</strong>
+        <button className="primary" onClick={downloadPdf} disabled={downloading}>
+          {downloading ? "Building PDF…" : "Download proposal PDF"}
+        </button>
+      </div>
+      <table>
             <thead>
               <tr>
                 <th>Item</th><th>Qty</th><th>Description</th><th>Width</th><th>Height</th>
@@ -377,12 +390,10 @@ export default function ProposalTab({ project, onChange }) {
               {Number(priced.fees) > 0 && <tr><td colSpan={8} style={{ textAlign: "right" }}>Fees</td><td>{money(priced.fees)}</td></tr>}
               <tr><td colSpan={8} style={{ textAlign: "right", fontWeight: 600 }}>Total</td><td style={{ fontWeight: 600 }}>{money(priced.total)}</td></tr>
             </tfoot>
-          </table>
-          <div className="text-subtle" style={{ marginTop: 8, fontSize: 12 }}>
-            Edit any per-item markup % above and click "Apply pricing" again to recompute.
-          </div>
-        </>
-      )}
+      </table>
+      <div className="text-subtle" style={{ marginTop: 8, fontSize: 12 }}>
+        Edits in the Items tab and changes to the inputs above are reflected here automatically.
+      </div>
     </div>
   );
 }
