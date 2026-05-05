@@ -15,6 +15,55 @@ const defaultBranding = {
     "6mm Low E (Interior) +20A+Warm edge spacer+Argon gas+ 6mm Low E (Exterior), Double Tempered Glass",
 };
 
+// Build a project Item from a supplier-quote line so the user can skip
+// re-entering items in the Items tab when the quote already has them all.
+// Only carries identity / spec fields — pricing fields (unit_price_usd,
+// total_price_usd, cost) stay on the quote side; the proposal pulls cost
+// from the matched quote line at pricing time.
+function quoteLineToItem(q) {
+  const blank = {
+    mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
+    width_in: 36, height_in: 48, panels: 1, gridRows: 1, gridCols: 1,
+    operableRow: "all", notes: "", sketchImage: "",
+  };
+  return {
+    ...blank,
+    mark: (q?.mark ?? "").trim(),
+    quantity: Number(q?.quantity ?? 1) || 1,
+    type: (q?.type ?? "fixed").trim().toLowerCase() || "fixed",
+    operation: q?.operation ?? "",
+    material: q?.material || "Aluminum",
+    width_in: Number(q?.width_in ?? 0) || 0,
+    height_in: Number(q?.height_in ?? 0) || 0,
+    panels: Number(q?.panels ?? 1) || 1,
+    notes: q?.notes ?? "",
+    glass: q?.glass ?? "",
+    extColor: q?.ext_color ?? "",
+    intColor: q?.int_color ?? "",
+    thickness: q?.thickness ?? "",
+    profile: q?.profile ?? "",
+  };
+}
+
+// Pull all line items from one quote (or every quote) and return a
+// deduped item list, keyed by mark. If two quotes share a mark, the
+// first one wins so the user can pick a "primary" quote when multiple
+// suppliers bid the same project.
+function itemsFromQuotes(quotes) {
+  const seen = new Set();
+  const out = [];
+  for (const q of quotes) {
+    for (const line of q?.items ?? []) {
+      const it = quoteLineToItem(line);
+      if (!it.mark) continue;
+      if (seen.has(it.mark)) continue;
+      seen.add(it.mark);
+      out.push(it);
+    }
+  }
+  return out;
+}
+
 // Find the supplier-quote line for a given RFQ mark. Suppliers sometimes split
 // a single mark into orientation variants (G1, G2). For an RFQ mark "G", any
 // quote mark matching ^G\d+$ counts as the same product (for spec lookup the
@@ -165,8 +214,48 @@ export default function ProposalTab({ project, onChange }) {
     }
   }
 
+  function importFromQuote(quote) {
+    const imported = itemsFromQuotes([quote]);
+    if (imported.length === 0) return;
+    onChange({ items: imported });
+  }
+
+  function importFromAllQuotes() {
+    const imported = itemsFromQuotes(quotes);
+    if (imported.length === 0) return;
+    onChange({ items: imported });
+  }
+
   if (items.length === 0) {
-    return <div className="card">Add items in the Items tab before building a proposal.</div>;
+    const quotesWithItems = quotes.filter((q) => (q.items ?? []).length > 0);
+    if (quotesWithItems.length === 0) {
+      return <div className="card">Add items in the Items tab before building a proposal.</div>;
+    }
+    return (
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>No items yet — import from a quote?</h3>
+        <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
+          You don't have any items in the Items tab. If your supplier quote already lists every product,
+          you can pull the items straight in instead of re-entering them.
+        </p>
+        <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+          {quotesWithItems.map((q) => (
+            <button key={q.id} className="primary" onClick={() => importFromQuote(q)}>
+              Use {q.items.length} item{q.items.length === 1 ? "" : "s"} from {q.supplier || "(unnamed quote)"}
+            </button>
+          ))}
+          {quotesWithItems.length > 1 && (
+            <button onClick={importFromAllQuotes}>
+              Merge all quotes ({quotesWithItems.reduce((s, q) => s + q.items.length, 0)} unique marks)
+            </button>
+          )}
+        </div>
+        <div className="text-subtle" style={{ marginTop: 10, fontSize: 12 }}>
+          This copies mark, dimensions, type, operation, glass, colors, and material onto Items. Pricing still
+          comes from the chosen Supplier quote dropdown above the proposal table.
+        </div>
+      </div>
+    );
   }
 
   const money = (n) =>
