@@ -43,6 +43,16 @@ function quoteLineToItem(q) {
     width_in: 36, height_in: 48, panels: 1, gridRows: 1, gridCols: 1,
     operableRow: "all", notes: "", sketchImage: "",
   };
+  // Project items use a PER-PANEL width_in (the proposal computes
+  // total = width_in × panels). Supplier quote lines store width_in as
+  // the TOTAL assembled width — that's what the spec sheet prints. So
+  // when we import we divide by the supplier's panel count so the
+  // existing `total = width_in × panels` formula reproduces the
+  // supplier's number exactly. If panels is 1 or missing this is a
+  // no-op.
+  const qPanels = Math.max(1, Math.floor(Number(q?.panels ?? 1) || 1));
+  const qTotalWidthIn = Number(q?.width_in ?? 0) || 0;
+  const perPanelWidthIn = qPanels > 1 ? qTotalWidthIn / qPanels : qTotalWidthIn;
   return {
     ...blank,
     mark: (q?.mark ?? "").trim(),
@@ -50,9 +60,9 @@ function quoteLineToItem(q) {
     type: (q?.type ?? "fixed").trim().toLowerCase() || "fixed",
     operation: q?.operation ?? "",
     material: q?.material || "Aluminum",
-    width_in: Number(q?.width_in ?? 0) || 0,
+    width_in: perPanelWidthIn,
     height_in: Number(q?.height_in ?? 0) || 0,
-    panels: Number(q?.panels ?? 1) || 1,
+    panels: qPanels,
     notes: q?.notes ?? "",
     glass: q?.glass ?? "",
     extColor: q?.ext_color ?? "",
