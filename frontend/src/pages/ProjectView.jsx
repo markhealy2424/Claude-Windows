@@ -5,11 +5,12 @@ import ItemEditor from "./ItemEditor.jsx";
 import RFQTab from "./RFQTab.jsx";
 import QuotesTab from "./QuotesTab.jsx";
 import ProposalTab from "./ProposalTab.jsx";
+import CompareTab from "./CompareTab.jsx";
 import PlansTab from "./PlansTab.jsx";
 import ProjectInfo from "./ProjectInfo.jsx";
 import { StatusSelect } from "./Dashboard.jsx";
 
-const TABS = ["Project Info", "Plans", "Items", "RFQ", "Quotes", "Proposal"];
+const TABS = ["Project Info", "Plans", "Items", "RFQ", "Quotes", "Compare", "Proposal"];
 
 export default function ProjectView() {
   const { id } = useParams();
@@ -70,6 +71,7 @@ export default function ProjectView() {
       {tab === "Items" && <ItemEditor items={project.items} onChange={saveItems} />}
       {tab === "RFQ" && <RFQTab project={project} />}
       {tab === "Quotes" && <QuotesTab project={project} onChange={savePatch} />}
+      {tab === "Compare" && <CompareTab project={project} onChange={savePatch} />}
       {tab === "Proposal" && <ProposalTab project={project} onChange={savePatch} />}
     </div>
   );

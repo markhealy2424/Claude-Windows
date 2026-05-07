@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
+import { pickQuoteCost, pickQuoteSpec } from "../lib/quoteLookup.js";
 
 // Mirror of backend/src/engines/pricing.js — keep in sync. Lives client-side
 // so the proposal preview is always live: any edit to items, markup,
@@ -91,56 +92,6 @@ function itemsFromQuotes(quotes) {
   return out;
 }
 
-// Find the supplier-quote line for a given RFQ mark. Suppliers sometimes split
-// a single mark into orientation variants (G1, G2). For an RFQ mark "G", any
-// quote mark matching ^G\d+$ counts as the same product (for spec lookup the
-// first variant wins; cost sums across all variants since each variant is its
-// own priced unit).
-function findQuoteMatches(quoteItems, mark) {
-  if (!Array.isArray(quoteItems) || !mark) return [];
-  const exact = quoteItems.filter((q) => q.mark === mark);
-  if (exact.length) return exact;
-  const variantRe = new RegExp(`^${mark}\\d+$`);
-  return quoteItems.filter((q) => variantRe.test(q.mark || ""));
-}
-
-// Per-unit cost. Prefer unit_price_usd; fall back to total_price_usd / quantity.
-// `cost` is the legacy field name kept for old data.
-function pickQuoteCost(quoteItems, mark) {
-  const matches = findQuoteMatches(quoteItems, mark);
-  if (!matches.length) return 0;
-  // For variant splits we sum unit prices (each variant is one unit of the assembly).
-  let unit = 0;
-  for (const m of matches) {
-    const u = Number(m.unit_price_usd ?? m.cost ?? 0);
-    if (u > 0) { unit += u; continue; }
-    const total = Number(m.total_price_usd ?? 0);
-    const qty = Number(m.quantity ?? 1) || 1;
-    if (total > 0) unit += total / qty;
-  }
-  return unit;
-}
-
-// Pick the glass / color / material spec from the matched supplier line so it
-// can flow into the proposal. First non-empty value across variants wins.
-function pickQuoteSpec(quoteItems, mark) {
-  const matches = findQuoteMatches(quoteItems, mark);
-  const firstNonEmpty = (key) => {
-    for (const m of matches) {
-      const v = (m?.[key] ?? "").toString().trim();
-      if (v) return v;
-    }
-    return "";
-  };
-  return {
-    glass: firstNonEmpty("glass"),
-    ext_color: firstNonEmpty("ext_color"),
-    int_color: firstNonEmpty("int_color"),
-    material: firstNonEmpty("material"),
-    thickness: firstNonEmpty("thickness"),
-    profile: firstNonEmpty("profile"),
-  };
-}
 
 export default function ProposalTab({ project, onChange }) {
   const items = project.items ?? [];
