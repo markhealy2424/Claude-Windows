@@ -13,6 +13,7 @@ const blankQuote = () => ({
   supplier: "",
   invoice_number: "",
   invoice_date: "",
+  freight_usd: 0,
   receivedAt: new Date().toISOString(),
   filePersisted: false,
   fileName: "",
@@ -125,6 +126,7 @@ export default function QuotesTab({ project, onChange }) {
             supplier: q.supplier || result.supplier || q.supplier,
             invoice_number: result.invoice_number || q.invoice_number,
             invoice_date: result.invoice_date || q.invoice_date,
+            freight_usd: Number(result.freight_usd) || q.freight_usd || 0,
             items: result.items ?? [],
           }
         : q));
@@ -191,6 +193,12 @@ export default function QuotesTab({ project, onChange }) {
                   label="Invoice date"
                   value={active.invoice_date ?? ""}
                   onChange={(v) => updateActive({ invoice_date: v })}
+                />
+                <NumberField
+                  label="Freight ($)"
+                  value={active.freight_usd ?? 0}
+                  onChange={(v) => updateActive({ freight_usd: Number(v) || 0 })}
+                  inputStyle={{ width: 100 }}
                 />
               </div>
               <div className="row">

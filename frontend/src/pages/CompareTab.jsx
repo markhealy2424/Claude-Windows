@@ -102,8 +102,8 @@ export default function CompareTab({ project, onChange }) {
   // tilt the recommendation. Headline totals (overall) are also shown
   // separately so the user can sanity-check the dollar amounts.
   const summary = useMemo(() => {
-    let totalA = 0, totalB = 0;
-    let comparableA = 0, comparableB = 0;
+    let itemsA = 0, itemsB = 0;
+    let comparableItemsA = 0, comparableItemsB = 0;
     let comparableMarks = 0;
     const missingA = [];
     const missingB = [];
@@ -111,11 +111,11 @@ export default function CompareTab({ project, onChange }) {
     const zeroB = [];
 
     for (const r of rows) {
-      totalA += r.line_a;
-      totalB += r.line_b;
+      itemsA += r.line_a;
+      itemsB += r.line_b;
       if (r.present_a && r.present_b) {
-        comparableA += r.line_a;
-        comparableB += r.line_b;
+        comparableItemsA += r.line_a;
+        comparableItemsB += r.line_b;
         comparableMarks += 1;
       }
       if (!r.present_a) missingA.push(r.mark);
@@ -123,6 +123,16 @@ export default function CompareTab({ project, onChange }) {
       if (r.present_a && r.cost_a === 0) zeroA.push(r.mark);
       if (r.present_b && r.cost_b === 0) zeroB.push(r.mark);
     }
+
+    const freightA = Number(a?.freight_usd) || 0;
+    const freightB = Number(b?.freight_usd) || 0;
+
+    // Freight is a real cost difference between suppliers, so it counts
+    // toward the recommendation alongside the comparable-mark subtotal.
+    const totalA = itemsA + freightA;
+    const totalB = itemsB + freightB;
+    const comparableA = comparableItemsA + freightA;
+    const comparableB = comparableItemsB + freightB;
 
     let recommendation = null;
     let savings = 0;
@@ -140,16 +150,23 @@ export default function CompareTab({ project, onChange }) {
     }
 
     return {
+      itemsA, itemsB,
+      freightA, freightB,
       totalA, totalB,
+      comparableItemsA, comparableItemsB,
       comparableA, comparableB, comparableMarks,
       missingA, missingB,
       zeroA, zeroB,
       recommendation, savings,
     };
-  }, [rows]);
+  }, [rows, a, b]);
 
   function useForProposal(id) {
     onChange({ proposal: { ...(project.proposal ?? {}), quoteId: id, updatedAt: new Date().toISOString() } });
+  }
+
+  function updateQuote(id, patch) {
+    onChange({ quotes: quotes.map((q) => (q.id === id ? { ...q, ...patch } : q)) });
   }
 
   if (usable.length < 2) {
@@ -192,6 +209,8 @@ export default function CompareTab({ project, onChange }) {
             a={a}
             b={b}
             summary={summary}
+            onSetFreightA={(v) => updateQuote(aId, { freight_usd: v })}
+            onSetFreightB={(v) => updateQuote(bId, { freight_usd: v })}
             onUseA={() => useForProposal(aId)}
             onUseB={() => useForProposal(bId)}
           />
@@ -203,8 +222,15 @@ export default function CompareTab({ project, onChange }) {
   );
 }
 
-function SummaryCard({ a, b, summary, onUseA, onUseB }) {
-  const { totalA, totalB, comparableA, comparableB, comparableMarks, missingA, missingB, zeroA, zeroB, recommendation, savings } = summary;
+function SummaryCard({ a, b, summary, onSetFreightA, onSetFreightB, onUseA, onUseB }) {
+  const {
+    itemsA, itemsB, freightA, freightB,
+    totalA, totalB,
+    comparableItemsA, comparableItemsB,
+    comparableA, comparableB, comparableMarks,
+    missingA, missingB, zeroA, zeroB,
+    recommendation, savings,
+  } = summary;
 
   const headline = (() => {
     if (recommendation === "insufficient") return "Not enough comparable data";
@@ -220,6 +246,8 @@ function SummaryCard({ a, b, summary, onUseA, onUseB }) {
   if (missingB.length) caveats.push(`${b.supplier || "Quote B"} is missing ${missingB.length} mark${missingB.length === 1 ? "" : "s"}: ${missingB.join(", ")}`);
   if (zeroA.length) caveats.push(`${a.supplier || "Quote A"} has no unit price for: ${zeroA.join(", ")}`);
   if (zeroB.length) caveats.push(`${b.supplier || "Quote B"} has no unit price for: ${zeroB.join(", ")}`);
+  if (freightA > 0 && freightB === 0) caveats.push(`${b.supplier || "Quote B"} has no freight listed — confirm whether shipping is included or quoted EXW (pickup-only).`);
+  if (freightB > 0 && freightA === 0) caveats.push(`${a.supplier || "Quote A"} has no freight listed — confirm whether shipping is included or quoted EXW (pickup-only).`);
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
@@ -249,14 +277,39 @@ function SummaryCard({ a, b, summary, onUseA, onUseB }) {
           <table style={{ width: "100%", fontSize: 13 }}>
             <tbody>
               <tr>
-                <td className="text-muted">Headline total</td>
-                <td style={{ textAlign: "right" }}>{money(totalA)}</td>
-                <td style={{ textAlign: "right" }}>{money(totalB)}</td>
+                <td className="text-muted">Items subtotal</td>
+                <td style={{ textAlign: "right" }}>{money(itemsA)}</td>
+                <td style={{ textAlign: "right" }}>{money(itemsB)}</td>
               </tr>
               <tr>
-                <td className="text-muted">Comparable subtotal</td>
-                <td style={{ textAlign: "right" }}>{money(comparableA)}</td>
-                <td style={{ textAlign: "right" }}>{money(comparableB)}</td>
+                <td className="text-muted">Freight</td>
+                <td style={{ textAlign: "right" }}>
+                  <FreightInput value={freightA} onChange={onSetFreightA} />
+                </td>
+                <td style={{ textAlign: "right" }}>
+                  <FreightInput value={freightB} onChange={onSetFreightB} />
+                </td>
+              </tr>
+              <tr>
+                <td className="text-muted" style={{ fontWeight: 600 }}>Headline total</td>
+                <td style={{ textAlign: "right", fontWeight: 600 }}>{money(totalA)}</td>
+                <td style={{ textAlign: "right", fontWeight: 600 }}>{money(totalB)}</td>
+              </tr>
+              <tr><td colSpan={3} style={{ paddingTop: 6 }}></td></tr>
+              <tr>
+                <td className="text-muted">Comparable items</td>
+                <td style={{ textAlign: "right" }}>{money(comparableItemsA)}</td>
+                <td style={{ textAlign: "right" }}>{money(comparableItemsB)}</td>
+              </tr>
+              <tr>
+                <td className="text-muted">+ Freight</td>
+                <td style={{ textAlign: "right" }}>{freightA > 0 ? money(freightA) : <span className="text-subtle">—</span>}</td>
+                <td style={{ textAlign: "right" }}>{freightB > 0 ? money(freightB) : <span className="text-subtle">—</span>}</td>
+              </tr>
+              <tr>
+                <td className="text-muted" style={{ fontWeight: 600 }}>Comparable total</td>
+                <td style={{ textAlign: "right", fontWeight: 600 }}>{money(comparableA)}</td>
+                <td style={{ textAlign: "right", fontWeight: 600 }}>{money(comparableB)}</td>
               </tr>
               <tr>
                 <td></td>
@@ -360,5 +413,19 @@ function DetailTable({ a, b, rows }) {
         })}
       </tbody>
     </table>
+  );
+}
+
+function FreightInput({ value, onChange }) {
+  return (
+    <input
+      type="number"
+      value={value ?? 0}
+      min={0}
+      step="0.01"
+      onChange={(e) => onChange(Number(e.target.value) || 0)}
+      onFocus={(e) => e.target.select()}
+      style={{ width: 100, textAlign: "right" }}
+    />
   );
 }

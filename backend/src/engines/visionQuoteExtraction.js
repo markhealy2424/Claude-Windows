@@ -87,6 +87,7 @@ STEP 3. Pull supplier metadata (use empty string "" or 0 if not visible):
    - invoice_date — ISO YYYY-MM-DD if derivable, otherwise as-printed
    - total_quantity — sum from totals block if shown
    - total_price_usd — grand total / Total EXW Amount if shown
+   - freight_usd — shipping/freight/delivery/ocean-freight charge as a single USD number. Look for labels like "Freight", "Shipping", "Sea freight", "Ocean freight", "Delivery", "Package & Freight". If broken into multiple components (e.g. "Package Cost" + "Sea Freight"), sum them. 0 if not stated separately (i.e. EXW / pickup-only quotes).
 
 STEP 4. Verify before returning:
    - Did you skip every Subtotal / Package Cost / Total row? They are NOT items.
@@ -101,6 +102,7 @@ OUTPUT FORMAT — return ONLY this JSON:
   "invoice_date": "2026-04-20",
   "total_quantity": 44,
   "total_price_usd": 35921.29,
+  "freight_usd": 2500,
   "items": [
     {
       "mark": "A",
@@ -159,9 +161,10 @@ const RESPONSE_SCHEMA = {
     invoice_date: { type: "string" },
     total_quantity: { type: "integer" },
     total_price_usd: { type: "number" },
+    freight_usd: { type: "number" },
     items: { type: "array", items: ITEM_SCHEMA },
   },
-  required: ["supplier", "invoice_number", "invoice_date", "total_quantity", "total_price_usd", "items"],
+  required: ["supplier", "invoice_number", "invoice_date", "total_quantity", "total_price_usd", "freight_usd", "items"],
   additionalProperties: false,
 };
 
@@ -244,6 +247,7 @@ export async function extractSupplierQuoteWithVision({ filePath }) {
     invoice_date: (parsed.invoice_date || "").trim(),
     total_quantity: Number(parsed.total_quantity) || 0,
     total_price_usd: Number(parsed.total_price_usd) || 0,
+    freight_usd: Number(parsed.freight_usd) || 0,
     items,
     detector: "vision",
     model: MODEL,
