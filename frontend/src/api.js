@@ -109,6 +109,23 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items, projectName, branding }),
     }).then(json),
+  listCompanyExpenses: () => fetch(`${base}/financials/expenses`).then(json),
+  createCompanyExpense: (expense) =>
+    fetch(`${base}/financials/expenses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(expense),
+    }).then(json),
+  updateCompanyExpense: (id, patch) =>
+    fetch(`${base}/financials/expenses/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  deleteCompanyExpense: (id) =>
+    fetch(`${base}/financials/expenses/${id}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("delete failed");
+    }),
   downloadProposalPdf: async (items, projectName, branding, totals, info) => {
     const res = await fetch(`${base}/proposals/pdf`, {
       method: "POST",

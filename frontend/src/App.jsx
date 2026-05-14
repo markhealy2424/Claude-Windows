@@ -11,6 +11,7 @@ export default function App() {
           </span>
         </Link>
         <Link to="/">Dashboard</Link>
+        <Link to="/financials">Financials</Link>
         <Link to="/sketch">Sketch Generator</Link>
       </nav>
       <main className="main">

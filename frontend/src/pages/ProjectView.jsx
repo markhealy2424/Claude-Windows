@@ -8,9 +8,10 @@ import ProposalTab from "./ProposalTab.jsx";
 import CompareTab from "./CompareTab.jsx";
 import PlansTab from "./PlansTab.jsx";
 import ProjectInfo from "./ProjectInfo.jsx";
+import MoneyTab from "./MoneyTab.jsx";
 import { StatusSelect } from "./Dashboard.jsx";
 
-const TABS = ["Project Info", "Plans", "Items", "RFQ", "Quotes", "Compare", "Proposal"];
+const TABS = ["Project Info", "Plans", "Items", "RFQ", "Quotes", "Compare", "Proposal", "Money"];
 
 export default function ProjectView() {
   const { id } = useParams();
@@ -73,6 +74,7 @@ export default function ProjectView() {
       {tab === "Quotes" && <QuotesTab project={project} onChange={savePatch} />}
       {tab === "Compare" && <CompareTab project={project} onChange={savePatch} />}
       {tab === "Proposal" && <ProposalTab project={project} onChange={savePatch} />}
+      {tab === "Money" && <MoneyTab project={project} onChange={savePatch} />}
     </div>
   );
 }
