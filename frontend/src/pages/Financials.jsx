@@ -4,8 +4,10 @@ import { api } from "../api.js";
 import { money, projectSummary, todayIso } from "../lib/financials.js";
 import { Ledger } from "./MoneyTab.jsx";
 import Salespeople from "./Salespeople.jsx";
+import Roster from "./Roster.jsx";
+import Invoices from "./Invoices.jsx";
 
-const SUB_TABS = ["Overview", "Salespeople"];
+const SUB_TABS = ["Overview", "Roster", "Sale assignments", "Invoices"];
 
 export default function Financials({ initialTab = "Overview" }) {
   const [tab, setTab] = useState(initialTab);
@@ -19,7 +21,9 @@ export default function Financials({ initialTab = "Overview" }) {
         ))}
       </div>
       {tab === "Overview" && <FinancialsOverview />}
-      {tab === "Salespeople" && <Salespeople />}
+      {tab === "Roster" && <Roster />}
+      {tab === "Sale assignments" && <Salespeople />}
+      {tab === "Invoices" && <Invoices />}
     </div>
   );
 }

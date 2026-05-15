@@ -23,7 +23,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="sales/resources" element={<Sales initialTab="Resources" />} />
         <Route path="leads" element={<Sales initialTab="Pipeline" />} />
         <Route path="financials" element={<Financials initialTab="Overview" />} />
-        <Route path="salespeople" element={<Financials initialTab="Salespeople" />} />
+        <Route path="financials/roster" element={<Financials initialTab="Roster" />} />
+        <Route path="financials/assignments" element={<Financials initialTab="Sale assignments" />} />
+        <Route path="financials/invoices" element={<Financials initialTab="Invoices" />} />
+        <Route path="salespeople" element={<Financials initialTab="Sale assignments" />} />
         <Route path="invoices/:id" element={<InvoiceDetail />} />
         <Route path="sketch" element={<SketchGenerator />} />
       </Route>

@@ -57,7 +57,7 @@ export default function InvoiceDetail() {
   async function deleteThisInvoice() {
     if (!confirm("Delete this invoice? This cannot be undone.")) return;
     await api.deleteInvoice(id);
-    navigate("/salespeople");
+    navigate("/financials/invoices");
   }
 
   if (error) return <div className="card error">{error}</div>;
@@ -69,7 +69,7 @@ export default function InvoiceDetail() {
     <div>
       <div className="invoice-actions">
         <div className="breadcrumb">
-          <Link to="/salespeople">← Salespeople</Link>
+          <Link to="/financials/invoices">← Invoices</Link>
         </div>
         <div className="row" style={{ gap: 8 }}>
           <button onClick={() => window.print()}>Print / save PDF</button>
