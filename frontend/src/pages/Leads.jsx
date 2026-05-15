@@ -33,6 +33,7 @@ export default function Leads() {
   const [runResult, setRunResult] = useState(null);
 
   const [expandedId, setExpandedId] = useState(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,7 +127,7 @@ export default function Leads() {
 
   return (
     <div>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h1 style={{ margin: 0 }}>Leads</h1>
         <button
           className="primary"
@@ -142,96 +143,15 @@ export default function Leads() {
           {running ? "Running…" : "Run report"}
         </button>
       </div>
-      <p className="text-muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 16 }}>
-        Two ways to fill your pipeline: paste a list of companies you already want to chase (<strong>Add company</strong> below), or have the agent crawl your saved source URLs and surface new prospects (<strong>Run report</strong>). Each lead has a full funnel tracker and interaction log underneath.
-      </p>
 
       {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
 
-      {/* ── Business context ───────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Business context</h3>
-        <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
-          The agent reads this every run. Concrete is better than abstract — region, target customer type, deal size, the kind of project you want to win.
-        </p>
-        {editingContext ? (
-          <>
-            <textarea
-              value={contextDraft}
-              onChange={(e) => setContextDraft(e.target.value)}
-              rows={5}
-              placeholder="We sell custom aluminum windows and doors in Southern California. Ideal clients are GCs, architects, and developers running $1M+ residential projects in Pasadena, Beverly Hills, and the Westside."
-              style={{ width: "100%", padding: 8, fontSize: 14, lineHeight: 1.4, boxSizing: "border-box" }}
-            />
-            <div className="row" style={{ marginTop: 8, gap: 8 }}>
-              <button className="primary" onClick={saveContext} disabled={!contextDraft.trim()}>Save</button>
-              {context && <button onClick={() => { setContextDraft(context); setEditingContext(false); }}>Cancel</button>}
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ whiteSpace: "pre-line", padding: "8px 12px", background: "var(--color-surface-alt)", borderRadius: 4, fontSize: 14 }}>
-              {context}
-            </div>
-            <div className="row" style={{ marginTop: 8 }}>
-              <button onClick={() => setEditingContext(true)}>Edit</button>
-            </div>
-          </>
-        )}
+      {/* ── Pipeline (top) ─────────────────────────────────────────── */}
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+        <h2 style={{ margin: 0 }}>Pipeline ({leads.length})</h2>
+        <button onClick={() => setManualOpen((v) => !v)}>{manualOpen ? "Cancel" : "+ Company"}</button>
       </div>
 
-      {/* ── Manual company add ─────────────────────────────────────── */}
-      <ManualAddCard onAdd={addCompany} />
-
-      {/* ── Source URLs (for the agent) ─────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div>
-            <h3 style={{ margin: 0 }}>Agent source URLs</h3>
-            <p className="text-muted" style={{ fontSize: 13, margin: "4px 0 0" }}>
-              Pages the agent fetches on each <strong>Run report</strong>. Best fits: contractor / architect directories, association member lists, building-permit portals, chamber-of-commerce member pages. Static HTML works best.
-            </p>
-          </div>
-          <button onClick={addSource}>+ Add source</button>
-        </div>
-        {sources.length === 0 ? (
-          <div className="text-subtle" style={{ fontSize: 13 }}>No sources yet.</div>
-        ) : (
-          <table>
-            <thead>
-              <tr><th>Label</th><th>URL</th><th>Notes</th><th></th></tr>
-            </thead>
-            <tbody>
-              {sources.map((s) => (
-                <tr key={s.id}>
-                  <td><input value={s.label ?? ""} placeholder="e.g. AIA Pasadena directory" onChange={(e) => updateSource(s.id, { label: e.target.value })} style={{ width: 200 }} /></td>
-                  <td><input value={s.url ?? ""} placeholder="https://..." onChange={(e) => updateSource(s.id, { url: e.target.value })} style={{ width: 320 }} /></td>
-                  <td><input value={s.notes ?? ""} placeholder="What's on this page" onChange={(e) => updateSource(s.id, { notes: e.target.value })} style={{ width: 240 }} /></td>
-                  <td><button onClick={() => removeSource(s.id)} title="Delete">×</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* ── Last run summary ───────────────────────────────────────── */}
-      {runResult && (
-        <div className="card" style={{ marginBottom: 16, background: "var(--color-success-soft)", borderLeft: "4px solid var(--color-success)" }}>
-          <strong>Last run:</strong> queried {runResult.sourcesQueried} source{runResult.sourcesQueried === 1 ? "" : "s"} in {(runResult.durationMs / 1000).toFixed(1)}s — added {runResult.created.length} new lead{runResult.created.length === 1 ? "" : "s"}{runResult.skipped.length > 0 ? `, skipped ${runResult.skipped.length} duplicate${runResult.skipped.length === 1 ? "" : "s"}` : ""}.
-          {runResult.errors.length > 0 && (
-            <div style={{ marginTop: 8, fontSize: 13 }}>
-              <strong>{runResult.errors.length} source error{runResult.errors.length === 1 ? "" : "s"}:</strong>
-              <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
-                {runResult.errors.map((e, i) => <li key={i}><strong>{e.label || e.url}</strong>: {e.message}</li>)}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Funnel summary ─────────────────────────────────────────── */}
-      <h2 style={{ margin: "8px 0" }}>Pipeline ({leads.length})</h2>
       <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         {STAGE_OPTIONS.map(([key, label]) => (
           <div key={key} style={{ padding: "6px 10px", background: "var(--color-surface-alt)", borderRadius: 4, fontSize: 13 }}>
@@ -240,45 +160,150 @@ export default function Leads() {
         ))}
       </div>
 
-      {/* ── Leads list ─────────────────────────────────────────────── */}
-      {leads.length === 0 ? (
-        <div className="card text-subtle">No leads yet. Add a company above, or set up the agent and hit <strong>Run report</strong>.</div>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Company</th>
-              <th>Why fit</th>
-              <th>Salesperson</th>
-              <th>Stage</th>
-              <th>Last touch</th>
-              <th>Score</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {leads.map((l) => (
-              <LeadRow
-                key={l.id}
-                lead={l}
-                salespeople={salespeople}
-                expanded={expandedId === l.id}
-                onExpand={() => setExpandedId(expandedId === l.id ? null : l.id)}
-                onUpdate={(patch) => updateLead(l.id, patch)}
-                onRemove={() => removeLead(l.id)}
-                onLogInteraction={(entry) => logInteraction(l.id, entry)}
-                onRemoveInteraction={(eid) => removeInteraction(l.id, eid)}
-              />
-            ))}
-          </tbody>
-        </table>
+      {manualOpen && (
+        <ManualAddForm onAdd={async (data) => { await addCompany(data); setManualOpen(false); }} onCancel={() => setManualOpen(false)} />
       )}
+
+      {leads.length === 0 ? (
+        <div className="card text-subtle" style={{ marginBottom: 24 }}>No leads yet.</div>
+      ) : (
+        <div style={{ marginBottom: 24 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Why fit</th>
+                <th>Salesperson</th>
+                <th>Stage</th>
+                <th>Last touch</th>
+                <th>Score</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map((l) => (
+                <LeadRow
+                  key={l.id}
+                  lead={l}
+                  salespeople={salespeople}
+                  expanded={expandedId === l.id}
+                  onExpand={() => setExpandedId(expandedId === l.id ? null : l.id)}
+                  onUpdate={(patch) => updateLead(l.id, patch)}
+                  onRemove={() => removeLead(l.id)}
+                  onLogInteraction={(entry) => logInteraction(l.id, entry)}
+                  onRemoveInteraction={(eid) => removeInteraction(l.id, eid)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Agent section (bottom): context + sources + last-run output ── */}
+      <div className="card">
+        <h2 style={{ margin: "0 0 12px" }}>Agent</h2>
+
+        <div className="row" style={{ gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
+          {/* Business context */}
+          <div style={{ flex: "1 1 360px", minWidth: 280 }}>
+            <h3 style={{ margin: "0 0 8px" }}>Business context</h3>
+            {editingContext ? (
+              <>
+                <textarea
+                  value={contextDraft}
+                  onChange={(e) => setContextDraft(e.target.value)}
+                  rows={6}
+                  placeholder="We sell custom aluminum windows and doors in Southern California. Ideal clients are GCs, architects, and developers running $1M+ residential projects in Pasadena, Beverly Hills, and the Westside."
+                  style={{ width: "100%", padding: 8, fontSize: 14, lineHeight: 1.4, boxSizing: "border-box" }}
+                />
+                <div className="row" style={{ marginTop: 8, gap: 8 }}>
+                  <button className="primary" onClick={saveContext} disabled={!contextDraft.trim()}>Save</button>
+                  {context && <button onClick={() => { setContextDraft(context); setEditingContext(false); }}>Cancel</button>}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ whiteSpace: "pre-line", padding: "10px 12px", background: "var(--color-surface-alt)", borderRadius: 4, fontSize: 14 }}>
+                  {context || <span className="text-subtle">No context yet.</span>}
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <button onClick={() => setEditingContext(true)}>{context ? "Edit" : "Add"}</button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Source URLs */}
+          <div style={{ flex: "1 1 420px", minWidth: 320 }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <h3 style={{ margin: 0 }}>Source URLs</h3>
+              <button onClick={addSource}>+ Source</button>
+            </div>
+            {sources.length === 0 ? (
+              <div className="text-subtle" style={{ fontSize: 13 }}>No sources yet.</div>
+            ) : (
+              <table>
+                <thead>
+                  <tr><th>Label</th><th>URL</th><th>Notes</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {sources.map((s) => (
+                    <tr key={s.id}>
+                      <td><input value={s.label ?? ""} placeholder="Label" onChange={(e) => updateSource(s.id, { label: e.target.value })} style={{ width: "100%" }} /></td>
+                      <td><input value={s.url ?? ""} placeholder="https://..." onChange={(e) => updateSource(s.id, { url: e.target.value })} style={{ width: "100%" }} /></td>
+                      <td><input value={s.notes ?? ""} placeholder="Notes" onChange={(e) => updateSource(s.id, { notes: e.target.value })} style={{ width: "100%" }} /></td>
+                      <td><button onClick={() => removeSource(s.id)} title="Delete">×</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Last-run results / suggested contacts */}
+        {runResult && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--color-border)" }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+              <h3 style={{ margin: 0 }}>
+                Suggested contacts
+                <span className="text-muted" style={{ fontWeight: 400, fontSize: 14, marginLeft: 8 }}>
+                  · {runResult.created.length} added · {(runResult.durationMs / 1000).toFixed(1)}s · {runResult.sourcesQueried} source{runResult.sourcesQueried === 1 ? "" : "s"} queried
+                  {runResult.skipped.length > 0 && ` · ${runResult.skipped.length} dupes skipped`}
+                </span>
+              </h3>
+            </div>
+            {runResult.errors.length > 0 && (
+              <div className="text-error" style={{ fontSize: 13, marginBottom: 8 }}>
+                {runResult.errors.length} source error{runResult.errors.length === 1 ? "" : "s"}:
+                <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                  {runResult.errors.map((e, i) => <li key={i}><strong>{e.label || e.url}</strong>: {e.message}</li>)}
+                </ul>
+              </div>
+            )}
+            {runResult.created.length === 0 ? (
+              <div className="text-subtle" style={{ fontSize: 13 }}>No new contacts in the last run.</div>
+            ) : (
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+                {runResult.created.map((l) => (
+                  <li key={l.id} style={{ padding: "8px 10px", background: "var(--color-surface-alt)", borderRadius: 4, fontSize: 13 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <strong>{l.company}</strong>
+                      <span className="text-muted" style={{ fontSize: 12 }}>{l.qualityScore}/5 · {l.source?.label || l.source?.url}</span>
+                    </div>
+                    {l.whyGoodFit && <div className="text-muted" style={{ marginTop: 2 }}>{l.whyGoodFit}</div>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function ManualAddCard({ onAdd }) {
-  const [open, setOpen] = useState(false);
+function ManualAddForm({ onAdd, onCancel }) {
   const [company, setCompany] = useState("");
   const [website, setWebsite] = useState("");
   const [contactName, setContactName] = useState("");
@@ -293,47 +318,37 @@ function ManualAddCard({ onAdd }) {
       website: website.trim(),
       contact: { name: contactName.trim(), email: contactEmail.trim(), phone: contactPhone.trim(), role: "" },
     });
-    setCompany(""); setWebsite(""); setContactName(""); setContactEmail(""); setContactPhone("");
-    setOpen(false);
   }
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h3 style={{ margin: 0 }}>Add company manually</h3>
-          <p className="text-muted" style={{ fontSize: 13, margin: "4px 0 0" }}>
-            For companies you already know you want to chase. They land in the pipeline at <em>Not contacted</em> stage.
-          </p>
-        </div>
-        <button onClick={() => setOpen(!open)}>{open ? "Cancel" : "+ Add company"}</button>
-      </div>
-      {open && (
-        <form onSubmit={submit} className="row" style={{ marginTop: 12, gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-            <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Company</span>
-            <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Construction" autoFocus style={{ width: 220 }} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-            <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Website</span>
-            <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://acme.com" style={{ width: 240 }} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-            <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Contact name</span>
-            <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Optional" style={{ width: 180 }} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-            <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Email</span>
-            <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Optional" style={{ width: 200 }} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-            <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Phone</span>
-            <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Optional" style={{ width: 140 }} />
-          </label>
-          <button className="primary" type="submit" disabled={!company.trim()}>Add to pipeline</button>
-        </form>
-      )}
-    </div>
+    <form
+      onSubmit={submit}
+      className="row"
+      style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-end", padding: 12, background: "var(--color-surface-alt)", border: "1px solid var(--color-border)", borderRadius: 6, marginBottom: 12 }}
+    >
+      <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+        <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Company</span>
+        <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Construction" autoFocus style={{ width: 220 }} />
+      </label>
+      <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+        <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Website</span>
+        <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://acme.com" style={{ width: 240 }} />
+      </label>
+      <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+        <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Contact</span>
+        <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Name (optional)" style={{ width: 180 }} />
+      </label>
+      <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+        <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Email</span>
+        <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Optional" style={{ width: 200 }} />
+      </label>
+      <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+        <span className="text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Phone</span>
+        <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Optional" style={{ width: 140 }} />
+      </label>
+      <button className="primary" type="submit" disabled={!company.trim()}>Add</button>
+      {onCancel && <button type="button" onClick={onCancel}>Cancel</button>}
+    </form>
   );
 }
 
