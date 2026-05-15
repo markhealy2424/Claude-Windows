@@ -10,6 +10,7 @@ import quotes from "./routes/quotes.js";
 import proposals from "./routes/proposals.js";
 import financials from "./routes/financials.js";
 import drawings from "./routes/drawings.js";
+import salespeople from "./routes/salespeople.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -59,6 +60,7 @@ app.use("/api/quotes", quotes);
 app.use("/api/proposals", proposals);
 app.use("/api/financials", financials);
 app.use("/api/drawings", drawings);
+app.use("/api/salespeople", salespeople);
 
 const frontendDist = resolve(__dirname, "../../frontend/dist");
 if (existsSync(frontendDist)) {

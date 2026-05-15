@@ -4,7 +4,12 @@
 // separate top-level collection fetched from /api/financials/expenses.
 
 export function emptyFinancials() {
-  return { clientQuoted: 0, clientReceipts: [], supplierPayments: [] };
+  return {
+    clientQuoted: 0,
+    supplierTotalCost: 0,
+    clientReceipts: [],
+    supplierPayments: [],
+  };
 }
 
 export function getFinancials(project) {
@@ -17,19 +22,28 @@ export function sumAmounts(rows) {
 
 // Per-project P&L. `quoted` is what the client agreed to pay; profit is
 // money in (received) minus money out (supplier payments). Outstanding AR
-// is what the client still owes against the quoted amount.
+// is what the client still owes against the quoted amount. Outstanding AP
+// is what we still owe the supplier against the agreed total cost.
 export function projectSummary(project) {
   const f = getFinancials(project);
   const clientReceived = sumAmounts(f.clientReceipts);
   const supplierPaid = sumAmounts(f.supplierPayments);
   const clientQuoted = Number(f.clientQuoted) || 0;
+  const supplierTotalCost = Number(f.supplierTotalCost) || 0;
   return {
     clientQuoted,
     clientReceived,
     clientOutstanding: Math.max(0, clientQuoted - clientReceived),
+    supplierTotalCost,
     supplierPaid,
+    supplierOutstanding: Math.max(0, supplierTotalCost - supplierPaid),
     profit: clientReceived - supplierPaid,
-    expectedProfit: clientQuoted - supplierPaid,
+    // If a supplier total is set, the planned profit is what's left after
+    // paying the supplier in full. Otherwise fall back to the looser
+    // "client agreed − supplier paid so far".
+    plannedProfit: supplierTotalCost > 0
+      ? clientQuoted - supplierTotalCost
+      : clientQuoted - supplierPaid,
   };
 }
 

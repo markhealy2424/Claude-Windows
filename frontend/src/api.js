@@ -109,6 +109,41 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items, projectName, branding }),
     }).then(json),
+  listSalespeople: () => fetch(`${base}/salespeople`).then(json),
+  createSalesperson: (s) =>
+    fetch(`${base}/salespeople`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(s),
+    }).then(json),
+  updateSalesperson: (id, patch) =>
+    fetch(`${base}/salespeople/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  deleteSalesperson: (id) =>
+    fetch(`${base}/salespeople/${id}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("delete failed");
+    }),
+  listInvoices: () => fetch(`${base}/salespeople/invoices/all`).then(json),
+  getInvoice: (id) => fetch(`${base}/salespeople/invoices/${id}`).then(json),
+  generateInvoice: (projectId) =>
+    fetch(`${base}/salespeople/invoices/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId }),
+    }).then(json),
+  updateInvoice: (id, patch) =>
+    fetch(`${base}/salespeople/invoices/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  deleteInvoice: (id) =>
+    fetch(`${base}/salespeople/invoices/${id}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("delete failed");
+    }),
   uploadDrawing: (file, projectId, drawingId) => {
     const fd = new FormData();
     fd.append("file", file);
