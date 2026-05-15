@@ -135,36 +135,65 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
   doc.moveDown(0.8);
   doc.fillColor("#000");
 
+  // Column order: identity (mark/qty/sketch) → descriptors (type/material/
+  // operation/screen) → dimensions (w/panel/totalW/height/panels) → notes.
+  // Grouping like-with-like makes a wide landscape table much easier to scan.
   const cols = [
     { key: "mark", label: "Mark", w: 38 },
     { key: "qty", label: "Qty", w: 32 },
     { key: "sketch", label: "Sketch", w: 120 },
     { key: "type", label: "Type", w: 58 },
     { key: "material", label: "Material", w: 58 },
+    { key: "operation", label: "Operation", w: 62 },
+    { key: "screen", label: "Screen", w: 50 },
     { key: "wpp", label: "W/Panel", w: 60 },
     { key: "width", label: "Total W", w: 60 },
     { key: "height", label: "Height", w: 60 },
     { key: "panels", label: "Panels", w: 44 },
-    { key: "operation", label: "Operation", w: 60 },
-    { key: "screen", label: "Screen", w: 40 },
-    { key: "notes", label: "Notes", w: 132 },
+    { key: "notes", label: "Notes", w: 120 },
   ];
   const xStart = doc.page.margins.left;
   const tableWidth = cols.reduce((s, c) => s + c.w, 0);
   const rowH = 80;
+  const headerH = 20;
+  const GRID_COLOR = "#bbb";
+  const HEADER_BG = "#f2f2f2";
+
+  // Draw vertical separators at every internal column boundary plus the
+  // outer left/right borders. Used by header, section title, and each
+  // data row so the table reads as a true grid.
+  function drawVerticals(yTop, yBot) {
+    doc.save();
+    doc.strokeColor(GRID_COLOR).lineWidth(0.5);
+    let x = xStart;
+    doc.moveTo(xStart, yTop).lineTo(xStart, yBot).stroke();
+    for (const c of cols) {
+      x += c.w;
+      doc.moveTo(x, yTop).lineTo(x, yBot).stroke();
+    }
+    doc.restore();
+  }
 
   function drawHeader() {
-    let x = xStart;
+    const headerYTop = doc.y;
+    // Light gray fill so the header reads as a banner.
+    doc.rect(xStart, headerYTop, tableWidth, headerH).fill(HEADER_BG);
+    doc.fillColor("#000");
     doc.fontSize(10).font("Helvetica-Bold");
-    const headerY = doc.y;
+    let x = xStart;
     cols.forEach((c) => {
-      doc.text(c.label, x + 4, headerY, { width: c.w - 8 });
+      // lineBreak:false + ellipsis prevents a column header from ever
+      // wrapping into two lines if a future label is too long for its cell.
+      doc.text(c.label, x + 4, headerYTop + 5, { width: c.w - 8, lineBreak: false, ellipsis: true });
       x += c.w;
     });
+    // Stronger bottom border under the header.
+    doc.strokeColor("#000").lineWidth(1)
+      .moveTo(xStart, headerYTop + headerH).lineTo(xStart + tableWidth, headerYTop + headerH).stroke();
+    drawVerticals(headerYTop, headerYTop + headerH);
     doc.font("Helvetica").fontSize(9);
-    const y = doc.y + 2;
-    doc.moveTo(xStart, y).lineTo(xStart + tableWidth, y).stroke();
-    doc.moveDown(0.2);
+    doc.y = headerYTop + headerH + 2;
+    doc.x = xStart;
   }
 
   drawHeader();
@@ -178,9 +207,17 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
       drawHeader();
     }
     const yTop = doc.y;
-    doc.rect(xStart, yTop, tableWidth, titleH).fill("#f2f2f2");
+    doc.rect(xStart, yTop, tableWidth, titleH).fill(HEADER_BG);
     doc.fillColor("#000").font("Helvetica-Bold").fontSize(11)
-      .text(label.toUpperCase(), xStart + 6, yTop + 7, { width: tableWidth - 12 });
+      .text(label.toUpperCase(), xStart + 6, yTop + 7, { width: tableWidth - 12, lineBreak: false });
+    // Outer border so the title bar lines up with the grid lines below it.
+    doc.save();
+    doc.strokeColor(GRID_COLOR).lineWidth(0.5)
+      .moveTo(xStart, yTop).lineTo(xStart, yTop + titleH).stroke()
+      .moveTo(xStart + tableWidth, yTop).lineTo(xStart + tableWidth, yTop + titleH).stroke();
+    doc.restore();
+    doc.strokeColor("#000").lineWidth(1)
+      .moveTo(xStart, yTop + titleH).lineTo(xStart + tableWidth, yTop + titleH).stroke();
     doc.font("Helvetica").fontSize(9);
     doc.y = yTop + titleH;
     doc.x = xStart;
@@ -201,6 +238,8 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
     const wIn = totalWidthIn(it);
     const wMm = totalWidthMm(it);
     const hMm = heightMm(it);
+    const wppIn = it.width_in ?? null;
+    const wppMm = wppIn != null ? Math.round(Number(wppIn) * 25.4) : null;
 
     cellText(it.mark, cols[0].w); x += cols[0].w;
     cellText(it.quantity, cols[1].w); x += cols[1].w;
@@ -226,22 +265,25 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
     }
     x += cols[2].w;
 
-    const wppIn = it.width_in ?? null;
-    const wppMm = wppIn != null ? Math.round(Number(wppIn) * 25.4) : null;
-
     cellText(it.type, cols[3].w); x += cols[3].w;
     cellText(it.material ?? "Aluminum", cols[4].w); x += cols[4].w;
-    cellText(dimCell(wppIn, wppMm), cols[5].w); x += cols[5].w;
-    cellText(dimCell(wIn, wMm), cols[6].w); x += cols[6].w;
-    cellText(dimCell(it.height_in, hMm), cols[7].w); x += cols[7].w;
-    cellText(it.panels ?? 1, cols[8].w); x += cols[8].w;
-    cellText(it.operation, cols[9].w); x += cols[9].w;
-    cellText(it.screen === true ? "Yes" : "—", cols[10].w); x += cols[10].w;
+    cellText(it.operation, cols[5].w); x += cols[5].w;
+    cellText(it.screen === true ? "Yes" : "—", cols[6].w); x += cols[6].w;
+    cellText(dimCell(wppIn, wppMm), cols[7].w); x += cols[7].w;
+    cellText(dimCell(wIn, wMm), cols[8].w); x += cols[8].w;
+    cellText(dimCell(it.height_in, hMm), cols[9].w); x += cols[9].w;
+    cellText(it.panels ?? 1, cols[10].w); x += cols[10].w;
     cellText(it.notes, cols[11].w);
 
     const yBot = yTop + rowH;
-    doc.moveTo(xStart, yBot).lineTo(xStart + tableWidth, yBot).strokeColor("#ddd").stroke().strokeColor("#000");
-    doc.y = yBot + 2;
+    // Horizontal row separator
+    doc.save();
+    doc.strokeColor(GRID_COLOR).lineWidth(0.5)
+      .moveTo(xStart, yBot).lineTo(xStart + tableWidth, yBot).stroke();
+    doc.restore();
+    drawVerticals(yTop, yBot);
+    doc.strokeColor("#000").lineWidth(1);
+    doc.y = yBot;
     doc.x = xStart;
   };
 

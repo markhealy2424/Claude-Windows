@@ -70,6 +70,10 @@ export default function RFQTab({ project }) {
             </td>
             <td>{r.type}</td>
             <td>{r.material ?? "Aluminum"}</td>
+            <td>{r.operation}</td>
+            <td style={{ textAlign: "center" }}>
+              {r.screen ? "✓" : <span className="text-subtle">—</span>}
+            </td>
             <td>
               {r.width_per_panel_in ?? "?"}"
               {r.width_per_panel_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_per_panel_mm} mm</div>}
@@ -83,10 +87,6 @@ export default function RFQTab({ project }) {
               {r.height_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.height_mm} mm</div>}
             </td>
             <td>{r.panels ?? 1}</td>
-            <td>{r.operation}</td>
-            <td style={{ textAlign: "center" }}>
-              {r.screen ? "✓" : <span className="text-subtle">—</span>}
-            </td>
             <td>{r.notes}</td>
           </tr>
         );
@@ -102,7 +102,7 @@ export default function RFQTab({ project }) {
             <thead>
               <tr>
                 <th>Mark</th><th>Qty</th><th>Sketch</th><th>Type</th><th>Material</th>
-                <th>W/Panel</th><th>Total W</th><th>Height</th><th>Panels</th><th>Operation</th><th>Screen</th><th>Notes</th>
+                <th>Operation</th><th>Screen</th><th>W/Panel</th><th>Total W</th><th>Height</th><th>Panels</th><th>Notes</th>
               </tr>
             </thead>
             <tbody>
