@@ -277,7 +277,7 @@ function FinancialsSummary({ projects, expenses, invoices }) {
         {arRows.length === 0 ? (
           <div className="text-subtle" style={{ fontSize: 13 }}>Nothing outstanding.</div>
         ) : (
-          <table style={{ background: "transparent", border: "none" }}>
+          <table>
             <thead>
               <tr><th>Project</th><th>Client</th><th style={{ textAlign: "right" }}>Amount owed</th></tr>
             </thead>
