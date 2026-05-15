@@ -40,7 +40,8 @@ STEP 3. For EACH ROW, top to bottom, extract these fields:
    e. height_in — the value in the HEIGHT column, converted to inches.
    f. type — read the DESCRIPTION column and normalize (see TYPE RULES).
    g. operation — read the DESCRIPTION column for swing direction ("left", "right"). MULLED is NOT an operation. If none, return "".
-   h. notes — modifier words from DESCRIPTION (MULLED, EGRESS, BLACK OUT, TEMP, DUAL GLAZING) plus any remarks. Comma-separated. Empty string if none.
+   h. screen — boolean. true ONLY if the schedule has a dedicated SCREEN column (or equivalent — "SCRN", "Insect screen", "Retractable screen") AND that cell is checked / ticked / says "YES" / "X" / "•" for this row. If the schedule has NO screen column at all, return false for every row. If a screen column exists but this row's cell is blank / dashed / "—" / "NO", return false. Do not infer screens from the description.
+   i. notes — modifier words from DESCRIPTION (MULLED, EGRESS, BLACK OUT, TEMP, DUAL GLAZING) plus any remarks. Comma-separated. Empty string if none.
 
 STEP 4. Verify before returning.
    - Count the items in your output array. It MUST equal the row count from step 2.
@@ -98,6 +99,7 @@ Return ONLY this JSON object — no commentary, no text outside the JSON:
       "operation": "",
       "panels": 3,
       "quantity": 3,
+      "screen": false,
       "notes": "Mulled"
     }
   ]
@@ -115,9 +117,10 @@ const SCHEDULE_ITEM_SCHEMA = {
     operation: { type: "string" },
     panels: { type: "integer" },
     quantity: { type: "integer" },
+    screen: { type: "boolean" },
     notes: { type: "string" },
   },
-  required: ["mark", "width_in", "height_in", "type", "operation", "panels", "quantity", "notes"],
+  required: ["mark", "width_in", "height_in", "type", "operation", "panels", "quantity", "screen", "notes"],
   additionalProperties: false,
 };
 
@@ -216,6 +219,7 @@ export async function parseScheduleWithVision({ filePath, pdfPath, projectName }
         operation: (it.operation || "").trim(),
         panels: Math.max(1, Math.floor(Number(it.panels) || 1)),
         quantity: Math.max(0, Math.floor(Number(it.quantity) || 0)),
+        screen: it.screen === true,
         notes: (it.notes || "").trim(),
       };
     });

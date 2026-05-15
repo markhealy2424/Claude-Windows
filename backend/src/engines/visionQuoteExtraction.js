@@ -79,7 +79,8 @@ STEP 2. For each product, extract:
       Capture exactly as printed. Empty string if not stated.
    m. unit_price_usd — unit price as a number. If only TOTAL is shown (Format B), divide total by quantity. 0 if not listed.
    n. total_price_usd — total price as a number, no currency symbol or commas. 0 if not listed.
-   o. notes — short comma-separated list of remaining spec callouts NOT already captured above (e.g. "Grid", "Screen", "Argon" if not in glass field, shape "Circle"). Skip boilerplate. Empty string if nothing notable.
+   o. screen — boolean. true ONLY if the quote explicitly lists a screen for this item — a dedicated SCREEN column with a checkmark / "Yes" / "1" / "Included", or a spec line that literally calls out "Screen", "Insect screen", "Retractable screen", or "Mosquito net" for this row. If the quote has NO screen mention at all, return false for every row. Do not infer screens from window type.
+   p. notes — short comma-separated list of remaining spec callouts NOT already captured above (e.g. "Grid", "Argon" if not in glass field, shape "Circle"). Skip boilerplate and the screen callout (it goes in its own field). Empty string if nothing notable.
 
 STEP 3. Pull supplier metadata (use empty string "" or 0 if not visible):
    - supplier — supplier company name from the top of the doc
@@ -119,6 +120,7 @@ OUTPUT FORMAT — return ONLY this JSON:
       "profile": "Aluminum 91 Series Thermal Break",
       "unit_price_usd": 1868.99,
       "total_price_usd": 3737.98,
+      "screen": false,
       "notes": "Grid"
     }
   ]
@@ -143,12 +145,13 @@ const ITEM_SCHEMA = {
     profile: { type: "string" },
     unit_price_usd: { type: "number" },
     total_price_usd: { type: "number" },
+    screen: { type: "boolean" },
     notes: { type: "string" },
   },
   required: [
     "mark", "quantity", "width_in", "height_in", "type", "operation",
     "material", "glass", "ext_color", "int_color", "thickness", "profile",
-    "unit_price_usd", "total_price_usd", "notes",
+    "unit_price_usd", "total_price_usd", "screen", "notes",
   ],
   additionalProperties: false,
 };
@@ -238,6 +241,7 @@ export async function extractSupplierQuoteWithVision({ filePath }) {
       profile: (it.profile || "").trim(),
       unit_price_usd: Number(it.unit_price_usd) || 0,
       total_price_usd: Number(it.total_price_usd) || 0,
+      screen: it.screen === true,
       notes: (it.notes || "").trim(),
     }));
 

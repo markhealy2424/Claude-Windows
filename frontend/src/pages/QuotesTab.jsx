@@ -5,7 +5,7 @@ import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 const blankItem = {
   mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
   width_in: 36, height_in: 48, unit_price_usd: 0, total_price_usd: 0,
-  glass: "", ext_color: "", int_color: "", thickness: "", profile: "", notes: "",
+  glass: "", ext_color: "", int_color: "", thickness: "", profile: "", screen: false, notes: "",
 };
 
 const blankQuote = () => ({
@@ -243,7 +243,7 @@ export default function QuotesTab({ project, onChange }) {
                 <th>Width (in)</th><th>Height (in)</th>
                 <th>Glass</th><th>Ext Color</th><th>Int Color</th>
                 <th>Thick</th><th>Profile</th>
-                <th>Unit $</th><th>Total $</th><th>Notes</th><th></th>
+                <th>Unit $</th><th>Total $</th><th>Scrn</th><th>Notes</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -267,12 +267,13 @@ export default function QuotesTab({ project, onChange }) {
                   <td><input value={it.profile ?? ""} onChange={(e) => updateActiveItem(i, { profile: e.target.value })} style={{ width: 160 }} title={it.profile ?? ""} /></td>
                   <td><input type="number" value={it.unit_price_usd ?? it.cost ?? 0} onChange={(e) => updateActiveItem(i, { unit_price_usd: Number(e.target.value) || 0 })} style={{ width: 80 }} onFocus={(e)=>e.target.select()} /></td>
                   <td><input type="number" value={it.total_price_usd ?? 0} onChange={(e) => updateActiveItem(i, { total_price_usd: Number(e.target.value) || 0 })} style={{ width: 90 }} onFocus={(e)=>e.target.select()} /></td>
+                  <td style={{ textAlign: "center" }}><input type="checkbox" checked={!!it.screen} onChange={(e) => updateActiveItem(i, { screen: e.target.checked })} title="Has screen" /></td>
                   <td><input value={it.notes ?? ""} onChange={(e) => updateActiveItem(i, { notes: e.target.value })} style={{ width: 160 }} /></td>
                   <td><button onClick={() => removeItem(i)} title="Drop this line">×</button></td>
                 </tr>
               ))}
               {active.items.length === 0 && (
-                <tr><td colSpan={16} className="text-subtle">No quote lines yet. Upload a supplier PDF above, or use the form below to add lines manually.</td></tr>
+                <tr><td colSpan={17} className="text-subtle">No quote lines yet. Upload a supplier PDF above, or use the form below to add lines manually.</td></tr>
               )}
             </tbody>
           </table>

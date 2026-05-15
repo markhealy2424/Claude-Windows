@@ -41,6 +41,7 @@ export function generateRFQ({ items, projectName, info }) {
       height_mm: heightMm(it),
       panels: it.panels ?? 1,
       operation: it.operation,
+      screen: it.screen === true,
       notes: it.notes ?? "",
     };
   });
@@ -145,7 +146,8 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
     { key: "height", label: "Height", w: 60 },
     { key: "panels", label: "Panels", w: 44 },
     { key: "operation", label: "Operation", w: 60 },
-    { key: "notes", label: "Notes", w: 172 },
+    { key: "screen", label: "Screen", w: 40 },
+    { key: "notes", label: "Notes", w: 132 },
   ];
   const xStart = doc.page.margins.left;
   const tableWidth = cols.reduce((s, c) => s + c.w, 0);
@@ -234,7 +236,8 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
     cellText(dimCell(it.height_in, hMm), cols[7].w); x += cols[7].w;
     cellText(it.panels ?? 1, cols[8].w); x += cols[8].w;
     cellText(it.operation, cols[9].w); x += cols[9].w;
-    cellText(it.notes, cols[10].w);
+    cellText(it.screen === true ? "Yes" : "—", cols[10].w); x += cols[10].w;
+    cellText(it.notes, cols[11].w);
 
     const yBot = yTop + rowH;
     doc.moveTo(xStart, yBot).lineTo(xStart + tableWidth, yBot).strokeColor("#ddd").stroke().strokeColor("#000");

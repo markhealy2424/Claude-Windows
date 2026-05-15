@@ -8,7 +8,8 @@ const blank = {
   mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
   width_in: 36, height_in: 48, width_mm: 914, height_mm: 1219,
   panels: 1, gridRows: 1, gridCols: 1, operableRow: "all", notes: "",
-  sketchImage: "",
+  screen: false, sketchImage: "",
+  needsAttention: false, clientQuestion: "",
 };
 
 // "ColsxRows" — e.g. "2x4" = 2 lite columns, 4 lite rows.
@@ -207,6 +208,11 @@ export default function ItemEditor({ items = [], onChange }) {
     onChange(items.map((it, i) => (i === idx ? { ...it, sketchImage: dataUrl } : it)));
   }
 
+  // Toggle "needs special attention" inline without entering edit mode.
+  function toggleAttentionAt(idx, value) {
+    onChange(items.map((it, i) => (i === idx ? { ...it, needsAttention: value } : it)));
+  }
+
   const draftTotalW = totalWidth(draft);
 
   return (
@@ -231,6 +237,17 @@ export default function ItemEditor({ items = [], onChange }) {
           inputStyle={{ width: 70 }}
         />
         <SelectField label="Operable row" value={draft.operableRow ?? "all"} onChange={(v) => set("operableRow", v)} options={OPERABLE_ROWS} />
+        <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+          <span style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Screen</span>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, paddingTop: 6 }}>
+            <input
+              type="checkbox"
+              checked={!!draft.screen}
+              onChange={(e) => set("screen", e.target.checked)}
+            />
+            <span style={{ fontSize: 12 }}>Has screen</span>
+          </label>
+        </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
           <span style={{ color: "#666" }}>Sketch image</span>
           <SketchDrop
@@ -258,17 +275,18 @@ export default function ItemEditor({ items = [], onChange }) {
         saveEdit={saveEdit}
         removeItem={removeItem}
         setSketchAt={setSketchAt}
+        toggleAttentionAt={toggleAttentionAt}
       />
     </div>
   );
 }
 
-const TABLE_COLSPAN = 14;
+const TABLE_COLSPAN = 16;
 
 function ItemTable({
   items,
   editIndex, editDraft, setEditDraft, setEdit,
-  startEdit, cancelEdit, saveEdit, removeItem, setSketchAt,
+  startEdit, cancelEdit, saveEdit, removeItem, setSketchAt, toggleAttentionAt,
 }) {
   // Carry the original index alongside each item so edits, removals, and
   // sketch uploads still mutate the correct slot in the canonical array.
@@ -279,8 +297,17 @@ function ItemTable({
   const renderRow = ([it, i]) => {
     if (i === editIndex && editDraft) {
       const editTotal = totalWidth(editDraft);
+      const editRowStyle = editDraft.needsAttention ? { background: "#FFF7D6" } : undefined;
       return (
-        <tr key={i} className="editing">
+        <tr key={i} className="editing" style={editRowStyle}>
+          <td style={{ textAlign: "center" }}>
+            <input
+              type="checkbox"
+              checked={!!editDraft.needsAttention}
+              onChange={(e) => setEdit("needsAttention", e.target.checked)}
+              title="Flag this item as needing special attention"
+            />
+          </td>
           <td><TextField label="" value={editDraft.mark} onChange={(v) => setEdit("mark", v)} inputStyle={{ width: 60 }} /></td>
           <td><NumberField label="" value={editDraft.quantity} onChange={(v) => setEdit("quantity", v)} inputStyle={{ width: 50 }} /></td>
           <td>
@@ -308,6 +335,14 @@ function ItemTable({
           <td>
             <SelectField label="" value={editDraft.operableRow ?? "all"} onChange={(v) => setEdit("operableRow", v)} options={OPERABLE_ROWS} />
           </td>
+          <td style={{ textAlign: "center" }}>
+            <input
+              type="checkbox"
+              checked={!!editDraft.screen}
+              onChange={(e) => setEdit("screen", e.target.checked)}
+              title="Has screen"
+            />
+          </td>
           <td>
             <SketchDrop
               value={editDraft.sketchImage || ""}
@@ -325,8 +360,17 @@ function ItemTable({
         </tr>
       );
     }
+    const rowStyle = it.needsAttention ? { background: "#FFF7D6" } : undefined;
     return (
-      <tr key={i}>
+      <tr key={i} style={rowStyle}>
+        <td style={{ textAlign: "center" }}>
+          <input
+            type="checkbox"
+            checked={!!it.needsAttention}
+            onChange={(e) => toggleAttentionAt(i, e.target.checked)}
+            title="Flag this item as needing special attention"
+          />
+        </td>
         <td>{it.mark}</td>
         <td>{it.quantity}</td>
         <td>{it.type}</td>
@@ -338,6 +382,9 @@ function ItemTable({
         <td>{it.panels}</td>
         <td>{gridToString(it)}</td>
         <td>{it.operableRow ?? "all"}</td>
+        <td style={{ textAlign: "center" }}>
+          {it.screen ? "✓" : <span className="text-subtle">—</span>}
+        </td>
         <td>
           <SketchDrop
             value={it.sketchImage || ""}
@@ -368,9 +415,10 @@ function ItemTable({
     <table>
       <thead>
         <tr>
+          <th title="Needs special attention">⚠</th>
           <th>Mark</th><th>Qty</th><th>Type</th><th>Material</th><th>Operation</th>
           <th>W/panel</th><th>Total W</th><th>H</th>
-          <th>Panels</th><th>Grid</th><th>Operable</th><th>Sketch</th><th>Notes</th><th></th>
+          <th>Panels</th><th>Grid</th><th>Operable</th><th>Screen</th><th>Sketch</th><th>Notes</th><th></th>
         </tr>
       </thead>
       <tbody>

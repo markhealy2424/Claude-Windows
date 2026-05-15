@@ -84,12 +84,15 @@ export default function RFQTab({ project }) {
             </td>
             <td>{r.panels ?? 1}</td>
             <td>{r.operation}</td>
+            <td style={{ textAlign: "center" }}>
+              {r.screen ? "✓" : <span className="text-subtle">—</span>}
+            </td>
             <td>{r.notes}</td>
           </tr>
         );
         const sectionHeader = (label, count) => (
           <tr>
-            <td colSpan={11} style={{ background: "#f2f2f2", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid #ddd" }}>
+            <td colSpan={12} style={{ background: "#f2f2f2", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid #ddd" }}>
               {label} <span className="text-muted" style={{ fontWeight: 400, marginLeft: 6 }}>({count})</span>
             </td>
           </tr>
@@ -99,7 +102,7 @@ export default function RFQTab({ project }) {
             <thead>
               <tr>
                 <th>Mark</th><th>Qty</th><th>Sketch</th><th>Type</th><th>Material</th>
-                <th>W/Panel</th><th>Total W</th><th>Height</th><th>Panels</th><th>Operation</th><th>Notes</th>
+                <th>W/Panel</th><th>Total W</th><th>Height</th><th>Panels</th><th>Operation</th><th>Screen</th><th>Notes</th>
               </tr>
             </thead>
             <tbody>
