@@ -1,56 +1,55 @@
 /* ─────────────────────────────────────────────────────────────────
    Windows & Doors — design system
-   Dark theme: near-black surfaces, soft off-white text, purple accent.
+   Warm-paper light theme, serif headlines, terracotta accent.
    ───────────────────────────────────────────────────────────────── */
 
 :root {
   /* Surfaces */
-  --color-bg: #0E0E10;
-  --color-surface: #18181B;
-  --color-surface-alt: #1F1F23;
-  --color-surface-hover: #25252B;
-  --color-surface-elevated: #232328;
+  --color-bg: #F7F3EC;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #FAF6EE;
+  --color-surface-hover: #F4EFE5;
+  --color-surface-elevated: #FFFFFF;
 
   /* Lines */
-  --color-border: #2A2A31;
-  --color-border-strong: #3A3A42;
-  --color-divider: #1F1F23;
+  --color-border: #E5DFD0;
+  --color-border-strong: #BFB69F;
+  --color-divider: #EFEAE0;
 
   /* Text */
-  --color-text: #ECEAE7;
-  --color-text-muted: #B8B8C0;
-  --color-text-subtle: #82828C;
+  --color-text: #1F1B16;
+  --color-text-muted: #6B6053;
+  --color-text-subtle: #9F9586;
 
-  /* Light surfaces — used for data-heavy areas (tables, form inputs)
-     where black-on-white is more legible than off-white-on-dark. Keeps
-     the dark theme for nav / KPI cards / dashboards but gives working
-     data its own readable canvas. */
-  --color-paper: #F4F2EE;
-  --color-paper-alt: #E9E6E0;
-  --color-paper-text: #18181B;
-  --color-paper-text-muted: #555560;
-  --color-paper-border: #D8D4CD;
+  /* Paper vars — kept as aliases of the main surface tokens now that
+     the whole UI is light. Components that opted into these vars
+     (tables, inputs, textareas) continue to render on the same warm
+     paper background as everything else. */
+  --color-paper: var(--color-surface);
+  --color-paper-alt: var(--color-surface-alt);
+  --color-paper-text: var(--color-text);
+  --color-paper-text-muted: var(--color-text-muted);
+  --color-paper-border: var(--color-border);
 
-  /* Brand — purple accent */
-  --color-accent: #A78BFA;
-  --color-accent-hover: #C4B5FD;
-  --color-accent-soft: rgba(167, 139, 250, 0.16);
-  --color-accent-text: #0E0E10;
+  /* Brand — terracotta accent */
+  --color-accent: #B85C38;
+  --color-accent-hover: #9A4A2A;
+  --color-accent-soft: #F8E5D6;
+  --color-accent-text: #FFFFFF;
 
-  /* Semantic — brighter so they read on dark */
-  --color-success: #4ADE80;
-  --color-success-soft: rgba(74, 222, 128, 0.14);
-  --color-warning: #FBBF24;
-  --color-warning-soft: rgba(251, 191, 36, 0.14);
-  --color-error: #F87171;
-  --color-error-soft: rgba(248, 113, 113, 0.14);
-  --color-info: #60A5FA;
-  --color-info-soft: rgba(96, 165, 250, 0.14);
+  /* Semantic */
+  --color-success: #15623F;
+  --color-success-soft: #DCEEDD;
+  --color-warning: #8E5400;
+  --color-warning-soft: #FBEBC6;
+  --color-error: #94251A;
+  --color-error-soft: #F8D9D5;
+  --color-info: #1B3F6E;
+  --color-info-soft: #DBE4F0;
 
-  /* Tinted highlight (for attention-flagged rows, question cards). Subtle
-     warm-yellow wash that reads on the dark surface. */
-  --color-highlight-soft: rgba(251, 191, 36, 0.08);
-  --color-highlight-border: rgba(251, 191, 36, 0.40);
+  /* Tinted highlight (for attention-flagged rows, question cards) */
+  --color-highlight-soft: #FFFCEF;
+  --color-highlight-border: #C68B00;
 
   /* Typography */
   --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
@@ -72,10 +71,10 @@
   --radius: 6px;
   --radius-lg: 10px;
 
-  /* Shadows — softer on dark */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.04);
+  --shadow: 0 2px 6px rgba(31, 27, 22, 0.05), 0 1px 2px rgba(31, 27, 22, 0.04);
+  --shadow-lg: 0 8px 20px rgba(31, 27, 22, 0.08);
 
   /* Motion */
   --transition: 140ms ease;
@@ -338,22 +337,6 @@ tfoot td {
   color: var(--color-paper-text);
 }
 
-/* Re-style helpers inside table cells that were tuned for dark backgrounds */
-table .text-muted { color: var(--color-paper-text-muted); }
-table .text-subtle { color: #82828C; }
-table a { color: #6D4FE0; }
-table a:hover { color: #4F2DC2; }
-table strong, table b { color: var(--color-paper-text); }
-/* Small buttons inside table cells (delete-×, etc.) blend with the light row */
-td button {
-  background: #FFFFFF;
-  color: var(--color-paper-text);
-  border-color: var(--color-paper-border);
-}
-td button:hover:not(:disabled) {
-  background: var(--color-paper-alt);
-  border-color: var(--color-paper-text-muted);
-}
 
 /* ─── Inputs ─── */
 
@@ -800,10 +783,8 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
   padding: 4px;
   box-sizing: border-box;
 }
-/* Sketch SVGs from generateSketch() use hardcoded black ink + white fill,
-   designed for a light-paper canvas. On the dark theme we invert them so
-   strokes turn light and the rectangle interior matches the dark surface. */
-.sketch-svg { filter: invert(1) hue-rotate(180deg); }
+/* Sketch SVGs from generateSketch() draw in black ink on a white-fill
+   rectangle — already correct for the light theme. */
 /* SVGs from generateSketch carry intrinsic width/height — force them to
    fit the thumbnail container instead of bursting out. */
 .question-sketch > div, .question-sketch > svg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
@@ -1014,14 +995,10 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
 }
 
 @media print {
-  .sidebar, .nav, .invoice-actions, .invoice-controls, .breadcrumb { display: none !important; }
+  /* Hide on-screen chrome (sidebar, page controls) when printing */
+  .sidebar, .invoice-actions, .invoice-controls, .breadcrumb { display: none !important; }
   .layout { display: block; }
   .main { padding: 0; }
-  /* Force a light, printable invoice regardless of the on-screen dark theme. */
-  body, .invoice-page {
-    background: #fff !important;
-    color: #000 !important;
-  }
   .invoice-page {
     border: none;
     box-shadow: none;
@@ -1029,12 +1006,7 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
     padding: 24px;
     max-width: none;
   }
-  .invoice-page *, .invoice-table th, .invoice-table td {
-    color: #000 !important;
-  }
-  .invoice-status--unpaid  { background: #F1E2DE !important; color: #94251A !important; }
-  .invoice-status--partial { background: #F5EAC6 !important; color: #74521C !important; }
-  .invoice-status--paid    { background: #D7E9DC !important; color: #15623F !important; }
+  body { background: #fff; }
 }
 
 /* Scrollbar polish (webkit) */
