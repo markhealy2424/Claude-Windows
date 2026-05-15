@@ -144,6 +144,57 @@ export const api = {
     fetch(`${base}/salespeople/invoices/${id}`, { method: "DELETE" }).then((r) => {
       if (!r.ok) throw new Error("delete failed");
     }),
+  listLeadSources: () => fetch(`${base}/leads/sources`).then(json),
+  createLeadSource: (s) =>
+    fetch(`${base}/leads/sources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(s),
+    }).then(json),
+  updateLeadSource: (id, patch) =>
+    fetch(`${base}/leads/sources/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  deleteLeadSource: (id) =>
+    fetch(`${base}/leads/sources/${id}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("delete failed");
+    }),
+  getLeadSettings: () => fetch(`${base}/leads/settings`).then(json),
+  saveLeadSettings: (patch) =>
+    fetch(`${base}/leads/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  listLeads: () => fetch(`${base}/leads`).then(json),
+  createLead: (lead) =>
+    fetch(`${base}/leads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lead),
+    }).then(json),
+  runLeadsReport: () =>
+    fetch(`${base}/leads/run`, { method: "POST" }).then(json),
+  updateLead: (id, patch) =>
+    fetch(`${base}/leads/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  deleteLead: (id) =>
+    fetch(`${base}/leads/${id}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("delete failed");
+    }),
+  addLeadInteraction: (id, entry) =>
+    fetch(`${base}/leads/${id}/interactions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+    }).then(json),
+  deleteLeadInteraction: (id, entryId) =>
+    fetch(`${base}/leads/${id}/interactions/${entryId}`, { method: "DELETE" }).then(json),
   listTodos: () => fetch(`${base}/todos`).then(json),
   createTodo: (text) =>
     fetch(`${base}/todos`, {

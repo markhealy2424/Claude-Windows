@@ -16,6 +16,12 @@ const INVOICES_FILE = resolve(DATA_DIR, "salesperson-invoices.json");
 const INVOICES_TMP = resolve(DATA_DIR, "salesperson-invoices.json.tmp");
 const TODOS_FILE = resolve(DATA_DIR, "todos.json");
 const TODOS_TMP = resolve(DATA_DIR, "todos.json.tmp");
+const LEADS_FILE = resolve(DATA_DIR, "leads.json");
+const LEADS_TMP = resolve(DATA_DIR, "leads.json.tmp");
+const LEAD_SOURCES_FILE = resolve(DATA_DIR, "lead-sources.json");
+const LEAD_SOURCES_TMP = resolve(DATA_DIR, "lead-sources.json.tmp");
+const LEAD_SETTINGS_FILE = resolve(DATA_DIR, "lead-settings.json");
+const LEAD_SETTINGS_TMP = resolve(DATA_DIR, "lead-settings.json.tmp");
 
 mkdirSync(DATA_DIR, { recursive: true });
 
@@ -24,6 +30,9 @@ const companyExpenses = new Map();
 const salespeople = new Map();
 const invoices = new Map();
 const todos = new Map();
+const leads = new Map();
+const leadSources = new Map();
+let leadSettings = { businessContext: "" };
 // Monotonically increasing invoice counter — derived from the highest
 // existing invoice number on load so we never reissue the same number.
 let invoiceCounter = 0;
@@ -72,6 +81,24 @@ function load() {
     } catch (err) {
       console.error("[store] failed to load todos.json:", err.message);
     }
+  }
+  if (existsSync(LEADS_FILE)) {
+    try {
+      const raw = readFileSync(LEADS_FILE, "utf8");
+      if (raw.trim()) for (const l of JSON.parse(raw)) leads.set(l.id, l);
+    } catch (err) { console.error("[store] failed to load leads.json:", err.message); }
+  }
+  if (existsSync(LEAD_SOURCES_FILE)) {
+    try {
+      const raw = readFileSync(LEAD_SOURCES_FILE, "utf8");
+      if (raw.trim()) for (const s of JSON.parse(raw)) leadSources.set(s.id, s);
+    } catch (err) { console.error("[store] failed to load lead-sources.json:", err.message); }
+  }
+  if (existsSync(LEAD_SETTINGS_FILE)) {
+    try {
+      const raw = readFileSync(LEAD_SETTINGS_FILE, "utf8");
+      if (raw.trim()) leadSettings = { ...leadSettings, ...JSON.parse(raw) };
+    } catch (err) { console.error("[store] failed to load lead-settings.json:", err.message); }
   }
   if (existsSync(INVOICES_FILE)) {
     try {
@@ -136,6 +163,45 @@ function persistSalespeople() {
     } catch (err) {
       console.error("[store] failed to write salespeople.json:", err.message);
     }
+  });
+}
+
+let leadsWriteQueued = false;
+function persistLeads() {
+  if (leadsWriteQueued) return;
+  leadsWriteQueued = true;
+  queueMicrotask(() => {
+    leadsWriteQueued = false;
+    try {
+      writeFileSync(LEADS_TMP, JSON.stringify([...leads.values()], null, 2));
+      renameSync(LEADS_TMP, LEADS_FILE);
+    } catch (err) { console.error("[store] failed to write leads.json:", err.message); }
+  });
+}
+
+let leadSourcesWriteQueued = false;
+function persistLeadSources() {
+  if (leadSourcesWriteQueued) return;
+  leadSourcesWriteQueued = true;
+  queueMicrotask(() => {
+    leadSourcesWriteQueued = false;
+    try {
+      writeFileSync(LEAD_SOURCES_TMP, JSON.stringify([...leadSources.values()], null, 2));
+      renameSync(LEAD_SOURCES_TMP, LEAD_SOURCES_FILE);
+    } catch (err) { console.error("[store] failed to write lead-sources.json:", err.message); }
+  });
+}
+
+let leadSettingsWriteQueued = false;
+function persistLeadSettings() {
+  if (leadSettingsWriteQueued) return;
+  leadSettingsWriteQueued = true;
+  queueMicrotask(() => {
+    leadSettingsWriteQueued = false;
+    try {
+      writeFileSync(LEAD_SETTINGS_TMP, JSON.stringify(leadSettings, null, 2));
+      renameSync(LEAD_SETTINGS_TMP, LEAD_SETTINGS_FILE);
+    } catch (err) { console.error("[store] failed to write lead-settings.json:", err.message); }
   });
 }
 
@@ -391,5 +457,122 @@ export function updateTodo(id, patch) {
 export function deleteTodo(id) {
   const existed = todos.delete(id);
   if (existed) persistTodos();
+  return existed;
+}
+
+// ── Lead sources ────────────────────────────────────────────────────────
+
+export function listLeadSources() {
+  return [...leadSources.values()].sort((a, b) =>
+    (a.label ?? "").localeCompare(b.label ?? "")
+  );
+}
+
+export function createLeadSource({ url, label, notes }) {
+  const id = crypto.randomUUID();
+  const s = {
+    id,
+    url: url || "",
+    label: label || "",
+    notes: notes || "",
+    addedAt: new Date().toISOString(),
+  };
+  leadSources.set(id, s);
+  persistLeadSources();
+  return s;
+}
+
+export function updateLeadSource(id, patch) {
+  const s = leadSources.get(id);
+  if (!s) return null;
+  Object.assign(s, patch);
+  persistLeadSources();
+  return s;
+}
+
+export function deleteLeadSource(id) {
+  const existed = leadSources.delete(id);
+  if (existed) persistLeadSources();
+  return existed;
+}
+
+// ── Lead settings (business context) ───────────────────────────────────
+
+export function getLeadSettings() { return { ...leadSettings }; }
+
+export function updateLeadSettings(patch) {
+  leadSettings = { ...leadSettings, ...patch };
+  persistLeadSettings();
+  return { ...leadSettings };
+}
+
+// ── Leads ──────────────────────────────────────────────────────────────
+
+export function listLeads() {
+  return [...leads.values()].sort((a, b) =>
+    (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
+  );
+}
+
+export function createLead(input) {
+  const id = crypto.randomUUID();
+  const l = {
+    id,
+    company: input.company || "",
+    contact: input.contact || { name: "", email: "", phone: "", role: "" },
+    website: input.website || "",
+    source: input.source || null,
+    whyGoodFit: input.whyGoodFit || "",
+    qualityScore: Number(input.qualityScore) || 0,
+    rawExcerpt: input.rawExcerpt || "",
+    stage: input.stage || "not_contacted",
+    salespersonId: input.salespersonId || "",
+    interactions: Array.isArray(input.interactions) ? input.interactions : [],
+    notes: input.notes || "",
+    origin: input.origin || (input.source ? "agent" : "manual"),
+    createdAt: new Date().toISOString(),
+  };
+  leads.set(id, l);
+  persistLeads();
+  return l;
+}
+
+export function addLeadInteraction(leadId, { kind, summary, outcome, date }) {
+  const l = leads.get(leadId);
+  if (!l) return null;
+  const entry = {
+    id: crypto.randomUUID(),
+    kind: kind || "note",
+    summary: summary || "",
+    outcome: outcome || "",
+    date: date || new Date().toISOString().slice(0, 10),
+    createdAt: new Date().toISOString(),
+  };
+  l.interactions = [entry, ...(l.interactions ?? [])];
+  persistLeads();
+  return l;
+}
+
+export function deleteLeadInteraction(leadId, interactionId) {
+  const l = leads.get(leadId);
+  if (!l) return null;
+  const before = l.interactions?.length ?? 0;
+  l.interactions = (l.interactions ?? []).filter((e) => e.id !== interactionId);
+  if (l.interactions.length === before) return null;
+  persistLeads();
+  return l;
+}
+
+export function updateLead(id, patch) {
+  const l = leads.get(id);
+  if (!l) return null;
+  Object.assign(l, patch);
+  persistLeads();
+  return l;
+}
+
+export function deleteLead(id) {
+  const existed = leads.delete(id);
+  if (existed) persistLeads();
   return existed;
 }
