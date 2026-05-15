@@ -103,3 +103,44 @@ export function saveQuoteFile(projectId, quoteId, buffer, originalName) {
 export function quoteFileExists(projectId, quoteId) {
   return Boolean(getQuoteFilePath(projectId, quoteId));
 }
+
+// Final supplier drawings/designs — long-lived, kept past project close.
+// Same file-format set as schedules/quotes.
+const DRAWING_EXTS = new Set(["pdf", "png", "jpg", "jpeg", "webp"]);
+
+function pickDrawingExt(originalName, fallback = "pdf") {
+  const raw = String(originalName || "").split(".").pop().toLowerCase();
+  return DRAWING_EXTS.has(raw) ? raw : fallback;
+}
+
+export function getDrawingFilePath(projectId, drawingId) {
+  const dir = resolve(DATA_DIR, "drawings", safe(projectId));
+  if (!existsSync(dir)) return null;
+  const prefix = `${safe(drawingId)}.`;
+  const match = readdirSync(dir).find((f) => f.startsWith(prefix));
+  return match ? resolve(dir, match) : null;
+}
+
+export function saveDrawingFile(projectId, drawingId, buffer, originalName) {
+  const ext = pickDrawingExt(originalName);
+  const dir = resolve(DATA_DIR, "drawings", safe(projectId));
+  mkdirSync(dir, { recursive: true });
+  const existing = getDrawingFilePath(projectId, drawingId);
+  if (existing) {
+    try { unlinkSync(existing); } catch { /* best effort */ }
+  }
+  const path = resolve(dir, `${safe(drawingId)}.${ext}`);
+  writeFileSync(path, buffer);
+  return { path, ext };
+}
+
+export function deleteDrawingFile(projectId, drawingId) {
+  const path = getDrawingFilePath(projectId, drawingId);
+  if (!path) return false;
+  try { unlinkSync(path); return true; }
+  catch { return false; }
+}
+
+export function drawingFileExists(projectId, drawingId) {
+  return Boolean(getDrawingFilePath(projectId, drawingId));
+}

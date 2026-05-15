@@ -109,6 +109,18 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items, projectName, branding }),
     }).then(json),
+  uploadDrawing: (file, projectId, drawingId) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("projectId", projectId);
+    fd.append("drawingId", drawingId);
+    return fetch(`${base}/drawings/upload`, { method: "POST", body: fd }).then(json);
+  },
+  deleteDrawingFile: (projectId, drawingId) =>
+    fetch(`${base}/drawings/file/${projectId}/${drawingId}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok && r.status !== 404) throw new Error("delete failed");
+    }),
+  drawingFileUrl: (projectId, drawingId) => `${base}/drawings/file/${projectId}/${drawingId}`,
   listCompanyExpenses: () => fetch(`${base}/financials/expenses`).then(json),
   createCompanyExpense: (expense) =>
     fetch(`${base}/financials/expenses`, {

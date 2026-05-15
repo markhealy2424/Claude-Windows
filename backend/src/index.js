@@ -9,6 +9,7 @@ import rfq from "./routes/rfq.js";
 import quotes from "./routes/quotes.js";
 import proposals from "./routes/proposals.js";
 import financials from "./routes/financials.js";
+import drawings from "./routes/drawings.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -57,6 +58,7 @@ app.use("/api/rfq", rfq);
 app.use("/api/quotes", quotes);
 app.use("/api/proposals", proposals);
 app.use("/api/financials", financials);
+app.use("/api/drawings", drawings);
 
 const frontendDist = resolve(__dirname, "../../frontend/dist");
 if (existsSync(frontendDist)) {
@@ -65,6 +67,20 @@ if (existsSync(frontendDist)) {
     if (req.path.startsWith("/api/")) return next();
     res.sendFile(resolve(frontendDist, "index.html"));
   });
+}
+
+// Surface persistence configuration at startup. Without DATA_DIR pointing
+// at a mounted volume, uploaded files (drawings, plans, supplier quotes)
+// and store JSON (projects, company expenses) live on the ephemeral
+// container filesystem and disappear on every redeploy.
+if (process.env.DATA_DIR) {
+  console.log(`[storage] persistent volume: DATA_DIR=${process.env.DATA_DIR}`);
+} else {
+  console.warn(
+    "[storage] WARNING: DATA_DIR is not set. Uploaded files and project data " +
+    "will live on the container's ephemeral disk and be lost on the next " +
+    "redeploy. On Railway, create a volume and set DATA_DIR to its mount path."
+  );
 }
 
 const port = Number(process.env.PORT) || 4000;
