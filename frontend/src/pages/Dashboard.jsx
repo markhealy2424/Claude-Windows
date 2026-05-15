@@ -159,9 +159,11 @@ function ProjectsKanban({ projects }) {
         <Link to="/projects" className="text-muted" style={{ fontSize: 13 }}>See all →</Link>
       </div>
       <div className="kanban">
-        {STATUS_OPTIONS.map((status) => (
-          <KanbanColumn key={status} status={status} projects={byStatus.get(status) ?? []} />
-        ))}
+        {STATUS_OPTIONS
+          .filter((status) => (byStatus.get(status) ?? []).length > 0)
+          .map((status) => (
+            <KanbanColumn key={status} status={status} projects={byStatus.get(status) ?? []} />
+          ))}
         {(byStatus.get("(other)") ?? []).length > 0 && (
           <KanbanColumn status="No status" projects={byStatus.get("(other)") ?? []} />
         )}
