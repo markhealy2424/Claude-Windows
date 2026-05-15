@@ -144,3 +144,45 @@ export function deleteDrawingFile(projectId, drawingId) {
 export function drawingFileExists(projectId, drawingId) {
   return Boolean(getDrawingFilePath(projectId, drawingId));
 }
+
+// Final invoices — two slots per project, "supplier" and "client".
+// One file per slot; re-uploads overwrite. Long-lived storage on the
+// persistent volume, same shape as drawings/quotes.
+const FINAL_INVOICE_KINDS = new Set(["supplier", "client"]);
+const FINAL_INVOICE_EXTS = new Set(["pdf", "png", "jpg", "jpeg", "webp"]);
+
+function pickFinalInvoiceExt(originalName, fallback = "pdf") {
+  const raw = String(originalName || "").split(".").pop().toLowerCase();
+  return FINAL_INVOICE_EXTS.has(raw) ? raw : fallback;
+}
+
+export function getFinalInvoiceFilePath(projectId, kind) {
+  if (!FINAL_INVOICE_KINDS.has(kind)) return null;
+  const dir = resolve(DATA_DIR, "final-invoices", safe(projectId));
+  if (!existsSync(dir)) return null;
+  const prefix = `${safe(kind)}.`;
+  const match = readdirSync(dir).find((f) => f.startsWith(prefix));
+  return match ? resolve(dir, match) : null;
+}
+
+export function saveFinalInvoiceFile(projectId, kind, buffer, originalName) {
+  if (!FINAL_INVOICE_KINDS.has(kind)) throw new Error(`bad kind: ${kind}`);
+  const ext = pickFinalInvoiceExt(originalName);
+  const dir = resolve(DATA_DIR, "final-invoices", safe(projectId));
+  mkdirSync(dir, { recursive: true });
+  // Delete any prior file in the slot (could be a different extension).
+  const existing = getFinalInvoiceFilePath(projectId, kind);
+  if (existing) {
+    try { unlinkSync(existing); } catch { /* best effort */ }
+  }
+  const path = resolve(dir, `${safe(kind)}.${ext}`);
+  writeFileSync(path, buffer);
+  return { path, ext };
+}
+
+export function deleteFinalInvoiceFile(projectId, kind) {
+  const path = getFinalInvoiceFilePath(projectId, kind);
+  if (!path) return false;
+  try { unlinkSync(path); return true; }
+  catch { return false; }
+}

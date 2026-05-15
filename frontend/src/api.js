@@ -161,6 +161,18 @@ export const api = {
     fetch(`${base}/todos/${id}`, { method: "DELETE" }).then((r) => {
       if (!r.ok) throw new Error("delete failed");
     }),
+  uploadFinalInvoice: (file, projectId, kind) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("projectId", projectId);
+    fd.append("kind", kind);
+    return fetch(`${base}/final-invoices/upload`, { method: "POST", body: fd }).then(json);
+  },
+  deleteFinalInvoiceFile: (projectId, kind) =>
+    fetch(`${base}/final-invoices/file/${projectId}/${kind}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok && r.status !== 404) throw new Error("delete failed");
+    }),
+  finalInvoiceFileUrl: (projectId, kind) => `${base}/final-invoices/file/${projectId}/${kind}`,
   uploadDrawing: (file, projectId, drawingId) => {
     const fd = new FormData();
     fd.append("file", file);

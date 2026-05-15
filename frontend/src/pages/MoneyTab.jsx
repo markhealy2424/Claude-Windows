@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { NumberField } from "../lib/Fields.jsx";
+import { api } from "../api.js";
 import {
   emptyFinancials,
   getFinancials,
@@ -71,9 +72,14 @@ function LegendDot({ color }) {
 export default function MoneyTab({ project, onChange }) {
   const f = useMemo(() => ({ ...emptyFinancials(), ...getFinancials(project) }), [project]);
   const summary = useMemo(() => projectSummary(project), [project]);
+  const finalInvoices = project.finalInvoices ?? {};
 
   function persist(patch) {
     onChange({ financials: { ...f, ...patch } });
+  }
+
+  function persistFinalInvoice(kind, meta) {
+    onChange({ finalInvoices: { ...finalInvoices, [kind]: meta } });
   }
 
   function addReceipt() {
@@ -234,8 +240,124 @@ export default function MoneyTab({ project, onChange }) {
         </div>
       </div>
 
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Final invoices on file</h3>
+        <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
+          Store the final invoice from the supplier and the one you sent to the client. Re-uploading replaces the file on disk.
+        </p>
+        <div className="row" style={{ gap: 16, alignItems: "stretch", flexWrap: "wrap" }}>
+          <FinalInvoiceSlot
+            projectId={project.id}
+            kind="supplier"
+            title="Supplier final invoice"
+            helper="The bill the supplier sent us."
+            meta={finalInvoices.supplier}
+            onChange={(m) => persistFinalInvoice("supplier", m)}
+          />
+          <FinalInvoiceSlot
+            projectId={project.id}
+            kind="client"
+            title="Client final invoice"
+            helper="The invoice we sent the client for this project."
+            meta={finalInvoices.client}
+            onChange={(m) => persistFinalInvoice("client", m)}
+          />
+        </div>
+      </div>
+
     </div>
   );
+}
+
+function FinalInvoiceSlot({ projectId, kind, title, helper, meta, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";  // allow re-upload of same filename
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const result = await api.uploadFinalInvoice(file, projectId, kind);
+      onChange({
+        fileName: result.fileName || file.name,
+        ext: result.ext,
+        sizeBytes: result.sizeBytes ?? file.size,
+        uploadedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Delete the ${kind} invoice file? This removes it from disk.`)) return;
+    try { await api.deleteFinalInvoiceFile(projectId, kind); }
+    catch (err) { console.error("delete failed:", err); }
+    onChange(null);
+  }
+
+  const hasFile = Boolean(meta?.fileName);
+  return (
+    <div className="card" style={{ flex: "1 1 320px", background: "var(--color-surface-alt)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 2 }}>{title}</div>
+          <div className="text-muted" style={{ fontSize: 12 }}>{helper}</div>
+        </div>
+        <label className="pill-upload">
+          {uploading ? "Uploading…" : hasFile ? "Replace" : "+ Upload"}
+          <input
+            type="file"
+            accept="application/pdf,image/png,image/jpeg,image/webp"
+            onChange={handleUpload}
+            disabled={uploading}
+            style={{ display: "none" }}
+          />
+        </label>
+      </div>
+      {hasFile ? (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--color-border)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <a
+              href={api.finalInvoiceFileUrl(projectId, kind)}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontWeight: 500, wordBreak: "break-all" }}
+            >
+              {meta.fileName}
+            </a>
+            <button onClick={handleDelete} title="Delete this file" style={{ fontSize: 12 }}>Delete</button>
+          </div>
+          <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+            {fmtSize(meta.sizeBytes)} · uploaded {fmtDate(meta.uploadedAt)}
+          </div>
+        </div>
+      ) : (
+        <div className="text-subtle" style={{ fontSize: 13, marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--color-border)" }}>
+          No file uploaded yet.
+        </div>
+      )}
+      {error && <div className="text-error" style={{ fontSize: 12, marginTop: 8 }}>{error}</div>}
+    </div>
+  );
+}
+
+function fmtSize(bytes) {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  try { return new Date(iso).toLocaleString(); }
+  catch { return iso; }
 }
 
 function Row({ dotColor, label, value, valueColor, bold }) {

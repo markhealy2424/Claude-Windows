@@ -13,6 +13,7 @@ import drawings from "./routes/drawings.js";
 import salespeople from "./routes/salespeople.js";
 import questions from "./routes/questions.js";
 import todos from "./routes/todos.js";
+import finalInvoices from "./routes/finalInvoices.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -65,6 +66,7 @@ app.use("/api/drawings", drawings);
 app.use("/api/salespeople", salespeople);
 app.use("/api/questions", questions);
 app.use("/api/todos", todos);
+app.use("/api/final-invoices", finalInvoices);
 
 const frontendDist = resolve(__dirname, "../../frontend/dist");
 if (existsSync(frontendDist)) {
