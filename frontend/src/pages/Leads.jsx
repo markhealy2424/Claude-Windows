@@ -342,6 +342,19 @@ function fmtDate(iso) {
   try { return new Date(iso).toLocaleDateString(); } catch { return iso; }
 }
 
+// Short, readable label for a URL — hostname only (drops "www."), so a
+// 2000-char tracking link doesn't blow up the table layout. The full URL
+// still lives in the anchor's href.
+function shortUrl(url) {
+  if (!url) return "";
+  try {
+    const u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "") + (u.pathname && u.pathname !== "/" ? u.pathname : "");
+  } catch {
+    return url.length > 50 ? url.slice(0, 50) + "…" : url;
+  }
+}
+
 function LeadRow({ lead, salespeople, expanded, onExpand, onUpdate, onRemove, onLogInteraction, onRemoveInteraction }) {
   const lastTouch = lead.interactions?.[0];
   const salesperson = salespeople.find((s) => s.id === lead.salespersonId);
@@ -355,7 +368,7 @@ function LeadRow({ lead, salespeople, expanded, onExpand, onUpdate, onRemove, on
           </button>
           {lead.website && (
             <div style={{ fontSize: 12, marginTop: 2 }}>
-              <a href={lead.website} target="_blank" rel="noreferrer">{lead.website.replace(/^https?:\/\//, "")}</a>
+              <a href={lead.website} target="_blank" rel="noreferrer" title={lead.website}>{shortUrl(lead.website)}</a>
             </div>
           )}
           <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>
