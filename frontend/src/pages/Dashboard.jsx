@@ -473,6 +473,18 @@ function buildSuggestions({ projects, invoices }) {
         linkTo: `/projects/${p.id}`,
       });
     }
+    // Cash-flow risk — we've paid the supplier but haven't seen a dime
+    // from the client. Different from "AR" above (which fires after at
+    // least one client payment) — this is the "money out, nothing in"
+    // alarm that signals something is wrong on the receivable side.
+    if (sum.supplierPaid > 0 && sum.clientReceived === 0) {
+      out.push({
+        id: `cashflow:${p.id}`,
+        icon: "⚠️",
+        text: `Need payment from ${p.info?.buyerName || p.name} client — ${money(sum.supplierPaid)} paid to supplier, nothing received yet`,
+        linkTo: `/projects/${p.id}`,
+      });
+    }
     // Awaiting shipment
     if (p.status === "Awaiting shipment") {
       out.push({
