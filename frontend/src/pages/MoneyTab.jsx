@@ -125,14 +125,14 @@ export default function MoneyTab({ project, onChange }) {
           <Stat
             label="Profit so far"
             value={money(summary.profit)}
-            color={summary.profit >= 0 ? "#15623F" : "#94251A"}
+            color={summary.profit >= 0 ? "var(--color-success)" : "var(--color-error)"}
             big
             hint="client paid − supplier paid"
           />
           <Stat
             label="Planned profit"
             value={money(summary.plannedProfit)}
-            color={summary.plannedProfit >= 0 ? "#15623F" : "#94251A"}
+            color={summary.plannedProfit >= 0 ? "var(--color-success)" : "var(--color-error)"}
             hint={summary.supplierTotalCost > 0 ? "client quoted − supplier total" : "set a supplier total cost below"}
           />
         </div>
@@ -150,7 +150,7 @@ export default function MoneyTab({ project, onChange }) {
             />
             <div style={{ flex: 1, minWidth: 160 }}>
               <Row dotColor="#15623F" label="Received" value={money(summary.clientReceived)} />
-              <Row dotColor="#E2C7C2" label="Still owed by client" value={money(summary.clientOutstanding)} valueColor={summary.clientOutstanding > 0 ? "#94251A" : "#666"} />
+              <Row dotColor="#E2C7C2" label="Still owed by client" value={money(summary.clientOutstanding)} valueColor={summary.clientOutstanding > 0 ? "var(--color-error)" : "var(--color-text-muted)"} />
               <Divider />
               <Row label="Total quoted" value={money(summary.clientQuoted)} bold />
               <div className="text-subtle" style={{ fontSize: 12, marginTop: 6 }}>
@@ -196,7 +196,7 @@ export default function MoneyTab({ project, onChange }) {
             />
             <div style={{ flex: 1, minWidth: 160 }}>
               <Row dotColor="#94251A" label="Paid to supplier" value={money(summary.supplierPaid)} />
-              <Row dotColor="#D6D3CD" label="Remaining balance" value={money(summary.supplierOutstanding)} valueColor={summary.supplierOutstanding > 0 ? "#94251A" : "#666"} />
+              <Row dotColor="#D6D3CD" label="Remaining balance" value={money(summary.supplierOutstanding)} valueColor={summary.supplierOutstanding > 0 ? "var(--color-error)" : "var(--color-text-muted)"} />
               <Divider />
               <Row label="Total supplier cost" value={money(summary.supplierTotalCost)} bold />
               <div className="text-subtle" style={{ fontSize: 12, marginTop: 6 }}>
@@ -245,7 +245,7 @@ function Row({ dotColor, label, value, valueColor, bold }) {
         {dotColor && <LegendDot color={dotColor} />}
         <span style={{ fontWeight: bold ? 600 : 400 }}>{label}</span>
       </span>
-      <span style={{ fontWeight: bold ? 700 : 500, color: valueColor || "#222" }}>{value}</span>
+      <span style={{ fontWeight: bold ? 700 : 500, color: valueColor || "var(--color-text)" }}>{value}</span>
     </div>
   );
 }
@@ -260,7 +260,7 @@ function Stat({ label, value, color, big, hint }) {
       <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
         {label}
       </div>
-      <div style={{ fontSize: big ? 22 : 18, fontWeight: 700, color: color || "#222", marginTop: 4 }}>
+      <div style={{ fontSize: big ? 22 : 18, fontWeight: 700, color: color || "var(--color-text)", marginTop: 4 }}>
         {value}
       </div>
       {hint && <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>{hint}</div>}

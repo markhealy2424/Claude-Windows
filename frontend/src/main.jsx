@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Projects from "./pages/Projects.jsx";
 import ProjectView from "./pages/ProjectView.jsx";
 import SketchGenerator from "./pages/SketchGenerator.jsx";
 import Financials from "./pages/Financials.jsx";
@@ -14,6 +15,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <Routes>
       <Route element={<App />}>
         <Route index element={<Dashboard />} />
+        <Route path="projects" element={<Projects />} />
         <Route path="projects/:id" element={<ProjectView />} />
         <Route path="financials" element={<Financials initialTab="Overview" />} />
         <Route path="salespeople" element={<Financials initialTab="Salespeople" />} />

@@ -92,7 +92,7 @@ export default function RFQTab({ project }) {
         );
         const sectionHeader = (label, count) => (
           <tr>
-            <td colSpan={12} style={{ background: "#f2f2f2", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid #ddd" }}>
+            <td colSpan={12} style={{ background: "var(--color-surface-alt)", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid var(--color-border)" }}>
               {label} <span className="text-muted" style={{ fontWeight: 400, marginLeft: 6 }}>({count})</span>
             </td>
           </tr>

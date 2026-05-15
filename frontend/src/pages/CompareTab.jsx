@@ -197,7 +197,7 @@ export default function CompareTab({ project, onChange }) {
           <SelectField label="Quote B" value={bId} onChange={setBId} options={quoteOptions} />
         </div>
         {aId === bId && (
-          <div className="text-subtle" style={{ fontSize: 12, marginTop: 8, color: "#94251A" }}>
+          <div className="text-subtle" style={{ fontSize: 12, marginTop: 8, color: "var(--color-error)" }}>
             Both sides are the same quote — pick a different supplier on one side.
           </div>
         )}
@@ -239,7 +239,7 @@ function SummaryCard({ a, b, summary, onSetFreightA, onSetFreightB, onUseA, onUs
     return `Recommend ${b.supplier || "Quote B"}`;
   })();
 
-  const headlineColor = recommendation === "a" || recommendation === "b" ? "#15623F" : "#666";
+  const headlineColor = recommendation === "a" || recommendation === "b" ? "var(--color-success)" : "var(--color-text-muted)";
 
   const caveats = [];
   if (missingA.length) caveats.push(`${a.supplier || "Quote A"} is missing ${missingA.length} mark${missingA.length === 1 ? "" : "s"}: ${missingA.join(", ")}`);
@@ -372,12 +372,12 @@ function DetailTable({ a, b, rows }) {
           const delta = r.line_b - r.line_a;
           let winner = "—";
           let winnerColor = "#666";
-          if (!r.present_a && r.present_b) { winner = b.supplier || "B"; winnerColor = "#15623F"; }
-          else if (r.present_a && !r.present_b) { winner = a.supplier || "A"; winnerColor = "#15623F"; }
+          if (!r.present_a && r.present_b) { winner = b.supplier || "B"; winnerColor = "var(--color-success)"; }
+          else if (r.present_a && !r.present_b) { winner = a.supplier || "A"; winnerColor = "var(--color-success)"; }
           else if (r.present_a && r.present_b) {
             if (Math.abs(delta) < 0.5) { winner = "Tie"; winnerColor = "#666"; }
-            else if (delta > 0) { winner = a.supplier || "A"; winnerColor = "#15623F"; }
-            else { winner = b.supplier || "B"; winnerColor = "#15623F"; }
+            else if (delta > 0) { winner = a.supplier || "A"; winnerColor = "var(--color-success)"; }
+            else { winner = b.supplier || "B"; winnerColor = "var(--color-success)"; }
           }
 
           return (
@@ -388,7 +388,7 @@ function DetailTable({ a, b, rows }) {
               <td>{r.present_a ? money(r.line_a) : <span className="text-subtle">—</span>}</td>
               <td>{r.present_b ? money(r.cost_b) : <span className="text-subtle">—</span>}</td>
               <td>{r.present_b ? money(r.line_b) : <span className="text-subtle">—</span>}</td>
-              <td style={{ color: !r.present_a || !r.present_b ? "#666" : delta === 0 ? "#666" : delta > 0 ? "#15623F" : "#94251A" }}>
+              <td style={{ color: !r.present_a || !r.present_b ? "#666" : delta === 0 ? "#666" : delta > 0 ? "var(--color-success)" : "var(--color-error)" }}>
                 {r.present_a && r.present_b ? fmtDelta(delta) : "—"}
               </td>
               <td style={{ fontSize: 12 }}>

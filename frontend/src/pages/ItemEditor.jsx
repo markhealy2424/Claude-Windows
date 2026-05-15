@@ -95,7 +95,7 @@ function SketchDrop({ value, item, onChange, height = 56 }) {
         style={{
           position: "relative", width: 80, height,
           border: `1px solid ${over ? "#444" : "#ddd"}`,
-          borderRadius: 4, overflow: "hidden", background: "#fff",
+          borderRadius: 4, overflow: "hidden", background: "var(--color-surface)",
         }}
         title="Drop a new image to replace"
       >
@@ -132,7 +132,7 @@ function SketchDrop({ value, item, onChange, height = 56 }) {
         display: "flex", alignItems: "center", justifyContent: "center",
         border: `1px ${over ? "dashed" : "solid"} ${over ? "#444" : "#ddd"}`,
         borderRadius: 4,
-        background: over ? "#f3f3f3" : "#fff",
+        background: over ? "var(--color-surface-hover)" : "var(--color-surface)",
         cursor: "pointer", overflow: "hidden",
       }}
       title="Auto-generated sketch — drop an image or click to replace"
@@ -297,7 +297,7 @@ function ItemTable({
   const renderRow = ([it, i]) => {
     if (i === editIndex && editDraft) {
       const editTotal = totalWidth(editDraft);
-      const editRowStyle = editDraft.needsAttention ? { background: "#FFF7D6" } : undefined;
+      const editRowStyle = editDraft.needsAttention ? { background: "var(--color-highlight-soft)" } : undefined;
       return (
         <tr key={i} className="editing" style={editRowStyle}>
           <td style={{ textAlign: "center" }}>
@@ -360,7 +360,7 @@ function ItemTable({
         </tr>
       );
     }
-    const rowStyle = it.needsAttention ? { background: "#FFF7D6" } : undefined;
+    const rowStyle = it.needsAttention ? { background: "var(--color-highlight-soft)" } : undefined;
     return (
       <tr key={i} style={rowStyle}>
         <td style={{ textAlign: "center" }}>
@@ -405,7 +405,7 @@ function ItemTable({
 
   const sectionHeader = (label, count) => (
     <tr className="section-header">
-      <td colSpan={TABLE_COLSPAN} style={{ background: "#f2f2f2", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid #ddd" }}>
+      <td colSpan={TABLE_COLSPAN} style={{ background: "var(--color-surface-alt)", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid var(--color-border)" }}>
         {label} <span className="text-muted" style={{ fontWeight: 400, marginLeft: 6 }}>({count})</span>
       </td>
     </tr>

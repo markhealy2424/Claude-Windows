@@ -144,6 +144,23 @@ export const api = {
     fetch(`${base}/salespeople/invoices/${id}`, { method: "DELETE" }).then((r) => {
       if (!r.ok) throw new Error("delete failed");
     }),
+  listTodos: () => fetch(`${base}/todos`).then(json),
+  createTodo: (text) =>
+    fetch(`${base}/todos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }).then(json),
+  updateTodo: (id, patch) =>
+    fetch(`${base}/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  deleteTodo: (id) =>
+    fetch(`${base}/todos/${id}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("delete failed");
+    }),
   uploadDrawing: (file, projectId, drawingId) => {
     const fd = new FormData();
     fd.append("file", file);

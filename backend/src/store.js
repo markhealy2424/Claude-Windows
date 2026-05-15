@@ -14,6 +14,8 @@ const SALESPEOPLE_FILE = resolve(DATA_DIR, "salespeople.json");
 const SALESPEOPLE_TMP = resolve(DATA_DIR, "salespeople.json.tmp");
 const INVOICES_FILE = resolve(DATA_DIR, "salesperson-invoices.json");
 const INVOICES_TMP = resolve(DATA_DIR, "salesperson-invoices.json.tmp");
+const TODOS_FILE = resolve(DATA_DIR, "todos.json");
+const TODOS_TMP = resolve(DATA_DIR, "todos.json.tmp");
 
 mkdirSync(DATA_DIR, { recursive: true });
 
@@ -21,6 +23,7 @@ const projects = new Map();
 const companyExpenses = new Map();
 const salespeople = new Map();
 const invoices = new Map();
+const todos = new Map();
 // Monotonically increasing invoice counter — derived from the highest
 // existing invoice number on load so we never reissue the same number.
 let invoiceCounter = 0;
@@ -57,6 +60,17 @@ function load() {
       }
     } catch (err) {
       console.error("[store] failed to load salespeople.json:", err.message);
+    }
+  }
+  if (existsSync(TODOS_FILE)) {
+    try {
+      const raw = readFileSync(TODOS_FILE, "utf8");
+      if (raw.trim()) {
+        const arr = JSON.parse(raw);
+        for (const t of arr) todos.set(t.id, t);
+      }
+    } catch (err) {
+      console.error("[store] failed to load todos.json:", err.message);
     }
   }
   if (existsSync(INVOICES_FILE)) {
@@ -121,6 +135,22 @@ function persistSalespeople() {
       renameSync(SALESPEOPLE_TMP, SALESPEOPLE_FILE);
     } catch (err) {
       console.error("[store] failed to write salespeople.json:", err.message);
+    }
+  });
+}
+
+let todosWriteQueued = false;
+function persistTodos() {
+  if (todosWriteQueued) return;
+  todosWriteQueued = true;
+  queueMicrotask(() => {
+    todosWriteQueued = false;
+    try {
+      const json = JSON.stringify([...todos.values()], null, 2);
+      writeFileSync(TODOS_TMP, json);
+      renameSync(TODOS_TMP, TODOS_FILE);
+    } catch (err) {
+      console.error("[store] failed to write todos.json:", err.message);
     }
   });
 }
@@ -326,5 +356,40 @@ export function updateInvoice(id, patch) {
 export function deleteInvoice(id) {
   const existed = invoices.delete(id);
   if (existed) persistInvoices();
+  return existed;
+}
+
+// ── Dashboard to-dos ────────────────────────────────────────────────────
+
+export function listTodos() {
+  return [...todos.values()].sort((a, b) =>
+    (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
+  );
+}
+
+export function createTodo({ text }) {
+  const id = crypto.randomUUID();
+  const t = {
+    id,
+    text: text || "",
+    done: false,
+    createdAt: new Date().toISOString(),
+  };
+  todos.set(id, t);
+  persistTodos();
+  return t;
+}
+
+export function updateTodo(id, patch) {
+  const t = todos.get(id);
+  if (!t) return null;
+  Object.assign(t, patch);
+  persistTodos();
+  return t;
+}
+
+export function deleteTodo(id) {
+  const existed = todos.delete(id);
+  if (existed) persistTodos();
   return existed;
 }

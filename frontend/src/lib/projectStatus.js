@@ -7,6 +7,7 @@ export const STATUS_OPTIONS = [
   "Waiting for quote",
   "Need to make proposal",
   "Proposal sent",
+  "Awaiting shipment",
 ];
 
 export function isKnownStatus(s) {

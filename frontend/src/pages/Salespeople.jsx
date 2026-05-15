@@ -172,10 +172,10 @@ export default function Salespeople() {
                     />
                   </td>
                   <td className="text-muted">{stats.count}</td>
-                  <td style={{ color: stats.unpaid > 0 ? "#94251A" : "#666", fontWeight: 600 }}>
+                  <td style={{ color: stats.unpaid > 0 ? "var(--color-error)" : "var(--color-text-muted)", fontWeight: 600 }}>
                     {money(stats.unpaid)}
                   </td>
-                  <td style={{ color: "#15623F" }}>{money(stats.paid)}</td>
+                  <td style={{ color: "var(--color-success)" }}>{money(stats.paid)}</td>
                   <td><button onClick={() => removeSalesperson(s.id)} title="Delete salesperson">×</button></td>
                 </tr>
               );
@@ -254,7 +254,7 @@ export default function Salespeople() {
                       onChange={(e) => updateProjectSale(p.id, { saleDate: e.target.value })}
                     />
                   </td>
-                  <td style={{ fontWeight: 600, color: commission > 0 ? "#15623F" : "#666" }}>
+                  <td style={{ fontWeight: 600, color: commission > 0 ? "var(--color-success)" : "var(--color-text-muted)" }}>
                     {money(commission)}
                   </td>
                   <td>
@@ -307,7 +307,7 @@ export default function Salespeople() {
               <td>
                 <span style={{
                   fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600,
-                  color: inv.paymentStatus === "paid" ? "#15623F" : inv.paymentStatus === "partial" ? "#94251A" : "#666",
+                  color: inv.paymentStatus === "paid" ? "var(--color-success)" : inv.paymentStatus === "partial" ? "var(--color-warning)" : "var(--color-text-muted)",
                 }}>
                   {inv.paymentStatus}
                 </span>

@@ -108,25 +108,25 @@ function FinancialsOverview() {
         <h3 style={{ marginTop: 0 }}>Company-wide totals</h3>
         <div className="row" style={{ gap: 28, flexWrap: "wrap" }}>
           <Stat label="Client quoted (all projects)" value={money(totals.quoted)} />
-          <Stat label="Client paid in" value={money(totals.received)} color="#15623F" />
+          <Stat label="Client paid in" value={money(totals.received)} color="var(--color-success)" />
           <Stat
             label="Outstanding AR"
             value={money(totals.outstanding)}
-            color={totals.outstanding > 0 ? "#94251A" : "#666"}
+            color={totals.outstanding > 0 ? "var(--color-error)" : "var(--color-text-muted)"}
             hint="client still owes us"
           />
-          <Stat label="Paid to suppliers" value={money(totals.supplierPaid)} color="#94251A" />
-          <Stat label="Company expenses" value={money(totals.companyExpenses)} color="#94251A" hint="non-project overhead" />
+          <Stat label="Paid to suppliers" value={money(totals.supplierPaid)} color="var(--color-error)" />
+          <Stat label="Company expenses" value={money(totals.companyExpenses)} color="var(--color-error)" hint="non-project overhead" />
           <Stat
             label="Project profit"
             value={money(totals.projectProfit)}
-            color={totals.projectProfit >= 0 ? "#15623F" : "#94251A"}
+            color={totals.projectProfit >= 0 ? "var(--color-success)" : "var(--color-error)"}
             hint="client paid − supplier paid"
           />
           <Stat
             label="Net profit"
             value={money(totals.netProfit)}
-            color={totals.netProfit >= 0 ? "#15623F" : "#94251A"}
+            color={totals.netProfit >= 0 ? "var(--color-success)" : "var(--color-error)"}
             big
             hint="incl. company expenses"
           />
@@ -153,11 +153,11 @@ function FinancialsOverview() {
                 <td><strong>{project.name}</strong></td>
                 <td>{money(summary.clientQuoted)}</td>
                 <td>{money(summary.clientReceived)}</td>
-                <td style={{ color: summary.clientOutstanding > 0 ? "#94251A" : "#666" }}>
+                <td style={{ color: summary.clientOutstanding > 0 ? "var(--color-error)" : "var(--color-text-muted)" }}>
                   {money(summary.clientOutstanding)}
                 </td>
                 <td>{money(summary.supplierPaid)}</td>
-                <td style={{ color: summary.profit >= 0 ? "#15623F" : "#94251A", fontWeight: 600 }}>
+                <td style={{ color: summary.profit >= 0 ? "var(--color-success)" : "var(--color-error)", fontWeight: 600 }}>
                   {money(summary.profit)}
                 </td>
                 <td><Link to={`/projects/${project.id}`}>Open →</Link></td>
@@ -175,7 +175,7 @@ function FinancialsOverview() {
                 <td style={{ fontWeight: 600 }}>{money(totals.received)}</td>
                 <td style={{ fontWeight: 600 }}>{money(totals.outstanding)}</td>
                 <td style={{ fontWeight: 600 }}>{money(totals.supplierPaid)}</td>
-                <td style={{ fontWeight: 600, color: totals.projectProfit >= 0 ? "#15623F" : "#94251A" }}>
+                <td style={{ fontWeight: 600, color: totals.projectProfit >= 0 ? "var(--color-success)" : "var(--color-error)" }}>
                   {money(totals.projectProfit)}
                 </td>
                 <td></td>
@@ -212,7 +212,7 @@ function Stat({ label, value, color, big, hint }) {
       <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
         {label}
       </div>
-      <div style={{ fontSize: big ? 24 : 18, fontWeight: 700, color: color || "#222", marginTop: 4 }}>
+      <div style={{ fontSize: big ? 24 : 18, fontWeight: 700, color: color || "var(--color-text)", marginTop: 4 }}>
         {value}
       </div>
       {hint && <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>{hint}</div>}
