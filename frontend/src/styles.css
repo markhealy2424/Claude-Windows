@@ -573,6 +573,134 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
   color: var(--color-text);
 }
 
+/* ── Questions-for-client cards ──────────────────────────────────── */
+.question-card {
+  border: 1px solid var(--color-border);
+  border-left: 4px solid #C68B00;
+  border-radius: var(--radius);
+  background: #FFFCEF;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+.question-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.question-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.question-mark {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 2px;
+  line-height: 1.15;
+}
+.question-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.question-body {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  margin-top: 8px;
+}
+.question-sketch {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  padding: 4px;
+  box-sizing: border-box;
+}
+/* SVGs from generateSketch carry intrinsic width/height — force them to
+   fit the thumbnail container instead of bursting out. */
+.question-sketch > div, .question-sketch > svg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.question-sketch svg { width: 100% !important; height: 100% !important; max-width: 100%; max-height: 100%; }
+.question-sketch img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.question-body-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.question-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.question-textarea {
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  resize: vertical;
+  min-height: 70px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+/* Field block — wraps either a saved-text view or the editing textarea+buttons */
+.question-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.question-saved-text {
+  white-space: pre-wrap;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  min-height: 20px;
+}
+.question-saved-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.question-edit-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.question-empty-placeholder {
+  font-size: 12px;
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+/* Response area visually distinct from question area */
+.question-response { border-top: 1px dashed var(--color-border); padding-top: 12px; margin-top: 12px; }
+.question-notes {
+  font-size: 12px;
+  color: var(--color-text-subtle);
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+}
+
 /* ── Salesperson invoice ─────────────────────────────────────────── */
 .invoice-actions {
   display: flex;

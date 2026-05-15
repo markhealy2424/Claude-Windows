@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { generateSketch } from "../lib/sketch.js";
 import { isDoor } from "../lib/itemKind.js";
 
@@ -43,12 +44,13 @@ export default function QuestionsTab({ items = [], onChange }) {
         </p>
       </div>
 
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))" }}>
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(460px, 1fr))" }}>
         {flagged.map(([it, i]) => (
           <QuestionCard
             key={i}
             item={it}
             onChangeQuestion={(v) => updateAt(i, { clientQuestion: v })}
+            onChangeResponse={(v) => updateAt(i, { clientResponse: v })}
             onClear={() => clearFlag(i)}
           />
         ))}
@@ -57,57 +59,132 @@ export default function QuestionsTab({ items = [], onChange }) {
   );
 }
 
-function QuestionCard({ item, onChangeQuestion, onClear }) {
+function QuestionCard({ item, onChangeQuestion, onChangeResponse, onClear }) {
   const kindLabel = isDoor(item) ? "Door" : "Window";
-  const dims = [
+  const metaParts = [
     item.width_in ? `${item.width_in}"W` : null,
     item.height_in ? `${item.height_in}"H` : null,
     item.panels && item.panels > 1 ? `${item.panels} panels` : null,
-  ].filter(Boolean).join(" · ");
+    item.quantity > 0 ? `Qty ${item.quantity}` : null,
+  ].filter(Boolean);
+
+  const sketchHtml = item.sketchImage && item.sketchImage.startsWith?.("data:image/")
+    ? `<img src="${item.sketchImage}" alt="" />`
+    : generateSketch(item);
 
   return (
-    <div className="card" style={{ borderLeft: "4px solid #C68B00", background: "#FFFCEF" }}>
-      <div className="row" style={{ alignItems: "flex-start", gap: 12 }}>
-        <div style={{ width: 80, minWidth: 80 }}
-             dangerouslySetInnerHTML={{ __html: item.sketchImage?.startsWith?.("data:image/")
-               ? `<img src="${item.sketchImage}" style="width:80px;max-height:80px;object-fit:contain;" />`
-               : generateSketch(item) }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <div>
-              <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
-                {kindLabel} · {item.type || "—"}
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>
-                {item.mark || "(no mark)"}
-              </div>
-              {dims && <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{dims}</div>}
-              {item.quantity > 0 && (
-                <div className="text-muted" style={{ fontSize: 12 }}>Qty: {item.quantity}</div>
-              )}
-            </div>
-            <button onClick={onClear} title="Mark as resolved — removes the flag">Resolved</button>
+    <div className="question-card">
+      <div className="question-card-head">
+        <div style={{ minWidth: 0 }}>
+          <div className="text-muted question-eyebrow">
+            {kindLabel} · {item.type || "—"}
           </div>
+          <div className="question-mark">{item.mark || "(no mark)"}</div>
+          {metaParts.length > 0 && (
+            <div className="question-meta">{metaParts.join(" · ")}</div>
+          )}
+        </div>
+        <button onClick={onClear} title="Clear the attention flag once the client confirms">Resolved</button>
+      </div>
+
+      <div className="question-body">
+        <div
+          className="question-sketch"
+          dangerouslySetInnerHTML={{ __html: sketchHtml }}
+        />
+        <div className="question-body-right">
+          <EditableField
+            label="Question for the client"
+            value={item.clientQuestion ?? ""}
+            onSave={onChangeQuestion}
+            placeholder="e.g. Confirm tempered glass on bathroom window? Sliding direction left or right?"
+            emptyPlaceholder="No question entered yet."
+            addLabel="+ Add question"
+          />
         </div>
       </div>
 
-      <label style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 12 }}>
-        <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600, color: "var(--color-text-muted)" }}>
-          Question for the client
-        </span>
-        <textarea
-          value={item.clientQuestion ?? ""}
-          onChange={(e) => onChangeQuestion(e.target.value)}
-          placeholder="e.g. Confirm tempered glass on bathroom window? Sliding direction left or right?"
-          rows={3}
-          style={{ width: "100%", padding: 8, fontSize: 13, lineHeight: 1.4, borderRadius: 4, border: "1px solid var(--color-border)", background: "#fff", resize: "vertical" }}
+      <div className="question-response">
+        <EditableField
+          label="Response from client"
+          value={item.clientResponse ?? ""}
+          onSave={onChangeResponse}
+          placeholder="Paste or type the client's answer here…"
+          emptyPlaceholder="No response yet."
+          addLabel="+ Add response"
         />
-      </label>
+      </div>
 
       {item.notes && (
-        <div className="text-subtle" style={{ fontSize: 12, marginTop: 8 }}>
+        <div className="question-notes">
           <strong>Existing notes:</strong> {item.notes}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Three states: editing (textarea + Save / Cancel), saved (read-only text +
+// Edit), or empty-and-not-editing (placeholder + Add button — only reachable
+// if the user clicks Cancel before saving anything).
+function EditableField({ label, value, onSave, placeholder, emptyPlaceholder, addLabel }) {
+  // Auto-open the editor when there's nothing saved yet so a fresh card is
+  // immediately typable. After save, only an explicit Edit click reopens it.
+  const [editing, setEditing] = useState(!value);
+  const [draft, setDraft] = useState(value ?? "");
+
+  // Keep the draft in sync if the saved value changes externally (e.g. the
+  // parent list re-orders items and re-renders the card).
+  useEffect(() => {
+    if (!editing) setDraft(value ?? "");
+  }, [value, editing]);
+
+  function save() {
+    onSave(draft.trim());
+    setEditing(false);
+  }
+  function cancel() {
+    setDraft(value ?? "");
+    setEditing(false);
+  }
+  function startEdit() {
+    setDraft(value ?? "");
+    setEditing(true);
+  }
+
+  return (
+    <div className="question-field">
+      <span className="question-label">{label}</span>
+      {editing ? (
+        <>
+          <textarea
+            className="question-textarea"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={placeholder}
+            autoFocus={!value}
+          />
+          <div className="question-edit-row">
+            {value && <button onClick={cancel}>Cancel</button>}
+            <button className="primary" onClick={save} disabled={draft.trim() === (value ?? "")}>
+              Save
+            </button>
+          </div>
+        </>
+      ) : value ? (
+        <>
+          <div className="question-saved-text">{value}</div>
+          <div className="question-saved-row">
+            <button onClick={startEdit}>Edit</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="question-empty-placeholder">{emptyPlaceholder}</div>
+          <div className="question-saved-row">
+            <button onClick={startEdit}>{addLabel}</button>
+          </div>
+        </>
       )}
     </div>
   );
