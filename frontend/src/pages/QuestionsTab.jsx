@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { api } from "../api.js";
 import { generateSketch } from "../lib/sketch.js";
 import { isDoor } from "../lib/itemKind.js";
 
@@ -6,7 +7,10 @@ import { isDoor } from "../lib/itemKind.js";
 // gives the user a place to write the question they need to ask the client.
 // Toggling the flag here keeps the Items tab and this view in sync.
 
-export default function QuestionsTab({ items = [], onChange }) {
+export default function QuestionsTab({ items = [], projectName, info, onChange }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+
   const flagged = items
     .map((it, i) => [it, i])
     .filter(([it]) => it.needsAttention);
@@ -17,6 +21,18 @@ export default function QuestionsTab({ items = [], onChange }) {
 
   function clearFlag(idx) {
     updateAt(idx, { needsAttention: false });
+  }
+
+  async function downloadPdf() {
+    setDownloadError("");
+    setDownloading(true);
+    try {
+      await api.downloadQuestionsPdf(items, projectName, info);
+    } catch (err) {
+      setDownloadError(String(err.message || err));
+    } finally {
+      setDownloading(false);
+    }
   }
 
   if (flagged.length === 0) {
@@ -35,13 +51,28 @@ export default function QuestionsTab({ items = [], onChange }) {
   return (
     <div>
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0, marginBottom: 4 }}>
-          Questions for client · {flagged.length} item{flagged.length === 1 ? "" : "s"}
-        </h3>
-        <p className="text-muted" style={{ fontSize: 13, margin: 0 }}>
-          One card per flagged item. Type the question that needs to be confirmed with the client.
-          Edits save automatically. Hit <strong>Resolved</strong> to clear the flag once you have an answer.
-        </p>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 320px" }}>
+            <h3 style={{ marginTop: 0, marginBottom: 4 }}>
+              Questions for client · {flagged.length} item{flagged.length === 1 ? "" : "s"}
+            </h3>
+            <p className="text-muted" style={{ fontSize: 13, margin: 0 }}>
+              One card per flagged item. Use <strong>Edit</strong> to update a question or response.
+              Hit <strong>Resolved</strong> to clear the flag once the client confirms.
+            </p>
+          </div>
+          <button
+            className="primary"
+            onClick={downloadPdf}
+            disabled={downloading || flagged.length === 0}
+            title={flagged.length === 0 ? "Flag at least one item first" : "Download a PDF of all flagged items to send to the client"}
+          >
+            {downloading ? "Generating…" : "Download PDF"}
+          </button>
+        </div>
+        {downloadError && (
+          <div className="text-error" style={{ fontSize: 13, marginTop: 8 }}>{downloadError}</div>
+        )}
       </div>
 
       <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(460px, 1fr))" }}>

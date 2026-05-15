@@ -72,7 +72,14 @@ export default function ProjectView() {
       {tab === "Project Info" && <ProjectInfo project={project} onChange={savePatch} />}
       {tab === "Plans" && <PlansTab project={project} onChange={savePatch} />}
       {tab === "Items" && <ItemEditor items={project.items} onChange={saveItems} />}
-      {tab === "Questions for Client" && <QuestionsTab items={project.items ?? []} onChange={saveItems} />}
+      {tab === "Questions for Client" && (
+        <QuestionsTab
+          items={project.items ?? []}
+          projectName={project.name}
+          info={project.info ?? {}}
+          onChange={saveItems}
+        />
+      )}
       {tab === "RFQ" && <RFQTab project={project} />}
       {tab === "Quotes" && <QuotesTab project={project} onChange={savePatch} />}
       {tab === "Compare" && <CompareTab project={project} onChange={savePatch} />}

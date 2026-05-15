@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo } from "react";
 import { NumberField } from "../lib/Fields.jsx";
-import { api } from "../api.js";
 import {
   emptyFinancials,
   getFinancials,
@@ -73,49 +71,10 @@ function LegendDot({ color }) {
 export default function MoneyTab({ project, onChange }) {
   const f = useMemo(() => ({ ...emptyFinancials(), ...getFinancials(project) }), [project]);
   const summary = useMemo(() => projectSummary(project), [project]);
-  const sale = project.sale ?? { salespersonId: "", salePrice: 0, commissionRate: 0, saleDate: "", notes: "" };
-
-  const [salespeople, setSalespeople] = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([api.listSalespeople(), api.listInvoices()])
-      .then(([sp, inv]) => {
-        if (cancelled) return;
-        setSalespeople(sp);
-        setInvoices(inv.filter((i) => i.projectId === project.id));
-      })
-      .catch(() => { /* page still works without these */ });
-    return () => { cancelled = true; };
-  }, [project.id]);
 
   function persist(patch) {
     onChange({ financials: { ...f, ...patch } });
   }
-
-  function persistSale(patch) {
-    onChange({ sale: { ...sale, ...patch } });
-  }
-
-  async function generateInvoice() {
-    setGenerateError("");
-    setGenerating(true);
-    try {
-      const inv = await api.generateInvoice(project.id);
-      setInvoices((prev) => [inv, ...prev]);
-    } catch (err) {
-      setGenerateError(String(err.message || err));
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  const commissionPreview = (Number(sale.salePrice) || 0) * (Number(sale.commissionRate) || 0) / 100;
-  const assignedSalesperson = salespeople.find((s) => s.id === sale.salespersonId);
-  const canGenerate = Boolean(sale.salespersonId && Number(sale.salePrice) > 0 && Number(sale.commissionRate) > 0);
 
   function addReceipt() {
     persist({
@@ -207,6 +166,23 @@ export default function MoneyTab({ project, onChange }) {
               inputStyle={{ width: 160 }}
             />
           </div>
+          <Ledger
+            bare
+            title="Client payments received"
+            emptyMessage="No client payments logged yet."
+            rows={f.clientReceipts}
+            onAdd={addReceipt}
+            onUpdate={updateReceipt}
+            onRemove={removeReceipt}
+            columns={[
+              { key: "date", label: "Date", type: "date", width: 130 },
+              { key: "amount", label: "Amount ($)", type: "number", width: 110 },
+              { key: "method", label: "Method", type: "text", width: 130, placeholder: "Check / wire / card" },
+              { key: "notes", label: "Notes", type: "text", width: 180 },
+            ]}
+            footerLabel="Total received"
+            footerValue={money(summary.clientReceived)}
+          />
         </div>
 
         <div className="card" style={{ flex: "1 1 360px" }}>
@@ -238,162 +214,26 @@ export default function MoneyTab({ project, onChange }) {
               inputStyle={{ width: 160 }}
             />
           </div>
+          <Ledger
+            bare
+            title="Supplier payments"
+            emptyMessage="No supplier payments logged yet. The deposit goes here as the first row."
+            rows={f.supplierPayments}
+            onAdd={addPayment}
+            onUpdate={updatePayment}
+            onRemove={removePayment}
+            columns={[
+              { key: "date", label: "Date", type: "date", width: 130 },
+              { key: "supplier", label: "Paid to", type: "text", width: 150 },
+              { key: "amount", label: "Amount ($)", type: "number", width: 110 },
+              { key: "notes", label: "Notes", type: "text", width: 180 },
+            ]}
+            footerLabel="Total paid"
+            footerValue={money(summary.supplierPaid)}
+          />
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
-          <div>
-            <h3 style={{ marginTop: 0, marginBottom: 4 }}>Salesperson &amp; commission</h3>
-            <p className="text-muted" style={{ fontSize: 13, margin: 0 }}>
-              Attach a salesperson to this sale and enter the commission rate. Hit <strong>Generate invoice</strong> when the sale is locked in.
-            </p>
-          </div>
-          {invoices.length > 0 && (
-            <Link to="/salespeople" className="text-muted" style={{ fontSize: 13 }}>
-              {invoices.length} invoice{invoices.length === 1 ? "" : "s"} on file →
-            </Link>
-          )}
-        </div>
-
-        <div className="row" style={{ gap: 16, alignItems: "flex-end", flexWrap: "wrap", marginTop: 12 }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
-              Salesperson
-            </span>
-            <select
-              value={sale.salespersonId ?? ""}
-              onChange={(e) => persistSale({ salespersonId: e.target.value })}
-              style={{ minWidth: 220 }}
-            >
-              <option value="">— pick salesperson —</option>
-              {salespeople.map((s) => (
-                <option key={s.id} value={s.id}>{s.name || "(unnamed)"}</option>
-              ))}
-            </select>
-          </label>
-          <NumberField
-            label="Sale price ($)"
-            value={sale.salePrice ?? 0}
-            onChange={(v) => persistSale({ salePrice: Number(v) || 0 })}
-            inputStyle={{ width: 140 }}
-          />
-          <NumberField
-            label="Commission rate (%)"
-            value={sale.commissionRate ?? 0}
-            onChange={(v) => persistSale({ commissionRate: Number(v) || 0 })}
-            inputStyle={{ width: 120 }}
-          />
-          <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
-              Sale date
-            </span>
-            <input
-              type="date"
-              value={sale.saleDate ?? ""}
-              onChange={(e) => persistSale({ saleDate: e.target.value })}
-            />
-          </label>
-          <div style={{ paddingBottom: 4 }}>
-            <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
-              Commission preview
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#15623F" }}>
-              {money(commissionPreview)}
-            </div>
-          </div>
-        </div>
-
-        <div className="row" style={{ marginTop: 12, alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <button
-            className="primary"
-            onClick={generateInvoice}
-            disabled={!canGenerate || generating}
-            title={canGenerate ? "Create a new invoice for this sale" : "Pick a salesperson, set sale price and commission rate first"}
-          >
-            {generating ? "Generating…" : "Generate invoice"}
-          </button>
-          {salespeople.length === 0 && (
-            <span className="text-subtle" style={{ fontSize: 12 }}>
-              No salespeople yet. Add one on the <Link to="/salespeople">Salespeople</Link> page.
-            </span>
-          )}
-          {generateError && <span className="text-error" style={{ fontSize: 13 }}>{generateError}</span>}
-        </div>
-
-        {assignedSalesperson && (
-          <div className="text-subtle" style={{ fontSize: 12, marginTop: 8 }}>
-            Invoice will go to <strong>{assignedSalesperson.name}</strong>
-            {assignedSalesperson.email ? ` (${assignedSalesperson.email})` : ""}.
-          </div>
-        )}
-
-        {invoices.length > 0 && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
-            <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600, marginBottom: 6 }}>
-              Invoices for this project
-            </div>
-            <table>
-              <thead>
-                <tr><th>Number</th><th>Date</th><th>Salesperson</th><th>Amount</th><th>Status</th><th></th></tr>
-              </thead>
-              <tbody>
-                {invoices.map((inv) => (
-                  <tr key={inv.id}>
-                    <td><strong>{inv.invoiceNumber}</strong></td>
-                    <td className="text-muted">{new Date(inv.issuedAt).toLocaleDateString()}</td>
-                    <td>{inv.salespersonSnapshot?.name || "—"}</td>
-                    <td>{money(inv.commissionAmount)}</td>
-                    <td>
-                      <span style={{
-                        fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600,
-                        color: inv.paymentStatus === "paid" ? "#15623F" : inv.paymentStatus === "partial" ? "#94251A" : "#666",
-                      }}>
-                        {inv.paymentStatus}
-                      </span>
-                    </td>
-                    <td><Link to={`/invoices/${inv.id}`}>Open →</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <Ledger
-        title="Client payments received"
-        emptyMessage="No client payments logged yet."
-        rows={f.clientReceipts}
-        onAdd={addReceipt}
-        onUpdate={updateReceipt}
-        onRemove={removeReceipt}
-        columns={[
-          { key: "date", label: "Date", type: "date", width: 130 },
-          { key: "amount", label: "Amount ($)", type: "number", width: 120 },
-          { key: "method", label: "Method", type: "text", width: 140, placeholder: "Check / wire / card" },
-          { key: "notes", label: "Notes", type: "text", width: 280 },
-        ]}
-        footerLabel="Total received"
-        footerValue={money(summary.clientReceived)}
-      />
-
-      <Ledger
-        title="Supplier payments"
-        emptyMessage="No supplier payments logged yet."
-        rows={f.supplierPayments}
-        onAdd={addPayment}
-        onUpdate={updatePayment}
-        onRemove={removePayment}
-        columns={[
-          { key: "date", label: "Date", type: "date", width: 130 },
-          { key: "supplier", label: "Paid to", type: "text", width: 180 },
-          { key: "amount", label: "Amount ($)", type: "number", width: 120 },
-          { key: "notes", label: "Notes", type: "text", width: 280 },
-        ]}
-        footerLabel="Total paid"
-        footerValue={money(summary.supplierPaid)}
-      />
     </div>
   );
 }
@@ -428,11 +268,21 @@ function Stat({ label, value, color, big, hint }) {
   );
 }
 
-export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, onRemove, footerLabel, footerValue }) {
+export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, onRemove, footerLabel, footerValue, bare = false }) {
+  const Wrapper = bare ? "div" : "div";
+  const wrapperClass = bare ? "" : "card";
+  const wrapperStyle = bare ? { marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--color-border)" } : { marginBottom: 16 };
+  const titleTag = bare ? (
+    <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
+      {title}
+    </div>
+  ) : (
+    <h4 style={{ margin: 0 }}>{title}</h4>
+  );
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-        <h4 style={{ margin: 0 }}>{title}</h4>
+    <Wrapper className={wrapperClass} style={wrapperStyle}>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        {titleTag}
         <button onClick={onAdd}>+ Add row</button>
       </div>
       <table>
@@ -476,6 +326,6 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
           </tfoot>
         )}
       </table>
-    </div>
+    </Wrapper>
   );
 }

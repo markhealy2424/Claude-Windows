@@ -3,19 +3,30 @@ import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { money } from "../lib/financials.js";
 
+// Renders the Salespeople sub-tab inside the Financials page.
+// Three sections:
+//   1. Roster — manage salespeople records
+//   2. Project sale assignments — attach a salesperson + commission to each
+//      project and generate an invoice from there
+//   3. All invoices — full invoice log
+
 export default function Salespeople() {
   const [salespeople, setSalespeople] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [generatingFor, setGeneratingFor] = useState(null);
+  const [generateError, setGenerateError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.listSalespeople(), api.listInvoices()])
-      .then(([sp, inv]) => {
+    Promise.all([api.listSalespeople(), api.listInvoices(), api.listProjects()])
+      .then(([sp, inv, ps]) => {
         if (cancelled) return;
         setSalespeople(sp);
         setInvoices(inv);
+        setProjects(ps);
         setLoading(false);
       })
       .catch((e) => {
@@ -64,18 +75,47 @@ export default function Salespeople() {
     catch (err) { console.error("salesperson delete failed:", err); }
   }
 
+  // Patch a project's `sale` object — optimistic local + PATCH to server.
+  async function updateProjectSale(projectId, patch) {
+    setProjects((prev) => prev.map((p) => (
+      p.id === projectId
+        ? { ...p, sale: { ...(p.sale ?? {}), ...patch } }
+        : p
+    )));
+    try {
+      const proj = projects.find((p) => p.id === projectId);
+      const nextSale = { ...(proj?.sale ?? {}), ...patch };
+      await api.updateProject(projectId, { sale: nextSale });
+    } catch (err) {
+      console.error("project sale update failed:", err);
+    }
+  }
+
+  async function generateForProject(projectId) {
+    setGenerateError("");
+    setGeneratingFor(projectId);
+    try {
+      const inv = await api.generateInvoice(projectId);
+      setInvoices((prev) => [inv, ...prev]);
+    } catch (err) {
+      setGenerateError(`${(projects.find((p) => p.id === projectId)?.name || "Project")}: ${err.message || err}`);
+    } finally {
+      setGeneratingFor(null);
+    }
+  }
+
   if (loading) return <div>Loading…</div>;
 
   return (
     <div>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h1 style={{ margin: 0 }}>Salespeople</h1>
-        <button onClick={addSalesperson}>+ Add salesperson</button>
-      </div>
-
       {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
 
-      <div className="card" style={{ marginBottom: 16, padding: 0, overflowX: "auto" }}>
+      {/* ── Roster ─────────────────────────────────────────────────── */}
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <h2 style={{ margin: 0 }}>Roster</h2>
+        <button onClick={addSalesperson}>+ Add salesperson</button>
+      </div>
+      <div className="card" style={{ marginBottom: 24, padding: 0, overflowX: "auto" }}>
         <table>
           <thead>
             <tr>
@@ -144,7 +184,97 @@ export default function Salespeople() {
         </table>
       </div>
 
-      <h2 style={{ margin: "24px 0 12px" }}>All invoices</h2>
+      {/* ── Project sale assignments ───────────────────────────────── */}
+      <h2 style={{ margin: "0 0 8px" }}>Project sale assignments</h2>
+      <p className="text-muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
+        Attach a salesperson and commission rate to each project. Hit <strong>Generate invoice</strong> once the sale is locked in — it creates a new commission invoice for the salesperson.
+      </p>
+      {generateError && <div className="card error" style={{ marginBottom: 12 }}>{generateError}</div>}
+      <div className="card" style={{ marginBottom: 24, padding: 0, overflowX: "auto" }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Salesperson</th>
+              <th>Sale price ($)</th>
+              <th>Rate (%)</th>
+              <th>Sale date</th>
+              <th>Commission</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {projects.length === 0 && (
+              <tr><td colSpan={7} className="text-subtle">No projects yet.</td></tr>
+            )}
+            {projects.map((p) => {
+              const sale = p.sale ?? {};
+              const price = Number(sale.salePrice) || 0;
+              const rate = Number(sale.commissionRate) || 0;
+              const commission = price * rate / 100;
+              const canGenerate = Boolean(sale.salespersonId && price > 0 && rate > 0);
+              const generating = generatingFor === p.id;
+              return (
+                <tr key={p.id}>
+                  <td><Link to={`/projects/${p.id}`}><strong>{p.name}</strong></Link></td>
+                  <td>
+                    <select
+                      value={sale.salespersonId ?? ""}
+                      onChange={(e) => updateProjectSale(p.id, { salespersonId: e.target.value })}
+                      style={{ minWidth: 180 }}
+                    >
+                      <option value="">— none —</option>
+                      {salespeople.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name || "(unnamed)"}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      value={sale.salePrice ?? 0}
+                      onChange={(e) => updateProjectSale(p.id, { salePrice: Number(e.target.value) || 0 })}
+                      onFocus={(e) => e.target.select()}
+                      style={{ width: 110 }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      value={sale.commissionRate ?? 0}
+                      onChange={(e) => updateProjectSale(p.id, { commissionRate: Number(e.target.value) || 0 })}
+                      onFocus={(e) => e.target.select()}
+                      style={{ width: 70 }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="date"
+                      value={sale.saleDate ?? ""}
+                      onChange={(e) => updateProjectSale(p.id, { saleDate: e.target.value })}
+                    />
+                  </td>
+                  <td style={{ fontWeight: 600, color: commission > 0 ? "#15623F" : "#666" }}>
+                    {money(commission)}
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => generateForProject(p.id)}
+                      disabled={!canGenerate || generating}
+                      title={canGenerate ? "Create a new commission invoice for this sale" : "Pick a salesperson and set sale price + commission rate first"}
+                    >
+                      {generating ? "Generating…" : "Generate invoice"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── All invoices ───────────────────────────────────────────── */}
+      <h2 style={{ margin: "0 0 12px" }}>All invoices</h2>
       <table>
         <thead>
           <tr>
@@ -162,7 +292,7 @@ export default function Salespeople() {
         </thead>
         <tbody>
           {invoices.length === 0 && (
-            <tr><td colSpan={10} className="text-subtle">No invoices generated yet. Open a project's <strong>Money</strong> tab to create one.</td></tr>
+            <tr><td colSpan={10} className="text-subtle">No invoices generated yet. Pick a salesperson on a project above and hit <strong>Generate invoice</strong>.</td></tr>
           )}
           {invoices.map((inv) => (
             <tr key={inv.id}>

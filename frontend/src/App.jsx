@@ -12,7 +12,6 @@ export default function App() {
         </Link>
         <Link to="/">Dashboard</Link>
         <Link to="/financials">Financials</Link>
-        <Link to="/salespeople">Salespeople</Link>
         <Link to="/sketch">Sketch Generator</Link>
       </nav>
       <main className="main">

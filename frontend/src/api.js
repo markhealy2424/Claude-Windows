@@ -173,6 +173,23 @@ export const api = {
     fetch(`${base}/financials/expenses/${id}`, { method: "DELETE" }).then((r) => {
       if (!r.ok) throw new Error("delete failed");
     }),
+  downloadQuestionsPdf: async (items, projectName, info) => {
+    const res = await fetch(`${base}/questions/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, projectName, info }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(projectName || "questions").replace(/[^a-z0-9-_]+/gi, "_")}-questions.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   downloadProposalPdf: async (items, projectName, branding, totals, info) => {
     const res = await fetch(`${base}/proposals/pdf`, {
       method: "POST",

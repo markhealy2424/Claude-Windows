@@ -3,8 +3,28 @@ import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { money, projectSummary, todayIso } from "../lib/financials.js";
 import { Ledger } from "./MoneyTab.jsx";
+import Salespeople from "./Salespeople.jsx";
 
-export default function Financials() {
+const SUB_TABS = ["Overview", "Salespeople"];
+
+export default function Financials({ initialTab = "Overview" }) {
+  const [tab, setTab] = useState(initialTab);
+
+  return (
+    <div>
+      <h1 style={{ marginTop: 0, marginBottom: 12 }}>Financials</h1>
+      <div className="tabs" style={{ marginBottom: 16 }}>
+        {SUB_TABS.map((t) => (
+          <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t}</button>
+        ))}
+      </div>
+      {tab === "Overview" && <FinancialsOverview />}
+      {tab === "Salespeople" && <Salespeople />}
+    </div>
+  );
+}
+
+function FinancialsOverview() {
   const [projects, setProjects] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +102,6 @@ export default function Financials() {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Financials</h1>
       {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
 
       <div className="card" style={{ marginBottom: 16 }}>
