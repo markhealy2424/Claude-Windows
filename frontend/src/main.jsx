@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Projects from "./pages/Projects.jsx";
-import Leads from "./pages/Leads.jsx";
+import Sales from "./pages/Sales.jsx";
 import ProjectView from "./pages/ProjectView.jsx";
 import SketchGenerator from "./pages/SketchGenerator.jsx";
 import Financials from "./pages/Financials.jsx";
@@ -18,7 +18,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:id" element={<ProjectView />} />
-        <Route path="leads" element={<Leads />} />
+        <Route path="sales" element={<Sales initialTab="Pipeline" />} />
+        <Route path="sales/agent" element={<Sales initialTab="AI Agent" />} />
+        <Route path="sales/resources" element={<Sales initialTab="Resources" />} />
+        <Route path="leads" element={<Sales initialTab="Pipeline" />} />
         <Route path="financials" element={<Financials initialTab="Overview" />} />
         <Route path="salespeople" element={<Financials initialTab="Salespeople" />} />
         <Route path="invoices/:id" element={<InvoiceDetail />} />

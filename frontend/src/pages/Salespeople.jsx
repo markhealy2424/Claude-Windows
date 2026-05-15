@@ -75,6 +75,14 @@ export default function Salespeople() {
     catch (err) { console.error("salesperson delete failed:", err); }
   }
 
+  async function removeInvoice(inv) {
+    const label = `${inv.invoiceNumber} (${inv.salespersonSnapshot?.name || "salesperson"})`;
+    if (!confirm(`Delete invoice ${label}? This can't be undone.`)) return;
+    setInvoices((prev) => prev.filter((i) => i.id !== inv.id));
+    try { await api.deleteInvoice(inv.id); }
+    catch (err) { console.error("invoice delete failed:", err); }
+  }
+
   // Patch a project's `sale` object — optimistic local + PATCH to server.
   async function updateProjectSale(projectId, patch) {
     setProjects((prev) => prev.map((p) => (
@@ -312,7 +320,12 @@ export default function Salespeople() {
                   {inv.paymentStatus}
                 </span>
               </td>
-              <td><Link to={`/invoices/${inv.id}`}>Open →</Link></td>
+              <td>
+                <div className="row" style={{ gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
+                  <Link to={`/invoices/${inv.id}`}>Open →</Link>
+                  <button onClick={() => removeInvoice(inv)} title="Delete this invoice">×</button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
