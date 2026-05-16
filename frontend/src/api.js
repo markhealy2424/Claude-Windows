@@ -195,6 +195,53 @@ export const api = {
     }).then(json),
   deleteLeadInteraction: (id, entryId) =>
     fetch(`${base}/leads/${id}/interactions/${entryId}`, { method: "DELETE" }).then(json),
+  listCatalogGroups: () => fetch(`${base}/catalog/groups`).then(json),
+  createCatalogGroup: (g) =>
+    fetch(`${base}/catalog/groups`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(g),
+    }).then(json),
+  updateCatalogGroup: (id, patch) =>
+    fetch(`${base}/catalog/groups/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  deleteCatalogGroup: (id) =>
+    fetch(`${base}/catalog/groups/${id}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("delete failed");
+    }),
+  reorderCatalogGroups: (orderedIds) =>
+    fetch(`${base}/catalog/groups/reorder`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderedIds }),
+    }).then(json),
+  listCatalogProducts: () => fetch(`${base}/catalog/products`).then(json),
+  getCatalogProduct: (id) => fetch(`${base}/catalog/products/${id}`).then(json),
+  createCatalogProduct: (p) =>
+    fetch(`${base}/catalog/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    }).then(json),
+  updateCatalogProduct: (id, patch) =>
+    fetch(`${base}/catalog/products/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  deleteCatalogProduct: (id) =>
+    fetch(`${base}/catalog/products/${id}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error("delete failed");
+    }),
+  reorderCatalogProducts: (orderedIds) =>
+    fetch(`${base}/catalog/products/reorder`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderedIds }),
+    }).then(json),
   listTodos: () => fetch(`${base}/todos`).then(json),
   createTodo: (text) =>
     fetch(`${base}/todos`, {

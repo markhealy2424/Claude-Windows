@@ -22,6 +22,10 @@ const LEAD_SOURCES_FILE = resolve(DATA_DIR, "lead-sources.json");
 const LEAD_SOURCES_TMP = resolve(DATA_DIR, "lead-sources.json.tmp");
 const LEAD_SETTINGS_FILE = resolve(DATA_DIR, "lead-settings.json");
 const LEAD_SETTINGS_TMP = resolve(DATA_DIR, "lead-settings.json.tmp");
+const CATALOG_GROUPS_FILE = resolve(DATA_DIR, "catalog-groups.json");
+const CATALOG_GROUPS_TMP = resolve(DATA_DIR, "catalog-groups.json.tmp");
+const CATALOG_PRODUCTS_FILE = resolve(DATA_DIR, "catalog-products.json");
+const CATALOG_PRODUCTS_TMP = resolve(DATA_DIR, "catalog-products.json.tmp");
 
 mkdirSync(DATA_DIR, { recursive: true });
 
@@ -33,6 +37,8 @@ const todos = new Map();
 const leads = new Map();
 const leadSources = new Map();
 let leadSettings = { businessContext: "" };
+const catalogGroups = new Map();
+const catalogProducts = new Map();
 // Monotonically increasing invoice counter — derived from the highest
 // existing invoice number on load so we never reissue the same number.
 let invoiceCounter = 0;
@@ -115,6 +121,18 @@ function load() {
     } catch (err) {
       console.error("[store] failed to load salesperson-invoices.json:", err.message);
     }
+  }
+  if (existsSync(CATALOG_GROUPS_FILE)) {
+    try {
+      const raw = readFileSync(CATALOG_GROUPS_FILE, "utf8");
+      if (raw.trim()) for (const g of JSON.parse(raw)) catalogGroups.set(g.id, g);
+    } catch (err) { console.error("[store] failed to load catalog-groups.json:", err.message); }
+  }
+  if (existsSync(CATALOG_PRODUCTS_FILE)) {
+    try {
+      const raw = readFileSync(CATALOG_PRODUCTS_FILE, "utf8");
+      if (raw.trim()) for (const p of JSON.parse(raw)) catalogProducts.set(p.id, p);
+    } catch (err) { console.error("[store] failed to load catalog-products.json:", err.message); }
   }
 }
 
@@ -575,4 +593,162 @@ export function deleteLead(id) {
   const existed = leads.delete(id);
   if (existed) persistLeads();
   return existed;
+}
+
+// ── Catalog ────────────────────────────────────────────────────────────
+
+let catalogGroupsWriteQueued = false;
+function persistCatalogGroups() {
+  if (catalogGroupsWriteQueued) return;
+  catalogGroupsWriteQueued = true;
+  queueMicrotask(() => {
+    catalogGroupsWriteQueued = false;
+    try {
+      writeFileSync(CATALOG_GROUPS_TMP, JSON.stringify([...catalogGroups.values()], null, 2));
+      renameSync(CATALOG_GROUPS_TMP, CATALOG_GROUPS_FILE);
+    } catch (err) { console.error("[store] failed to write catalog-groups.json:", err.message); }
+  });
+}
+
+let catalogProductsWriteQueued = false;
+function persistCatalogProducts() {
+  if (catalogProductsWriteQueued) return;
+  catalogProductsWriteQueued = true;
+  queueMicrotask(() => {
+    catalogProductsWriteQueued = false;
+    try {
+      writeFileSync(CATALOG_PRODUCTS_TMP, JSON.stringify([...catalogProducts.values()], null, 2));
+      renameSync(CATALOG_PRODUCTS_TMP, CATALOG_PRODUCTS_FILE);
+    } catch (err) { console.error("[store] failed to write catalog-products.json:", err.message); }
+  });
+}
+
+function nextSortOrder(map) {
+  let max = -1;
+  for (const v of map.values()) {
+    if (Number.isFinite(v.sortOrder) && v.sortOrder > max) max = v.sortOrder;
+  }
+  return max + 1;
+}
+
+export function listCatalogGroups() {
+  return [...catalogGroups.values()].sort((a, b) =>
+    (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+    (a.name ?? "").localeCompare(b.name ?? "")
+  );
+}
+
+export function createCatalogGroup({ name, description }) {
+  const id = crypto.randomUUID();
+  const g = {
+    id,
+    name: name || "",
+    description: description || "",
+    sortOrder: nextSortOrder(catalogGroups),
+    createdAt: new Date().toISOString(),
+  };
+  catalogGroups.set(id, g);
+  persistCatalogGroups();
+  return g;
+}
+
+export function updateCatalogGroup(id, patch) {
+  const g = catalogGroups.get(id);
+  if (!g) return null;
+  delete patch.id;
+  delete patch.createdAt;
+  Object.assign(g, patch);
+  persistCatalogGroups();
+  return g;
+}
+
+export function deleteCatalogGroup(id) {
+  const existed = catalogGroups.delete(id);
+  if (!existed) return false;
+  // Drop the deleted group ID from any product that referenced it.
+  let touched = false;
+  for (const p of catalogProducts.values()) {
+    if (Array.isArray(p.groupIds) && p.groupIds.includes(id)) {
+      p.groupIds = p.groupIds.filter((g) => g !== id);
+      p.updatedAt = new Date().toISOString();
+      touched = true;
+    }
+  }
+  persistCatalogGroups();
+  if (touched) persistCatalogProducts();
+  return true;
+}
+
+// Reorder by accepting an ordered array of group IDs. Any IDs not present
+// in the list keep their existing sortOrder pushed to the end.
+export function reorderCatalogGroups(orderedIds) {
+  if (!Array.isArray(orderedIds)) return listCatalogGroups();
+  orderedIds.forEach((id, i) => {
+    const g = catalogGroups.get(id);
+    if (g) g.sortOrder = i;
+  });
+  persistCatalogGroups();
+  return listCatalogGroups();
+}
+
+export function listCatalogProducts() {
+  return [...catalogProducts.values()].sort((a, b) =>
+    (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+    (a.createdAt ?? "").localeCompare(b.createdAt ?? "")
+  );
+}
+
+export function getCatalogProduct(id) {
+  return catalogProducts.get(id) ?? null;
+}
+
+export function createCatalogProduct(input = {}) {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const p = {
+    id,
+    sku: input.sku || "",
+    manufacturer: input.manufacturer || "",
+    productLine: input.productLine || "",
+    type: input.type || "",
+    groupIds: Array.isArray(input.groupIds) ? [...input.groupIds] : [],
+    description: input.description || "",
+    specs: Array.isArray(input.specs) ? input.specs : [],
+    options: Array.isArray(input.options) ? input.options : [],
+    images: Array.isArray(input.images) ? input.images : [],
+    specSheetUrl: input.specSheetUrl || "",
+    notes: input.notes || "",
+    sortOrder: nextSortOrder(catalogProducts),
+    createdAt: now,
+    updatedAt: now,
+  };
+  catalogProducts.set(id, p);
+  persistCatalogProducts();
+  return p;
+}
+
+export function updateCatalogProduct(id, patch) {
+  const p = catalogProducts.get(id);
+  if (!p) return null;
+  delete patch.id;
+  delete patch.createdAt;
+  Object.assign(p, patch, { updatedAt: new Date().toISOString() });
+  persistCatalogProducts();
+  return p;
+}
+
+export function deleteCatalogProduct(id) {
+  const existed = catalogProducts.delete(id);
+  if (existed) persistCatalogProducts();
+  return existed;
+}
+
+export function reorderCatalogProducts(orderedIds) {
+  if (!Array.isArray(orderedIds)) return listCatalogProducts();
+  orderedIds.forEach((id, i) => {
+    const p = catalogProducts.get(id);
+    if (p) p.sortOrder = i;
+  });
+  persistCatalogProducts();
+  return listCatalogProducts();
 }

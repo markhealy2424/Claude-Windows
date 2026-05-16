@@ -4,6 +4,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/projects", label: "Projects" },
   { to: "/sales", label: "Sales" },
+  { to: "/catalog", label: "Catalog" },
   { to: "/financials", label: "Financials" },
 ];
 

@@ -9,6 +9,7 @@ import ProjectView from "./pages/ProjectView.jsx";
 import SketchGenerator from "./pages/SketchGenerator.jsx";
 import Financials from "./pages/Financials.jsx";
 import InvoiceDetail from "./pages/InvoiceDetail.jsx";
+import Catalog from "./pages/Catalog.jsx";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -29,6 +30,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="salespeople" element={<Financials initialTab="Sale assignments" />} />
         <Route path="invoices/:id" element={<InvoiceDetail />} />
         <Route path="sketch" element={<SketchGenerator />} />
+        <Route path="catalog" element={<Catalog initialTab="Internal Catalog" />} />
       </Route>
     </Routes>
   </BrowserRouter>
