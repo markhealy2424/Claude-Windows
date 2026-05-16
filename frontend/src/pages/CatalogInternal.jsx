@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 
 // Mirror of the type slugs in pages/ItemEditor.jsx — kept in sync manually.
@@ -22,6 +22,27 @@ const TYPES = [
 ];
 
 const ALL_GROUP_ID = "__all__";
+
+// SKU autoformat: "{ManufacturerInitial}-{NNN}-{Type}" e.g. "C-001-Fixed".
+// The type segment strips a trailing " window" but keeps " door" so doors
+// stay disambiguated, with spaces collapsed to dashes.
+function typeForSku(typeSlug) {
+  const label = TYPES.find(([s]) => s === typeSlug)?.[1] || "";
+  return label.replace(/\s*window$/i, "").trim().replace(/\s+/g, "-");
+}
+
+function nextProductNumberFor(manufacturer, products) {
+  const m = String(manufacturer ?? "").trim().toLowerCase();
+  if (!m) return 1;
+  let max = 0;
+  for (const p of products) {
+    if (String(p.manufacturer ?? "").trim().toLowerCase() !== m) continue;
+    const parts = String(p.sku ?? "").split("-");
+    const n = parseInt(parts[1], 10);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return max + 1;
+}
 
 export default function CatalogInternal() {
   const [groups, setGroups] = useState([]);
@@ -58,6 +79,42 @@ export default function CatalogInternal() {
     return counts;
   }, [products]);
 
+  // Quick-add suggestions: aggregate distinct spec rows and option groups
+  // across every existing product, sorted by frequency. Lets the user
+  // re-use common specs (e.g. "Glass Type: 6mm + 12A + 6mm Low-E") without
+  // retyping. Skipped on the *first* product since there's nothing to draw from.
+  const recentSpecs = useMemo(() => {
+    const counts = new Map();
+    for (const p of products) {
+      for (const s of (p.specs ?? [])) {
+        const label = String(s.label ?? "").trim();
+        const value = String(s.value ?? "").trim();
+        if (!label && !value) continue;
+        const key = `${label}|${value}`;
+        const e = counts.get(key);
+        if (e) e.n++;
+        else counts.set(key, { label, value, n: 1 });
+      }
+    }
+    return [...counts.values()].sort((a, b) => b.n - a.n).slice(0, 12);
+  }, [products]);
+
+  const recentOptionGroups = useMemo(() => {
+    const counts = new Map();
+    for (const p of products) {
+      for (const o of (p.options ?? [])) {
+        const name = String(o.name ?? "").trim();
+        const choices = (o.choices ?? []).map((c) => String(c).trim()).filter(Boolean);
+        if (!name && choices.length === 0) continue;
+        const key = `${name}|${[...choices].sort().join("|")}`;
+        const e = counts.get(key);
+        if (e) e.n++;
+        else counts.set(key, { name, choices, n: 1 });
+      }
+    }
+    return [...counts.values()].sort((a, b) => b.n - a.n).slice(0, 8);
+  }, [products]);
+
   if (loading) return <div>Loading…</div>;
 
   if (view.mode === "edit") {
@@ -66,6 +123,9 @@ export default function CatalogInternal() {
       <ProductEditor
         groups={groups}
         product={existing}
+        products={products}
+        recentSpecs={recentSpecs}
+        recentOptionGroups={recentOptionGroups}
         onCancel={() => setView({ mode: "list" })}
         onSaved={(saved, kind) => {
           if (kind === "create") setProducts((prev) => [...prev, saved]);
@@ -271,7 +331,7 @@ function GroupsManager({ groups, onClose, onChange, onGroupDeleted }) {
   );
 }
 
-function ProductEditor({ groups, product, onCancel, onSaved }) {
+function ProductEditor({ groups, product, products = [], recentSpecs = [], recentOptionGroups = [], onCancel, onSaved }) {
   const isNew = !product;
   const [draft, setDraft] = useState(() => ({
     sku: product?.sku ?? "",
@@ -287,7 +347,22 @@ function ProductEditor({ groups, product, onCancel, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // Existing products: assume the saved SKU was user-set. New products:
+  // auto-fill from manufacturer + type until the user types in SKU manually.
+  const skuTouched = useRef(!isNew);
+
   function set(field, value) { setDraft((d) => ({ ...d, [field]: value })); }
+
+  useEffect(() => {
+    if (!isNew) return;
+    if (skuTouched.current) return;
+    const initial = String(draft.manufacturer ?? "").trim().charAt(0).toUpperCase();
+    const typePart = typeForSku(draft.type);
+    if (!initial || !typePart) return;
+    const num = nextProductNumberFor(draft.manufacturer, products);
+    const auto = `${initial}-${String(num).padStart(3, "0")}-${typePart}`;
+    setDraft((d) => (d.sku === auto ? d : { ...d, sku: auto }));
+  }, [draft.manufacturer, draft.type, products, isNew]);
 
   function toggleGroup(id) {
     setDraft((d) => {
@@ -334,8 +409,11 @@ function ProductEditor({ groups, product, onCancel, onSaved }) {
       <div className="card" style={{ marginBottom: 12 }}>
         <h3 style={{ marginTop: 0 }}>Identity</h3>
         <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
-          <Field label="SKU" hint="Your internal code, e.g. WJ-CSM-001">
-            <input value={draft.sku} onChange={(e) => set("sku", e.target.value)} />
+          <Field label="SKU" hint="Auto: {Manufacturer initial}-{NNN}-{Type} (e.g. C-001-Fixed). Editable.">
+            <input
+              value={draft.sku}
+              onChange={(e) => { skuTouched.current = true; set("sku", e.target.value); }}
+            />
           </Field>
           <Field label="Manufacturer">
             <input value={draft.manufacturer} onChange={(e) => set("manufacturer", e.target.value)} />
@@ -385,11 +463,13 @@ function ProductEditor({ groups, product, onCancel, onSaved }) {
       <RepeatableSpecs
         specs={draft.specs}
         onChange={(specs) => set("specs", specs)}
+        suggestions={recentSpecs}
       />
 
       <RepeatableOptions
         options={draft.options}
         onChange={(options) => set("options", options)}
+        suggestions={recentOptionGroups}
       />
 
       <div className="card" style={{ marginBottom: 12 }}>
@@ -406,6 +486,11 @@ function ProductEditor({ groups, product, onCancel, onSaved }) {
   );
 }
 
+function truncate(s, n) {
+  if (typeof s !== "string") return "";
+  return s.length <= n ? s : s.slice(0, n - 1) + "…";
+}
+
 function Field({ label, hint, children }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 200, flex: 1 }}>
@@ -416,12 +501,19 @@ function Field({ label, hint, children }) {
   );
 }
 
-function RepeatableSpecs({ specs, onChange }) {
+function RepeatableSpecs({ specs, onChange, suggestions = [] }) {
   function update(i, patch) {
     onChange(specs.map((s, j) => (i === j ? { ...s, ...patch } : s)));
   }
   function add() { onChange([...specs, { label: "", value: "" }]); }
   function remove(i) { onChange(specs.filter((_, j) => j !== i)); }
+
+  // Hide suggestions that are already on this product (same label+value).
+  const available = suggestions.filter((s) => !specs.some(
+    (x) =>
+      String(x.label ?? "").trim().toLowerCase() === s.label.toLowerCase() &&
+      String(x.value ?? "").trim().toLowerCase() === s.value.toLowerCase()
+  ));
 
   return (
     <div className="card" style={{ marginBottom: 12 }}>
@@ -432,6 +524,21 @@ function RepeatableSpecs({ specs, onChange }) {
       <p className="text-subtle" style={{ fontSize: 12, margin: "4px 0 12px" }}>
         Display-only descriptive fields (frame material, U-value, certifications, …). Different products can have different specs.
       </p>
+      {available.length > 0 && (
+        <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+          <span className="text-subtle" style={{ fontSize: 12 }}>Recently used:</span>
+          {available.map((s, i) => (
+            <button
+              key={i}
+              className="pill-toggle"
+              onClick={() => onChange([...specs, { label: s.label, value: s.value }])}
+              title={s.value ? `${s.label}: ${s.value}` : s.label}
+            >
+              + {s.label}{s.value ? `: ${truncate(s.value, 36)}` : ""}
+            </button>
+          ))}
+        </div>
+      )}
       {specs.length === 0 ? (
         <div className="text-subtle">No specs yet.</div>
       ) : (
@@ -452,12 +559,19 @@ function RepeatableSpecs({ specs, onChange }) {
   );
 }
 
-function RepeatableOptions({ options, onChange }) {
+function RepeatableOptions({ options, onChange, suggestions = [] }) {
   function update(i, patch) {
     onChange(options.map((o, j) => (i === j ? { ...o, ...patch } : o)));
   }
   function add() { onChange([...options, { name: "", choices: [] }]); }
   function remove(i) { onChange(options.filter((_, j) => j !== i)); }
+
+  const available = suggestions.filter((s) => !options.some((x) => {
+    const sameName = String(x.name ?? "").trim().toLowerCase() === s.name.toLowerCase();
+    const sameChoices = [...(x.choices ?? [])].map((c) => String(c).trim()).sort().join("|") ===
+                        [...s.choices].sort().join("|");
+    return sameName && sameChoices;
+  }));
 
   return (
     <div className="card" style={{ marginBottom: 12 }}>
@@ -468,6 +582,21 @@ function RepeatableOptions({ options, onChange }) {
       <p className="text-subtle" style={{ fontSize: 12, margin: "4px 0 12px" }}>
         Selectable configurations (Screens, Grids, Glass, Color, Hardware finish…). One option group per row; comma-separate the choices.
       </p>
+      {available.length > 0 && (
+        <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+          <span className="text-subtle" style={{ fontSize: 12 }}>Recently used:</span>
+          {available.map((s, i) => (
+            <button
+              key={i}
+              className="pill-toggle"
+              onClick={() => onChange([...options, { name: s.name, choices: [...s.choices] }])}
+              title={s.choices.join(", ")}
+            >
+              + {s.name || "(unnamed)"}{s.choices.length ? `: ${truncate(s.choices.join(", "), 36)}` : ""}
+            </button>
+          ))}
+        </div>
+      )}
       {options.length === 0 ? (
         <div className="text-subtle">No options yet.</div>
       ) : (
