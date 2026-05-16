@@ -492,6 +492,26 @@ function truncate(s, n) {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
 
+// Choices are stored as an array of strings, but typed as a comma-separated
+// string. We keep the raw text in local state so the user can type commas,
+// spaces, and trailing separators without the parent eating them between
+// keystrokes. Parse only on blur. External updates (e.g. clicking a
+// "Recently used" chip) re-sync the local text via the useEffect.
+function ChoicesInput({ choices, onCommit }) {
+  const joined = (choices ?? []).join(", ");
+  const [text, setText] = useState(joined);
+  useEffect(() => { setText(joined); }, [joined]);
+  return (
+    <input
+      value={text}
+      placeholder="None, Fiberglass, Retractable"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => onCommit(text.split(",").map((s) => s.trim()).filter(Boolean))}
+      style={{ width: "100%" }}
+    />
+  );
+}
+
 function Field({ label, hint, children }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 200, flex: 1 }}>
@@ -615,13 +635,9 @@ function RepeatableOptions({ options, onChange, suggestions = [] }) {
                   />
                 </td>
                 <td>
-                  <input
-                    value={(o.choices ?? []).join(", ")}
-                    placeholder="None, Fiberglass, Retractable"
-                    onChange={(e) => update(i, {
-                      choices: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                    })}
-                    style={{ width: "100%" }}
+                  <ChoicesInput
+                    choices={o.choices ?? []}
+                    onCommit={(choices) => update(i, { choices })}
                   />
                 </td>
                 <td style={{ textAlign: "right" }}><button onClick={() => remove(i)}>×</button></td>
