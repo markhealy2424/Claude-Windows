@@ -134,6 +134,9 @@ export default function CatalogInternal() {
           else if (kind === "delete") setProducts((prev) => prev.filter((p) => p.id !== saved.id));
           setView({ mode: "list" });
         }}
+        onProductUpdated={(updated) => {
+          setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+        }}
       />
     );
   }
@@ -332,7 +335,7 @@ function GroupsManager({ groups, onClose, onChange, onGroupDeleted }) {
   );
 }
 
-function ProductEditor({ groups, product, products = [], recentSpecs = [], recentOptionGroups = [], onCancel, onSaved }) {
+function ProductEditor({ groups, product, products = [], recentSpecs = [], recentOptionGroups = [], onCancel, onSaved, onProductUpdated }) {
   const isNew = !product;
   const [draft, setDraft] = useState(() => ({
     sku: product?.sku ?? "",
@@ -461,6 +464,32 @@ function ProductEditor({ groups, product, products = [], recentSpecs = [], recen
         />
       </div>
 
+      <div className="card" style={{ marginBottom: 12 }}>
+        <h3 style={{ marginTop: 0 }}>Images</h3>
+        {isNew ? (
+          <div className="text-subtle">Save the product first — image upload appears once it exists.</div>
+        ) : (
+          <div className="row" style={{ gap: 16, flexWrap: "wrap" }}>
+            <ImageSlot
+              productId={product.id}
+              kind="product"
+              label="Product image"
+              hint="Catalog / SKU shot."
+              meta={product.productImage}
+              onUpdated={onProductUpdated}
+            />
+            <ImageSlot
+              productId={product.id}
+              kind="lifestyle"
+              label="In-situ image"
+              hint="Real-life setting."
+              meta={product.lifestyleImage}
+              onUpdated={onProductUpdated}
+            />
+          </div>
+        )}
+      </div>
+
       <RepeatableSpecs
         specs={draft.specs}
         onChange={(specs) => set("specs", specs)}
@@ -509,6 +538,82 @@ function ChoicesInput({ choices, onCommit }) {
       onBlur={() => onCommit(text.split(",").map((s) => s.trim()).filter(Boolean))}
       style={{ width: "100%" }}
     />
+  );
+}
+
+function ImageSlot({ productId, kind, label, hint, meta, onUpdated }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+
+  // Cache-bust the <img> src whenever the slot's uploadedAt changes so a
+  // re-upload doesn't show the old cached image. New uploads bump the param.
+  const src = meta ? api.catalogProductImageUrl(productId, kind, meta.uploadedAt) : null;
+
+  async function onPick(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true); setError("");
+    try {
+      const updated = await api.uploadCatalogProductImage(productId, kind, file);
+      onUpdated?.(updated);
+    } catch (err) { setError(String(err)); }
+    finally { setBusy(false); }
+  }
+
+  async function onDelete() {
+    if (!confirm(`Delete this ${label.toLowerCase()}?`)) return;
+    setBusy(true); setError("");
+    try {
+      const updated = await api.deleteCatalogProductImage(productId, kind);
+      onUpdated?.(updated);
+    } catch (err) { setError(String(err)); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 220 }}>
+      <span style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
+      <div
+        style={{
+          width: 220,
+          height: 165,
+          border: "1px dashed var(--color-border, #ccc)",
+          borderRadius: 6,
+          background: "var(--color-bg-subtle, #f5f5f0)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        {src ? (
+          <img
+            src={src}
+            alt={label}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <span className="text-subtle" style={{ fontSize: 12 }}>No image</span>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={onPick}
+        style={{ display: "none" }}
+      />
+      <div className="row" style={{ gap: 6 }}>
+        <button onClick={() => inputRef.current?.click()} disabled={busy}>
+          {meta ? "Replace" : "Upload"}
+        </button>
+        {meta && <button onClick={onDelete} disabled={busy}>Delete</button>}
+      </div>
+      {hint && <span className="text-subtle" style={{ fontSize: 11 }}>{hint}</span>}
+      {error && <span className="text-error" style={{ fontSize: 11 }}>{error}</span>}
+    </div>
   );
 }
 

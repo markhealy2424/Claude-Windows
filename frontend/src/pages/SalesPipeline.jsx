@@ -25,6 +25,7 @@ export default function SalesPipeline() {
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [manualOpen, setManualOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,7 +76,10 @@ export default function SalesPipeline() {
     <div>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <h2 style={{ margin: 0 }}>Pipeline ({leads.length})</h2>
-        <button onClick={() => setManualOpen((v) => !v)}>{manualOpen ? "Cancel" : "+ Company"}</button>
+        <div className="row" style={{ gap: 8 }}>
+          <button onClick={() => setImportOpen((v) => !v)}>{importOpen ? "Close import" : "Import PDF"}</button>
+          <button onClick={() => setManualOpen((v) => !v)}>{manualOpen ? "Cancel" : "+ Company"}</button>
+        </div>
       </div>
 
       <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
@@ -90,6 +94,15 @@ export default function SalesPipeline() {
         <ManualAddForm
           onAdd={async (data) => { await addCompany(data); setManualOpen(false); }}
           onCancel={() => setManualOpen(false)}
+        />
+      )}
+
+      {importOpen && (
+        <PdfImportPanel
+          onCreated={(created) => {
+            setLeads((prev) => [...created, ...prev]);
+          }}
+          onClose={() => setImportOpen(false)}
         />
       )}
 
@@ -162,6 +175,164 @@ function ManualAddForm({ onAdd, onCancel }) {
       <button className="primary" type="submit" disabled={!company.trim()}>Add</button>
       {onCancel && <button type="button" onClick={onCancel}>Cancel</button>}
     </form>
+  );
+}
+
+function PdfImportPanel({ onCreated, onClose }) {
+  // Three states: "pick" (waiting for upload), "parsing", "review" (got drafts).
+  const [stage, setStage] = useState("pick");
+  const [error, setError] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [sourceDocTitle, setSourceDocTitle] = useState("");
+  const [drafts, setDrafts] = useState([]);
+  const [approved, setApproved] = useState({}); // index -> bool
+  const [confirming, setConfirming] = useState(false);
+
+  async function onPick(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setStage("parsing"); setError(""); setFileName(file.name);
+    try {
+      const result = await api.importLeadsFromPdf(file);
+      setSourceDocTitle(result.sourceDocTitle || "");
+      setDrafts(result.drafts || []);
+      // Default: every extracted row approved. The user unchecks the noise.
+      setApproved(Object.fromEntries((result.drafts || []).map((_, i) => [i, true])));
+      setStage("review");
+    } catch (err) {
+      setError(String(err.message || err));
+      setStage("pick");
+    }
+  }
+
+  function updateDraft(i, patch) {
+    setDrafts((prev) => prev.map((d, j) => (i === j ? { ...d, ...patch } : d)));
+  }
+
+  async function confirm() {
+    const keep = drafts.filter((_, i) => approved[i]);
+    if (keep.length === 0) return;
+    setConfirming(true); setError("");
+    try {
+      const result = await api.confirmLeadImport({
+        drafts: keep,
+        sourceDocTitle,
+        fileName,
+      });
+      onCreated?.(result.created);
+      if (result.skipped?.length) {
+        setError(`Imported ${result.created.length} • Skipped ${result.skipped.length} duplicate company name(s): ${result.skipped.join(", ")}`);
+      }
+      // Reset to a fresh pick state so the user can import another PDF without closing.
+      setStage("pick");
+      setDrafts([]);
+      setApproved({});
+      setFileName("");
+      setSourceDocTitle("");
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  const approvedCount = drafts.reduce((n, _, i) => n + (approved[i] ? 1 : 0), 0);
+
+  return (
+    <div
+      className="card"
+      style={{ padding: 12, marginBottom: 12 }}
+    >
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <h3 style={{ margin: 0 }}>Import leads from PDF</h3>
+        <button onClick={onClose}>Close</button>
+      </div>
+
+      {error && <div className="card error" style={{ marginBottom: 8 }}>{error}</div>}
+
+      {stage === "pick" && (
+        <div>
+          <p className="text-muted" style={{ fontSize: 13, margin: "0 0 8px" }}>
+            Drop in a prospect list (broker directory, conference roster, exhibitor list, etc.) — Claude vision will extract each company + contact for you to review.
+          </p>
+          <label className="pill-upload" style={{ display: "inline-block", cursor: "pointer" }}>
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              onChange={onPick}
+              style={{ display: "none" }}
+            />
+            Choose PDF or image
+          </label>
+        </div>
+      )}
+
+      {stage === "parsing" && (
+        <div className="text-muted" style={{ fontSize: 13 }}>
+          Reading <strong>{fileName}</strong> with Claude vision… this usually takes 15–60 seconds depending on length.
+        </div>
+      )}
+
+      {stage === "review" && (
+        <div>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+            <div className="text-muted" style={{ fontSize: 13 }}>
+              <strong>{drafts.length}</strong> leads extracted from <strong>{fileName}</strong>
+              {sourceDocTitle ? ` (${sourceDocTitle})` : ""}. Uncheck any rows you don't want. Click <strong>Import {approvedCount}</strong> to create them.
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <button onClick={() => setApproved(Object.fromEntries(drafts.map((_, i) => [i, true])))}>Select all</button>
+              <button onClick={() => setApproved({})}>Select none</button>
+              <button
+                className="primary"
+                onClick={confirm}
+                disabled={confirming || approvedCount === 0}
+              >
+                {confirming ? "Importing…" : `Import ${approvedCount}`}
+              </button>
+            </div>
+          </div>
+
+          {drafts.length === 0 ? (
+            <div className="text-subtle">No leads found in the document.</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: 32 }}></th>
+                  <th>Company</th>
+                  <th>Contact</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Role</th>
+                  <th>Website</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drafts.map((d, i) => (
+                  <tr key={i} style={{ opacity: approved[i] ? 1 : 0.4 }}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={!!approved[i]}
+                        onChange={(e) => setApproved((a) => ({ ...a, [i]: e.target.checked }))}
+                      />
+                    </td>
+                    <td><input value={d.company} onChange={(e) => updateDraft(i, { company: e.target.value })} style={{ width: "100%" }} /></td>
+                    <td><input value={d.contactName} onChange={(e) => updateDraft(i, { contactName: e.target.value })} style={{ width: "100%" }} /></td>
+                    <td><input value={d.contactEmail} onChange={(e) => updateDraft(i, { contactEmail: e.target.value })} style={{ width: "100%" }} /></td>
+                    <td><input value={d.contactPhone} onChange={(e) => updateDraft(i, { contactPhone: e.target.value })} style={{ width: "100%" }} /></td>
+                    <td><input value={d.contactRole} onChange={(e) => updateDraft(i, { contactRole: e.target.value })} style={{ width: "100%" }} /></td>
+                    <td><input value={d.website} onChange={(e) => updateDraft(i, { website: e.target.value })} style={{ width: "100%" }} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

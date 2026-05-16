@@ -186,3 +186,43 @@ export function deleteFinalInvoiceFile(projectId, kind) {
   try { unlinkSync(path); return true; }
   catch { return false; }
 }
+
+// Catalog product images — two slots per product, "product" (the SKU shot)
+// and "lifestyle" (the product in a real-life setting). Image-only — no PDF.
+const CATALOG_IMAGE_KINDS = new Set(["product", "lifestyle"]);
+const CATALOG_IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp"]);
+
+function pickCatalogImageExt(originalName, fallback = "jpg") {
+  const raw = String(originalName || "").split(".").pop().toLowerCase();
+  return CATALOG_IMAGE_EXTS.has(raw) ? raw : fallback;
+}
+
+export function getCatalogImagePath(productId, kind) {
+  if (!CATALOG_IMAGE_KINDS.has(kind)) return null;
+  const dir = resolve(DATA_DIR, "catalog-images", safe(productId));
+  if (!existsSync(dir)) return null;
+  const prefix = `${safe(kind)}.`;
+  const match = readdirSync(dir).find((f) => f.startsWith(prefix));
+  return match ? resolve(dir, match) : null;
+}
+
+export function saveCatalogImage(productId, kind, buffer, originalName) {
+  if (!CATALOG_IMAGE_KINDS.has(kind)) throw new Error(`bad kind: ${kind}`);
+  const ext = pickCatalogImageExt(originalName);
+  const dir = resolve(DATA_DIR, "catalog-images", safe(productId));
+  mkdirSync(dir, { recursive: true });
+  const existing = getCatalogImagePath(productId, kind);
+  if (existing) {
+    try { unlinkSync(existing); } catch { /* best effort */ }
+  }
+  const path = resolve(dir, `${safe(kind)}.${ext}`);
+  writeFileSync(path, buffer);
+  return { path, ext };
+}
+
+export function deleteCatalogImage(productId, kind) {
+  const path = getCatalogImagePath(productId, kind);
+  if (!path) return false;
+  try { unlinkSync(path); return true; }
+  catch { return false; }
+}

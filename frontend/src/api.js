@@ -177,6 +177,17 @@ export const api = {
     }).then(json),
   runLeadsReport: () =>
     fetch(`${base}/leads/run`, { method: "POST" }).then(json),
+  importLeadsFromPdf: (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return fetch(`${base}/leads/import-pdf`, { method: "POST", body: fd }).then(json);
+  },
+  confirmLeadImport: ({ drafts, sourceDocTitle, fileName }) =>
+    fetch(`${base}/leads/import-confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ drafts, sourceDocTitle, fileName }),
+    }).then(json),
   updateLead: (id, patch) =>
     fetch(`${base}/leads/${id}`, {
       method: "PATCH",
@@ -242,6 +253,19 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderedIds }),
     }).then(json),
+  uploadCatalogProductImage: (productId, kind, file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return fetch(`${base}/catalog/products/${productId}/image/${kind}`, {
+      method: "POST",
+      body: fd,
+    }).then(json);
+  },
+  deleteCatalogProductImage: (productId, kind) =>
+    fetch(`${base}/catalog/products/${productId}/image/${kind}`, { method: "DELETE" }).then(json),
+  // Cache-buster `v` so the browser refetches after an upload.
+  catalogProductImageUrl: (productId, kind, v) =>
+    `${base}/catalog/products/${productId}/image/${kind}${v ? `?v=${encodeURIComponent(v)}` : ""}`,
   listTodos: () => fetch(`${base}/todos`).then(json),
   createTodo: (text) =>
     fetch(`${base}/todos`, {
