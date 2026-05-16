@@ -8,6 +8,7 @@ import { api } from "../api.js";
 const TYPES = [
   ["fixed", "Fixed window"],
   ["casement", "Casement window"],
+  ["awning", "Awning window"],
   ["sliding", "Sliding window"],
   ["slider", "Slider window"],
   ["hopper", "Hopper window"],
