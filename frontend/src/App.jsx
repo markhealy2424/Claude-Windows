@@ -12,11 +12,9 @@ export default function App() {
   return (
     <div className="layout">
       <aside className="sidebar">
-        <Link to="/" className="brand" aria-label="Healy Windows and Doors — home">
-          <span className="brand-mark" aria-hidden="true"><span>H</span></span>
-          <span className="brand-name">
-            Healy Windows<span className="brand-amp">&amp;</span>Doors
-          </span>
+        <Link to="/" className="brand" aria-label="Window Stream — home">
+          <img className="brand-logo" src="/window-stream-logo-cropped.png" alt="" aria-hidden="true" />
+          <span className="brand-name">Window Stream</span>
         </Link>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((it) => (

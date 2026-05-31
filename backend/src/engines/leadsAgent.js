@@ -117,7 +117,7 @@ async function fetchSource(url) {
       redirect: "follow",
       headers: {
         // Identify ourselves cleanly. Some sites block default fetch UA.
-        "User-Agent": "HealyWindowsLeadFinder/1.0 (+https://healywindowsanddoors.com)",
+        "User-Agent": "WindowStreamLeadFinder/1.0",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
     });

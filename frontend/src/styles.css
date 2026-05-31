@@ -190,51 +190,16 @@ strong, b { font-weight: 600; color: var(--color-text); }
   padding: 2px 4px;
 }
 .sidebar .brand:hover { color: var(--color-text); text-decoration: none; }
-.sidebar .brand:hover .brand-mark { background: var(--color-accent-hover); }
 
-.sidebar .brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--color-accent);
-  color: #fff;
-  font-family: var(--font-serif);
-  font-weight: 700;
-  font-style: italic;
-  font-size: 21px;
-  line-height: 1;
-  border-radius: 5px;
-  letter-spacing: -0.04em;
-  box-shadow: var(--shadow-sm);
-  transition: background var(--transition);
-  /* Subtle inner highlight to give the mark depth */
-  position: relative;
-  overflow: hidden;
-}
-.sidebar .brand-mark::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 5px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  pointer-events: none;
-}
-.sidebar .brand-mark span {
-  position: relative;
-  z-index: 1;
-  transform: translateY(-1px);
+.sidebar .brand-logo {
+  display: block;
+  height: 36px;
+  width: auto;
+  object-fit: contain;
 }
 
 .sidebar .brand-name {
   color: var(--color-text);
-}
-.sidebar .brand-name .brand-amp {
-  color: var(--color-accent);
-  font-weight: 400;
-  font-style: italic;
-  margin: 0 1px;
 }
 
 /* (sidebar-nav covers the link styles now) */

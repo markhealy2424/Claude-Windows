@@ -60,7 +60,7 @@ export default function ProjectInfo({ project, onChange }) {
             label="Company requesting quote"
             value={info.company}
             onChange={(v) => set("company", v)}
-            placeholder="Healy Windows & Doors"
+            placeholder="Your company name"
             inputStyle={{ width: "100%" }}
           />
           <label style={{ display: "flex", flexDirection: "column", gap: 2, gridColumn: "1 / -1" }}>

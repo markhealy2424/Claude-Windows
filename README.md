@@ -1,6 +1,6 @@
-# Claude Windows
+# Window Stream
 
-Windows & Doors Quote Automation Platform.
+Multi-tenant SaaS for window and door contractors: a quote-automation platform.
 
 Processes building plan PDFs to extract window/door schedules, generates RFQs, parses supplier quotes, detects discrepancies, applies pricing markup, and outputs branded client proposals.
 
