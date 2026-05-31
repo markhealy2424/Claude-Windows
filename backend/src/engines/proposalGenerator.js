@@ -18,7 +18,7 @@ const HEADER_LOGO_AVAILABLE = existsSync(HEADER_LOGO_PATH);
 // Source image is 750 × 416 (logo crest + "A1 CONSTRUCTION & DESIGNS INC." text).
 const HEADER_LOGO_ASPECT = 750 / 416;
 
-const ACCENT = "#B85C38";
+const ACCENT = "#077BE2";
 const RED = "#C0392B";
 const BORDER = "#888";
 const SUBTLE = "#666";

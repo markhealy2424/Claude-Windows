@@ -23,7 +23,7 @@ function applyPricingLocal(items, { markup = 0, overrides = {}, delivery = 0, fe
 const defaultBranding = {
   company: "",
   tagline: "",
-  color: "#B85C38",
+  color: "#077BE2",
   companyAddress: "",
   companyPhone: "",
   quoteNumber: "",
