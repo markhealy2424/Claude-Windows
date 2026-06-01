@@ -341,6 +341,22 @@ export const api = {
     a.remove();
     URL.revokeObjectURL(url);
   },
+  getCompanyInfo: () => fetch(`${base}/company-info`).then(json),
+  updateCompanyInfo: (patch) =>
+    fetch(`${base}/company-info`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(json),
+  uploadCompanyAsset: (kind, file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return fetch(`${base}/company-info/asset/${kind}`, { method: "POST", body: fd }).then(json);
+  },
+  deleteCompanyAsset: (kind) =>
+    fetch(`${base}/company-info/asset/${kind}`, { method: "DELETE" }).then(json),
+  companyAssetUrl: (kind, v) =>
+    `${base}/company-info/asset/${kind}${v ? `?v=${encodeURIComponent(v)}` : ""}`,
   downloadProposalPdf: async (items, projectName, branding, totals, info) => {
     const res = await fetch(`${base}/proposals/pdf`, {
       method: "POST",

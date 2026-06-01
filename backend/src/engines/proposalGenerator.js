@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { generateSketch } from "./sketchGenerator.js";
 import { totalWidthIn } from "./dimensions.js";
 import { partitionByKind } from "./itemKind.js";
+import { getCompanyInfo } from "../store.js";
+import { getCompanyAssetPath } from "../storage.js";
 
 // Bundled cover banner + small per-page header logo. Resolved once at module
 // load; if either is missing we fall back to the drawn brand-mark block so
@@ -109,12 +111,18 @@ function roughOpening(w, h) {
 }
 
 function buildContext(branding = {}, info = {}, totals = {}) {
+  // Three-layer fallback for branding text: per-proposal override →
+  // per-project info → app-wide company info. The bundled defaults remain
+  // as the last resort for greenfield/empty installs.
+  const company = getCompanyInfo();
+  const uploadedLogo = getCompanyAssetPath("logo");
+  const uploadedCover = getCompanyAssetPath("cover");
   return {
     margin: 36,
-    accent: branding.color || ACCENT,
-    company: branding.company || info.company || "Healy Windows and Doors",
-    companyAddress: branding.companyAddress || "",
-    companyPhone: branding.companyPhone || "",
+    accent: branding.color || company.accentColor || ACCENT,
+    company: branding.company || info.company || company.name || "",
+    companyAddress: branding.companyAddress || company.address || "",
+    companyPhone: branding.companyPhone || company.phone || "",
     customerName: branding.customerName || info.buyerName || "",
     quoteNumber: branding.quoteNumber || "",
     siteAddress: branding.siteAddress || info.address || "",
@@ -125,6 +133,11 @@ function buildContext(branding = {}, info = {}, totals = {}) {
     // Cover copy is fixed company boilerplate — same on every proposal.
     whoWeAre: DEFAULT_WHO_WE_ARE,
     whatWeBelieve: DEFAULT_WHAT_WE_BELIEVE,
+    // Tenant-uploaded assets win over the bundled A1 fallbacks. When the
+    // user hasn't uploaded their own, the originals still render.
+    headerLogoPath: uploadedLogo || (HEADER_LOGO_AVAILABLE ? HEADER_LOGO_PATH : null),
+    headerLogoIsCustom: Boolean(uploadedLogo),
+    coverBannerPath: uploadedCover || (COVER_BANNER_AVAILABLE ? COVER_BANNER_PATH : null),
   };
 }
 
@@ -155,15 +168,18 @@ function drawPageHeader(doc, ctx) {
 
   doc.lineWidth(1).strokeColor("#000").rect(x0, y0, w, headerH).stroke();
 
-  // Logo on the left. Scale the bundled PNG to fit the header bar while
-  // preserving its 750×416 aspect ratio. Falls back to the H brand mark if
-  // the asset is missing from the deploy.
+  // Logo on the left. For the bundled A1 logo we use its known 750×416
+  // aspect ratio to set the box width; for a tenant-uploaded logo we just
+  // give a 140-wide box and let PDFKit's `fit` letterbox the image while
+  // preserving its native aspect ratio.
   const logoBoxH = headerH - 16;
-  const logoBoxW = Math.min(140, Math.round(logoBoxH * HEADER_LOGO_ASPECT));
+  const logoBoxW = ctx.headerLogoIsCustom
+    ? 140
+    : Math.min(140, Math.round(logoBoxH * HEADER_LOGO_ASPECT));
   const logoX = x0 + 12;
   const logoY = y0 + (headerH - logoBoxH) / 2;
-  if (HEADER_LOGO_AVAILABLE) {
-    doc.image(HEADER_LOGO_PATH, logoX, logoY, {
+  if (ctx.headerLogoPath) {
+    doc.image(ctx.headerLogoPath, logoX, logoY, {
       fit: [logoBoxW, logoBoxH],
       align: "center",
       valign: "center",
@@ -370,9 +386,10 @@ function drawCoverPage(doc, ctx) {
   const w = pageW - margin * 2;
 
   // Banner: 914×610 source, fit into width preserving aspect ratio.
+  // Tenant-uploaded banners letterbox into the same box with `fit`.
   const bannerH = Math.round(w * (610 / 914));
-  if (COVER_BANNER_AVAILABLE) {
-    doc.image(COVER_BANNER_PATH, x, y, { width: w, height: bannerH });
+  if (ctx.coverBannerPath) {
+    doc.image(ctx.coverBannerPath, x, y, { fit: [w, bannerH], align: "center", valign: "center" });
   } else {
     // Fallback path if the asset isn't bundled (shouldn't happen in prod).
     doc.lineWidth(1).strokeColor("#000").rect(x, y, w, bannerH).stroke();

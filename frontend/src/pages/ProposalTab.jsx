@@ -20,10 +20,14 @@ function applyPricingLocal(items, { markup = 0, overrides = {}, delivery = 0, fe
   return { items: priced, subtotal, delivery, fees, total: subtotal + delivery + fees };
 }
 
+// All branding fields default to empty so the proposal generator's
+// fallback chain (per-project override → project info → Settings → Company
+// Info → bundled default) actually reaches the Company Info layer. Any
+// per-project value entered here still wins.
 const defaultBranding = {
   company: "",
   tagline: "",
-  color: "#077BE2",
+  color: "",
   companyAddress: "",
   companyPhone: "",
   quoteNumber: "",
@@ -171,7 +175,9 @@ export default function ProposalTab({ project, onChange }) {
       // populated. Branding wins per-field if set.
       const fullBranding = {
         ...branding,
-        company: branding.company || project.info?.company || "Healy Windows and Doors",
+        // Empty here lets the server-side fallback chain reach Company Info
+        // instead of being short-circuited by a client-side hardcoded default.
+        company: branding.company || project.info?.company || "",
         customerName: project.info?.buyerName || "",
         siteAddress: project.info?.address || "",
         deliveryCharge: Number(priced.delivery ?? 0),
@@ -274,7 +280,10 @@ export default function ProposalTab({ project, onChange }) {
           <TextField label="Quote #" value={branding.quoteNumber} onChange={(v) => setBranding({ ...branding, quoteNumber: v })} inputStyle={{ width: 120 }} />
           <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span className="text-muted" style={{ fontSize: 11 }}>Brand color</span>
-            <input type="color" value={branding.color} onChange={(e) => setBranding({ ...branding, color: e.target.value })} />
+            {/* Color inputs require a valid hex; show the Window Stream blue
+                when the per-project override is empty (the actual PDF will use
+                the company-info accent in that case). */}
+            <input type="color" value={branding.color || "#077BE2"} onChange={(e) => setBranding({ ...branding, color: e.target.value })} />
           </label>
         </div>
       </div>

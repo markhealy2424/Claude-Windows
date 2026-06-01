@@ -16,6 +16,7 @@ import todos from "./routes/todos.js";
 import finalInvoices from "./routes/finalInvoices.js";
 import leads from "./routes/leads.js";
 import catalog from "./routes/catalog.js";
+import companyInfo from "./routes/companyInfo.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -71,6 +72,7 @@ app.use("/api/todos", todos);
 app.use("/api/final-invoices", finalInvoices);
 app.use("/api/leads", leads);
 app.use("/api/catalog", catalog);
+app.use("/api/company-info", companyInfo);
 
 const frontendDist = resolve(__dirname, "../../frontend/dist");
 if (existsSync(frontendDist)) {

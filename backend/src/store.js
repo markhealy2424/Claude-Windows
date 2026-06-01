@@ -26,6 +26,8 @@ const CATALOG_GROUPS_FILE = resolve(DATA_DIR, "catalog-groups.json");
 const CATALOG_GROUPS_TMP = resolve(DATA_DIR, "catalog-groups.json.tmp");
 const CATALOG_PRODUCTS_FILE = resolve(DATA_DIR, "catalog-products.json");
 const CATALOG_PRODUCTS_TMP = resolve(DATA_DIR, "catalog-products.json.tmp");
+const COMPANY_INFO_FILE = resolve(DATA_DIR, "company-info.json");
+const COMPANY_INFO_TMP = resolve(DATA_DIR, "company-info.json.tmp");
 
 mkdirSync(DATA_DIR, { recursive: true });
 
@@ -39,6 +41,21 @@ const leadSources = new Map();
 let leadSettings = { businessContext: "" };
 const catalogGroups = new Map();
 const catalogProducts = new Map();
+// Single-tenant company branding — seeded with A1 Windows and Doors (the
+// first real user, a general contractor). The bundled header logo +
+// cover banner in backend/assets/ are also A1's, so PDFs render correctly
+// out of the box until the user uploads their own through Settings → Company
+// Info. In Phase 2 this singleton becomes per-tenant (one row per company_id).
+let companyInfo = {
+  name: "A1 Windows and Doors",
+  tagline: "",
+  address: "",
+  phone: "",
+  email: "",
+  accentColor: "#077BE2",
+  logo: null,
+  coverBanner: null,
+};
 // Monotonically increasing invoice counter — derived from the highest
 // existing invoice number on load so we never reissue the same number.
 let invoiceCounter = 0;
@@ -133,6 +150,12 @@ function load() {
       const raw = readFileSync(CATALOG_PRODUCTS_FILE, "utf8");
       if (raw.trim()) for (const p of JSON.parse(raw)) catalogProducts.set(p.id, p);
     } catch (err) { console.error("[store] failed to load catalog-products.json:", err.message); }
+  }
+  if (existsSync(COMPANY_INFO_FILE)) {
+    try {
+      const raw = readFileSync(COMPANY_INFO_FILE, "utf8");
+      if (raw.trim()) companyInfo = { ...companyInfo, ...JSON.parse(raw) };
+    } catch (err) { console.error("[store] failed to load company-info.json:", err.message); }
   }
 }
 
@@ -751,4 +774,37 @@ export function reorderCatalogProducts(orderedIds) {
   });
   persistCatalogProducts();
   return listCatalogProducts();
+}
+
+// ── Company info (single-tenant for Phase 1) ───────────────────────────
+
+let companyInfoWriteQueued = false;
+function persistCompanyInfo() {
+  if (companyInfoWriteQueued) return;
+  companyInfoWriteQueued = true;
+  queueMicrotask(() => {
+    companyInfoWriteQueued = false;
+    try {
+      writeFileSync(COMPANY_INFO_TMP, JSON.stringify(companyInfo, null, 2));
+      renameSync(COMPANY_INFO_TMP, COMPANY_INFO_FILE);
+    } catch (err) { console.error("[store] failed to write company-info.json:", err.message); }
+  });
+}
+
+export function getCompanyInfo() { return { ...companyInfo }; }
+
+export function updateCompanyInfo(patch) {
+  companyInfo = { ...companyInfo, ...(patch ?? {}) };
+  persistCompanyInfo();
+  return { ...companyInfo };
+}
+
+// Called by the upload route after a logo/cover file is written to disk
+// so the metadata (ext + uploadedAt) lives on the company-info record.
+// `meta` of null clears the slot (after a delete).
+export function setCompanyAsset(kind, meta) {
+  if (kind !== "logo" && kind !== "coverBanner") return getCompanyInfo();
+  companyInfo = { ...companyInfo, [kind]: meta };
+  persistCompanyInfo();
+  return { ...companyInfo };
 }

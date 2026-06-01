@@ -226,3 +226,44 @@ export function deleteCatalogImage(productId, kind) {
   try { unlinkSync(path); return true; }
   catch { return false; }
 }
+
+// Company branding assets — header logo + cover banner. Single-tenant for
+// Phase 1 (one file per slot, lives directly under company-branding/).
+// In Phase 2 this gains a per-tenant subdirectory.
+const COMPANY_ASSET_KINDS = new Set(["logo", "cover"]);
+const COMPANY_ASSET_EXTS = new Set(["png", "jpg", "jpeg"]);
+
+function pickCompanyAssetExt(originalName, fallback = "png") {
+  const raw = String(originalName || "").split(".").pop().toLowerCase();
+  return COMPANY_ASSET_EXTS.has(raw) ? raw : fallback;
+}
+
+export function getCompanyAssetPath(kind) {
+  if (!COMPANY_ASSET_KINDS.has(kind)) return null;
+  const dir = resolve(DATA_DIR, "company-branding");
+  if (!existsSync(dir)) return null;
+  const prefix = `${kind}.`;
+  const match = readdirSync(dir).find((f) => f.startsWith(prefix));
+  return match ? resolve(dir, match) : null;
+}
+
+export function saveCompanyAsset(kind, buffer, originalName) {
+  if (!COMPANY_ASSET_KINDS.has(kind)) throw new Error(`bad kind: ${kind}`);
+  const ext = pickCompanyAssetExt(originalName);
+  const dir = resolve(DATA_DIR, "company-branding");
+  mkdirSync(dir, { recursive: true });
+  const existing = getCompanyAssetPath(kind);
+  if (existing) {
+    try { unlinkSync(existing); } catch { /* best effort */ }
+  }
+  const path = resolve(dir, `${kind}.${ext}`);
+  writeFileSync(path, buffer);
+  return { path, ext };
+}
+
+export function deleteCompanyAsset(kind) {
+  const path = getCompanyAssetPath(kind);
+  if (!path) return false;
+  try { unlinkSync(path); return true; }
+  catch { return false; }
+}
