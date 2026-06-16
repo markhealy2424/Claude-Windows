@@ -45,6 +45,9 @@ export default function App() {
           <GearIcon />
           <span>Company Info</span>
         </NavLink>
+        <div className="sidebar-pilot" title="Window Stream is in pilot — no charge yet, and you can export all your data on request.">
+          Pilot · free during beta
+        </div>
       </aside>
       <main className="main">
         <Outlet />

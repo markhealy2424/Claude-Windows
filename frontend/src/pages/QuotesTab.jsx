@@ -273,7 +273,7 @@ export default function QuotesTab({ project, onChange }) {
                   AI parsed {active.items.length} line item{active.items.length === 1 ? "" : "s"}{active.fileName ? <> from <code>{active.fileName}</code></> : ""}
                 </div>
                 <div className="ai-banner-sub">
-                  Every cell is editable — your changes save automatically.
+                  Every cell is editable and changes save automatically. <strong>Always verify against the original PDF</strong> before sending to a client or supplier.
                 </div>
               </div>
               {hiddenCols.size > 0 && (

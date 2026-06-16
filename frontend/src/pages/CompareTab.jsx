@@ -326,6 +326,10 @@ function SummaryCard({ a, b, summary, onUseA, onUseB }) {
           </ul>
         </div>
       )}
+
+      <div className="text-subtle" style={{ fontSize: 11, marginTop: "var(--s-4)", paddingTop: "var(--s-3)", borderTop: "1px solid var(--color-divider)", lineHeight: 1.5 }}>
+        Window Stream's AI cross-referenced specs and prices across {supplierA} and {supplierB}. <strong>Always verify the line items against the original supplier PDFs</strong> before committing to a purchase order.
+      </div>
     </div>
   );
 }
