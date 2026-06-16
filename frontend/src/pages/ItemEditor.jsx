@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 import { compressImageToDataUrl } from "../lib/imageCompress.js";
 import { generateSketch } from "../lib/sketch.js";
@@ -164,12 +164,23 @@ export default function ItemEditor({ items = [], onChange }) {
   const [draft, setDraft] = useState(blank);
   const [editIndex, setEditIndex] = useState(-1);
   const [editDraft, setEditDraft] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+
+  // Close the add-item modal on Escape, mirroring the Dashboard new-project
+  // modal so the keyboard contract is consistent across the app.
+  useEffect(() => {
+    if (!showAdd) return;
+    function onKey(e) { if (e.key === "Escape") setShowAdd(false); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showAdd]);
 
   function addItem(e) {
     e.preventDefault();
     if (!draft.mark) return;
     onChange([...items, { ...draft }]);
     setDraft(blank);
+    setShowAdd(false);
   }
 
   function removeItem(idx) {
@@ -214,55 +225,10 @@ export default function ItemEditor({ items = [], onChange }) {
     onChange(items.map((it, i) => (i === idx ? { ...it, needsAttention: value } : it)));
   }
 
-  const draftTotalW = totalWidth(draft);
-
   return (
     <div>
-      <form onSubmit={addItem} className="row" style={{ flexWrap: "wrap", marginBottom: 8, alignItems: "flex-end" }}>
-        <TextField label="Mark" value={draft.mark} onChange={(v) => set("mark", v)} />
-        <NumberField label="Qty" value={draft.quantity} onChange={(v) => set("quantity", v)} />
-        <SelectField label="Type" value={draft.type} onChange={(v) => set("type", v)} options={TYPES} />
-        <SelectField label="Material" value={draft.material ?? "Aluminum"} onChange={(v) => set("material", v)} options={MATERIALS} />
-        <TextField label="Operation (left/right)" value={draft.operation} onChange={(v) => set("operation", v)} />
-        <NumberField label="Width per panel (in)" value={draft.width_in} onChange={(v) => set("width_in", v)} />
-        <NumberField label="Height (in)" value={draft.height_in} onChange={(v) => set("height_in", v)} />
-        <NumberField label="Panels" value={draft.panels} onChange={(v) => set("panels", v)} />
-        <TextField
-          label="Grid (CxR)"
-          value={gridToString(draft)}
-          onChange={(v) => {
-            const g = parseGridString(v);
-            if (g) setDraft({ ...draft, ...g });
-            else setDraft({ ...draft, gridCols: draft.gridCols, gridRows: draft.gridRows });
-          }}
-          inputStyle={{ width: 70 }}
-        />
-        <SelectField label="Operable row" value={draft.operableRow ?? "all"} onChange={(v) => set("operableRow", v)} options={OPERABLE_ROWS} />
-        <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-          <span style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Screen</span>
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, paddingTop: 6 }}>
-            <input
-              type="checkbox"
-              checked={!!draft.screen}
-              onChange={(e) => set("screen", e.target.checked)}
-            />
-            <span style={{ fontSize: 12 }}>Has screen</span>
-          </label>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-          <span style={{ color: "#666" }}>Sketch image</span>
-          <SketchDrop
-            value={draft.sketchImage || ""}
-            item={draft}
-            onChange={(dataUrl) => set("sketchImage", dataUrl)}
-          />
-        </label>
-        <button className="primary" type="submit">Add</button>
-      </form>
-      <div className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
-        Total width = per-panel width × panels. Currently: {Number(draft.width_in) || 0}" × {draft.panels || 1} = <strong>{draftTotalW}"</strong>.
-        Grid is <strong>cols × rows</strong> of divided lites per panel (e.g. <code>2x4</code> = 2 muntin columns, 4 muntin rows; <code>1x1</code> = no grid).
-        Drop a screenshot in the <strong>Sketch</strong> column to override the auto-generated drawing on the proposal.
+      <div className="row" style={{ justifyContent: "flex-end", marginBottom: 16 }}>
+        <button className="primary" onClick={() => setShowAdd(true)}>+ Add item</button>
       </div>
 
       <ItemTable
@@ -278,6 +244,81 @@ export default function ItemEditor({ items = [], onChange }) {
         setSketchAt={setSketchAt}
         toggleAttentionAt={toggleAttentionAt}
       />
+
+      {showAdd && (
+        <NewItemModal
+          draft={draft}
+          set={set}
+          setDraft={setDraft}
+          onSubmit={addItem}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewItemModal({ draft, set, setDraft, onSubmit, onClose }) {
+  const draftTotalW = totalWidth(draft);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" style={{ maxWidth: 760 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2 style={{ margin: 0 }}>New item</h2>
+          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <form onSubmit={onSubmit}>
+          <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 }}>
+            <TextField label="Mark" value={draft.mark} onChange={(v) => set("mark", v)} />
+            <NumberField label="Qty" value={draft.quantity} onChange={(v) => set("quantity", v)} />
+            <SelectField label="Type" value={draft.type} onChange={(v) => set("type", v)} options={TYPES} />
+            <SelectField label="Material" value={draft.material ?? "Aluminum"} onChange={(v) => set("material", v)} options={MATERIALS} />
+            <TextField label="Operation (left/right)" value={draft.operation} onChange={(v) => set("operation", v)} />
+            <NumberField label="Width per panel (in)" value={draft.width_in} onChange={(v) => set("width_in", v)} />
+            <NumberField label="Height (in)" value={draft.height_in} onChange={(v) => set("height_in", v)} />
+            <NumberField label="Panels" value={draft.panels} onChange={(v) => set("panels", v)} />
+            <TextField
+              label="Grid (CxR)"
+              value={gridToString(draft)}
+              onChange={(v) => {
+                const g = parseGridString(v);
+                if (g) setDraft({ ...draft, ...g });
+              }}
+              inputStyle={{ width: 70 }}
+            />
+            <SelectField label="Operable row" value={draft.operableRow ?? "all"} onChange={(v) => set("operableRow", v)} options={OPERABLE_ROWS} />
+            <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+              <span style={{ color: "var(--color-text-muted)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Screen</span>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, paddingTop: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={!!draft.screen}
+                  onChange={(e) => set("screen", e.target.checked)}
+                />
+                <span style={{ fontSize: 12 }}>Has screen</span>
+              </label>
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+              <span style={{ color: "var(--color-text-muted)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Sketch image</span>
+              <SketchDrop
+                value={draft.sketchImage || ""}
+                item={draft}
+                onChange={(dataUrl) => set("sketchImage", dataUrl)}
+              />
+            </label>
+          </div>
+
+          <div className="text-muted" style={{ fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>
+            Total width = per-panel × panels. Currently {Number(draft.width_in) || 0}" × {draft.panels || 1} = <strong>{draftTotalW}"</strong>.
+            Grid is <strong>cols × rows</strong> of divided lites per panel (<code>2x4</code> = 2 muntin columns, 4 muntin rows; <code>1x1</code> = no grid).
+          </div>
+
+          <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button className="primary" type="submit" disabled={!draft.mark}>Add item</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
