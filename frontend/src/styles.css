@@ -629,6 +629,7 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 16px;
+  align-items: stretch;
 }
 @media (max-width: 1100px) {
   .dashboard-grid { grid-template-columns: 1fr; }
@@ -636,6 +637,14 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
 .dashboard-card {
   display: flex;
   flex-direction: column;
+  /* The two cards on the dashboard grid sit side-by-side and must visually
+     align even when one has more content than the other. Stretching to the
+     full grid cell + letting body content grow keeps the bottom edges
+     locked together regardless of content density. */
+  height: 100%;
+}
+.dashboard-card .kanban {
+  flex: 1 1 auto;
 }
 
 .kanban {
@@ -709,15 +718,33 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
 
 .todo-suggestion {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  /* flex-start keeps the icon visually pinned to the first line of text
+     when long suggestions wrap. align-items: center centers the icon
+     between two wrapped lines, which reads off-balance. */
+  align-items: flex-start;
+  gap: 10px;
   background: var(--color-highlight-soft);
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--color-warning);
   border-radius: 4px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-size: 14px;
+  line-height: 1.45;
   margin-bottom: 6px;
+}
+.todo-suggestion > span:first-child {
+  /* The icon glyph — give it a fixed line-height so its vertical metrics
+     match the text baseline of the first line, regardless of font size. */
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+.todo-suggestion > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.todo-suggestion > button {
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 .todo-item {
   display: flex;
@@ -728,6 +755,54 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
   font-size: 14px;
 }
 .todo-item:last-child { border-bottom: none; }
+
+/* ── Modal ───────────────────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 27, 22, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--s-4);
+}
+
+.modal-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--s-6);
+  width: 100%;
+  max-width: 460px;
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--s-5);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition), color var(--transition);
+}
+.modal-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  border-color: transparent;
+}
 
 /* ── Questions-for-client cards ──────────────────────────────────── */
 .question-card {

@@ -69,6 +69,7 @@ export default function Dashboard() {
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
+  const [showNewProject, setShowNewProject] = useState(false);
   const [dismissed, setDismissed] = useState(loadDismissed);
 
   useEffect(() => {
@@ -89,12 +90,21 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, []);
 
+  // Close the new-project modal on Escape so it doesn't trap focus.
+  useEffect(() => {
+    if (!showNewProject) return;
+    function onKey(e) { if (e.key === "Escape") setShowNewProject(false); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showNewProject]);
+
   async function createProject(e) {
     e.preventDefault();
     if (!newName.trim()) return;
     const p = await api.createProject(newName.trim());
     setProjects((prev) => [p, ...prev]);
     setNewName("");
+    setShowNewProject(false);
   }
 
   function dismissSuggestion(id) {
@@ -110,17 +120,10 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Dashboard</h1>
-
-      <form onSubmit={createProject} className="row" style={{ marginBottom: 24, gap: 8 }}>
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="New project name"
-          style={{ flex: "1 1 280px", maxWidth: 360 }}
-        />
-        <button className="primary" type="submit" disabled={!newName.trim()}>+ Start project</button>
-      </form>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h1 style={{ margin: 0 }}>Dashboard</h1>
+        <button className="primary" onClick={() => setShowNewProject(true)}>+ New project</button>
+      </div>
 
       <div className="dashboard-grid">
         <ProjectsKanban projects={projects} />
@@ -135,6 +138,44 @@ export default function Dashboard() {
         dismissed={dismissed}
         onDismiss={dismissSuggestion}
       />
+
+      {showNewProject && (
+        <NewProjectModal
+          value={newName}
+          onChange={setNewName}
+          onSubmit={createProject}
+          onClose={() => setShowNewProject(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewProjectModal({ value, onChange, onSubmit, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2 style={{ margin: 0 }}>New project</h2>
+          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <form onSubmit={onSubmit}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--color-text-muted)", marginBottom: 6 }}>
+            Project name
+          </label>
+          <input
+            autoFocus
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="e.g. 1947 Crest, Altadena, CA"
+            style={{ width: "100%", marginBottom: 16 }}
+          />
+          <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button className="primary" type="submit" disabled={!value.trim()}>Create project</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
