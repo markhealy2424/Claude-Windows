@@ -375,6 +375,35 @@ input[type="color"] {
   cursor: pointer;
 }
 
+/* Brand swatch — used on Company Info to make the native color picker look
+   like an intentional design element rather than an OS-default box. The
+   ::-webkit-color-swatch + ::-moz-color-swatch overrides strip the inner
+   chrome so the fill goes edge-to-edge inside our rounded shell. */
+input[type="color"].brand-swatch {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+input[type="color"].brand-swatch:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow);
+}
+input[type="color"].brand-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"].brand-swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+input[type="color"].brand-swatch::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
 input[type="file"] {
   border: none;
   padding: 0;

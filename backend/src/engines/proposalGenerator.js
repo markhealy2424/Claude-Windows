@@ -111,16 +111,19 @@ function roughOpening(w, h) {
 }
 
 function buildContext(branding = {}, info = {}, totals = {}) {
-  // Three-layer fallback for branding text: per-proposal override →
-  // per-project info → app-wide company info. The bundled defaults remain
-  // as the last resort for greenfield/empty installs.
+  // Two-layer fallback for brand-identity text: per-proposal override →
+  // app-wide Company Info. `info.company` is the *customer's* company on
+  // this project (the buyer's LLC) — it must NEVER be used as the brand
+  // name on the contractor's own proposal cover. Pre-2026-06 builds had it
+  // wired into this chain, which silently showed customer LLCs as the
+  // contractor brand whenever a per-project override was cleared.
   const company = getCompanyInfo();
   const uploadedLogo = getCompanyAssetPath("logo");
   const uploadedCover = getCompanyAssetPath("cover");
   return {
     margin: 36,
     accent: branding.color || company.accentColor || ACCENT,
-    company: branding.company || info.company || company.name || "",
+    company: branding.company || company.name || "",
     companyAddress: branding.companyAddress || company.address || "",
     companyPhone: branding.companyPhone || company.phone || "",
     customerName: branding.customerName || info.buyerName || "",

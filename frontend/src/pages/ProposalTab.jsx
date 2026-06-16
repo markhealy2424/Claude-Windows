@@ -20,22 +20,29 @@ function applyPricingLocal(items, { markup = 0, overrides = {}, delivery = 0, fe
   return { items: priced, subtotal, delivery, fees, total: subtotal + delivery + fees };
 }
 
-// All branding fields default to empty so the proposal generator's
-// fallback chain (per-project override → project info → Settings → Company
-// Info → bundled default) actually reaches the Company Info layer. Any
-// per-project value entered here still wins.
+// Per-project branding tracks only the fields that genuinely change per
+// project: the quote number and the product-spec defaults the user can
+// override for this client. Company-level brand (name, address, phone,
+// accent color, logo) lives on Company Info and is pulled by the proposal
+// generator's fallback chain — it should not be re-entered per project.
 const defaultBranding = {
-  company: "",
-  tagline: "",
-  color: "",
-  companyAddress: "",
-  companyPhone: "",
   quoteNumber: "",
   extColor: "Matte Black, Powder Coating",
   intColor: "Matte Black, Powder Coating",
   glassSpec:
     "6mm Low E (Interior) +20A+Warm edge spacer+Argon gas+ 6mm Low E (Exterior), Double Tempered Glass",
 };
+
+// Strip any legacy company-level brand fields that may still be present in
+// older saved data (company, companyAddress, etc.). These were moved to
+// Company Info — keeping them in state would let stale values silently
+// flow into the PDF generator.
+function sanitizeBranding(saved) {
+  const allowed = ["quoteNumber", "extColor", "intColor", "glassSpec"];
+  const out = { ...defaultBranding };
+  for (const k of allowed) if (saved && k in saved) out[k] = saved[k];
+  return out;
+}
 
 // Build a project Item from a supplier-quote line so the user can skip
 // re-entering items in the Items tab when the quote already has them all.
@@ -108,7 +115,7 @@ export default function ProposalTab({ project, onChange }) {
   const [fees, setFees] = useState(saved.fees ?? 0);
   const [round, setRound] = useState(saved.round ?? 0);
   const [overrides, setOverrides] = useState(saved.overrides ?? {});
-  const [branding, setBranding] = useState({ ...defaultBranding, ...(saved.branding ?? {}) });
+  const [branding, setBranding] = useState(() => sanitizeBranding(saved.branding));
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
 
@@ -171,13 +178,12 @@ export default function ProposalTab({ project, onChange }) {
     setDownloading(true);
     setError("");
     try {
-      // Merge branding + customer/site info from project so the PDF header is
-      // populated. Branding wins per-field if set.
+      // Brand identity (company name, address, phone, accent color) is pulled
+      // from Company Info by the server-side fallback chain — don't pass it
+      // here. Per-project fields stay: quote #, default product specs, and
+      // the project's own customer/site info.
       const fullBranding = {
         ...branding,
-        // Empty here lets the server-side fallback chain reach Company Info
-        // instead of being short-circuited by a client-side hardcoded default.
-        company: branding.company || project.info?.company || "",
         customerName: project.info?.buyerName || "",
         siteAddress: project.info?.address || "",
         deliveryCharge: Number(priced.delivery ?? 0),
@@ -261,30 +267,12 @@ export default function ProposalTab({ project, onChange }) {
           <NumberField label="Delivery ($)" value={delivery} onChange={setDelivery} inputStyle={{ width: 90 }} />
           <NumberField label="Fees ($)" value={fees} onChange={setFees} inputStyle={{ width: 90 }} />
           <NumberField label="Round to" value={round} onChange={setRound} inputStyle={{ width: 80 }} />
+          <TextField label="Quote #" value={branding.quoteNumber} onChange={(v) => setBranding({ ...branding, quoteNumber: v })} inputStyle={{ width: 120 }} />
         </div>
         <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
           Preview updates live as you edit pricing or items in the Items tab.
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Proposal header & branding</h3>
-        <p className="text-muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 12 }}>
-          These appear in the cover and header bar of the generated proposal PDF. Customer and site
-          come from the Project Info tab.
-        </p>
-        <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
-          <TextField label="Company name" value={branding.company} onChange={(v) => setBranding({ ...branding, company: v })} inputStyle={{ minWidth: 220 }} />
-          <TextField label="Company address" value={branding.companyAddress} onChange={(v) => setBranding({ ...branding, companyAddress: v })} inputStyle={{ minWidth: 240 }} />
-          <TextField label="Company phone" value={branding.companyPhone} onChange={(v) => setBranding({ ...branding, companyPhone: v })} />
-          <TextField label="Quote #" value={branding.quoteNumber} onChange={(v) => setBranding({ ...branding, quoteNumber: v })} inputStyle={{ width: 120 }} />
-          <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span className="text-muted" style={{ fontSize: 11 }}>Brand color</span>
-            {/* Color inputs require a valid hex; show the Window Stream blue
-                when the per-project override is empty (the actual PDF will use
-                the company-info accent in that case). */}
-            <input type="color" value={branding.color || "#077BE2"} onChange={(e) => setBranding({ ...branding, color: e.target.value })} />
-          </label>
+          Company name, address, phone, and brand color come from{" "}
+          <a href="/settings/company-info">Company Info</a>.
         </div>
       </div>
 

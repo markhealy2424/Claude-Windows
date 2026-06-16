@@ -49,8 +49,8 @@ export default function CompanyInfo() {
       <header>
         <h1 style={{ margin: 0 }}>Company Info</h1>
         <p className="text-subtle" style={{ marginTop: 6 }}>
-          Your branding on customer-facing proposals and invoices. The
-          Window Stream app chrome (sidebar, buttons) stays blue regardless.
+          Your branding on every customer-facing document — proposals, RFQs, and invoices.
+          Set once here; every project pulls these values automatically.
         </p>
       </header>
 
@@ -70,15 +70,18 @@ export default function CompanyInfo() {
         <p className="text-subtle" style={{ margin: 0, fontSize: 13 }}>
           Used as the accent on your proposal PDFs (header band, callouts, totals row).
         </p>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <input
             type="color"
+            className="brand-swatch"
             value={draft.accentColor || "#077BE2"}
             onChange={(e) => setDraft({ ...draft, accentColor: e.target.value })}
-            style={{ width: 48, height: 36, border: "none", background: "transparent", cursor: "pointer" }}
             aria-label="Accent color"
           />
-          <code style={{ fontSize: 13 }}>{draft.accentColor || "#077BE2"}</code>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <code style={{ fontSize: 14, fontWeight: 600 }}>{draft.accentColor || "#077BE2"}</code>
+            <span className="text-subtle" style={{ fontSize: 11 }}>Click the swatch to change</span>
+          </div>
         </div>
       </section>
 
