@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { api } from "../api.js";
 import ItemEditor from "./ItemEditor.jsx";
 import RFQTab from "./RFQTab.jsx";
@@ -47,17 +47,30 @@ export default function ProjectView() {
     return savePatch({ items });
   }
 
+  // One-line project identity for the header — surfaces what's otherwise
+  // buried in the Project Info tab so every tab shows who/where at a glance.
+  const subtitleParts = [
+    project.info?.buyerName,
+    project.info?.company,
+    project.info?.address,
+  ].filter(Boolean);
+
   return (
     <div>
       <div className="page-header">
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div className="breadcrumb">
-            <a href="/">← Projects</a>
+            <Link to="/projects">← Projects</Link>
           </div>
           <h1 style={{ margin: 0 }}>{project.name}</h1>
+          {subtitleParts.length > 0 && (
+            <div className="text-muted" style={{ fontSize: 14, marginTop: 6, lineHeight: 1.5 }}>
+              {subtitleParts.join(" · ")}
+            </div>
+          )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-          <span className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Status</span>
+        <div className="project-status">
+          <span className="project-status-label">Status</span>
           <StatusSelect
             value={project.status}
             onChange={(status) => savePatch({ status })}

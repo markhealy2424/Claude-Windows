@@ -626,6 +626,58 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
 .badge.info    { background: var(--color-info-soft);    color: var(--color-info);    border-color: transparent; }
 .badge.accent  { background: var(--color-accent-soft);  color: var(--color-accent);  border-color: transparent; }
 
+/* ─── Project status block (top-right of ProjectView header) ─── */
+
+.project-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.project-status-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+/* Restyle the bare <select> to read as a confident status pill rather
+   than a CRUD-form dropdown. Keep native semantics so the keyboard +
+   accessibility layer works for free; just trade the box for a pill. */
+.project-status select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-border, transparent);
+  border-radius: 999px;
+  padding: 6px 32px 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  /* Custom caret — color-matched to the accent so it doesn't look like
+     an OS-rendered dropdown chevron. */
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-accent) 50%),
+                    linear-gradient(135deg, var(--color-accent) 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% - 2px),
+                       calc(100% - 12px) calc(50% - 2px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  transition: background-color var(--transition), border-color var(--transition);
+}
+.project-status select:hover {
+  background-color: var(--color-accent);
+  color: var(--color-accent-text);
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-accent-text) 50%),
+                    linear-gradient(135deg, var(--color-accent-text) 50%, transparent 50%);
+}
+.project-status select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
 /* ─── Page header pattern ─── */
 
 .page-header {
