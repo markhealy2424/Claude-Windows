@@ -209,10 +209,16 @@ export default function CompareTab({ project, onChange }) {
             a={a}
             b={b}
             summary={summary}
-            onSetFreightA={(v) => updateQuote(aId, { freight_usd: v })}
-            onSetFreightB={(v) => updateQuote(bId, { freight_usd: v })}
             onUseA={() => useForProposal(aId)}
             onUseB={() => useForProposal(bId)}
+          />
+
+          <LedgerCard
+            a={a}
+            b={b}
+            summary={summary}
+            onSetFreightA={(v) => updateQuote(aId, { freight_usd: v })}
+            onSetFreightB={(v) => updateQuote(bId, { freight_usd: v })}
           />
 
           <DetailTable a={a} b={b} rows={rows} />
@@ -222,127 +228,163 @@ export default function CompareTab({ project, onChange }) {
   );
 }
 
-function SummaryCard({ a, b, summary, onSetFreightA, onSetFreightB, onUseA, onUseB }) {
+function SummaryCard({ a, b, summary, onUseA, onUseB }) {
   const {
-    itemsA, itemsB, freightA, freightB,
-    totalA, totalB,
-    comparableItemsA, comparableItemsB,
+    freightA, freightB,
     comparableA, comparableB, comparableMarks,
     missingA, missingB, zeroA, zeroB,
     recommendation, savings,
   } = summary;
 
-  const headline = (() => {
-    if (recommendation === "insufficient") return "Not enough comparable data";
-    if (recommendation === "tie") return "It's a tie";
-    if (recommendation === "a") return `Recommend ${a.supplier || "Quote A"}`;
-    return `Recommend ${b.supplier || "Quote B"}`;
-  })();
+  const supplierA = a.supplier || "Quote A";
+  const supplierB = b.supplier || "Quote B";
 
-  const headlineColor = recommendation === "a" || recommendation === "b" ? "var(--color-success)" : "var(--color-text-muted)";
+  // Resolve winner / loser based on recommendation so the hero stats can
+  // tell a single coherent story: "X saved with WINNER, LOSER missing N items".
+  const winnerName  = recommendation === "a" ? supplierA : recommendation === "b" ? supplierB : null;
+  const loserName   = recommendation === "a" ? supplierB : recommendation === "b" ? supplierA : null;
+  const loserMissing = recommendation === "a" ? missingB : recommendation === "b" ? missingA : [];
 
-  const caveats = [];
-  if (missingA.length) caveats.push(`${a.supplier || "Quote A"} is missing ${missingA.length} mark${missingA.length === 1 ? "" : "s"}: ${missingA.join(", ")}`);
-  if (missingB.length) caveats.push(`${b.supplier || "Quote B"} is missing ${missingB.length} mark${missingB.length === 1 ? "" : "s"}: ${missingB.join(", ")}`);
-  if (zeroA.length) caveats.push(`${a.supplier || "Quote A"} has no unit price for: ${zeroA.join(", ")}`);
-  if (zeroB.length) caveats.push(`${b.supplier || "Quote B"} has no unit price for: ${zeroB.join(", ")}`);
-  if (freightA > 0 && freightB === 0) caveats.push(`${b.supplier || "Quote B"} has no freight listed — confirm whether shipping is included or quoted EXW (pickup-only).`);
-  if (freightB > 0 && freightA === 0) caveats.push(`${a.supplier || "Quote A"} has no freight listed — confirm whether shipping is included or quoted EXW (pickup-only).`);
+  const showHeroStats = recommendation === "a" || recommendation === "b";
+
+  // Non-missing-items caveats still surface (zero prices, mismatched freight),
+  // just below the hero in a quieter footer slot.
+  const otherCaveats = [];
+  if (zeroA.length) otherCaveats.push(`${supplierA} has no unit price for: ${zeroA.join(", ")}`);
+  if (zeroB.length) otherCaveats.push(`${supplierB} has no unit price for: ${zeroB.join(", ")}`);
+  if (freightA > 0 && freightB === 0) otherCaveats.push(`${supplierB} has no freight listed — confirm whether shipping is included or quoted EXW (pickup-only).`);
+  if (freightB > 0 && freightA === 0) otherCaveats.push(`${supplierA} has no freight listed — confirm whether shipping is included or quoted EXW (pickup-only).`);
+  // For tie/insufficient, surface missing-items in the secondary list too so
+  // the info isn't lost (hero stats only show them in the win/win cases).
+  if (!showHeroStats) {
+    if (missingA.length) otherCaveats.push(`${supplierA} is missing ${missingA.length} mark${missingA.length === 1 ? "" : "s"}: ${missingA.join(", ")}`);
+    if (missingB.length) otherCaveats.push(`${supplierB} is missing ${missingB.length} mark${missingB.length === 1 ? "" : "s"}: ${missingB.join(", ")}`);
+  }
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 320px" }}>
-          <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
-            Recommendation
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: headlineColor, marginTop: 4 }}>
-            {headline}
-          </div>
-          {recommendation === "a" || recommendation === "b" ? (
-            <div className="text-muted" style={{ fontSize: 13, marginTop: 4 }}>
-              {money(savings)} cheaper across {comparableMarks} comparable mark{comparableMarks === 1 ? "" : "s"}
-              ({recommendation === "a"
-                ? `${money(comparableA)} vs ${money(comparableB)}`
-                : `${money(comparableB)} vs ${money(comparableA)}`}).
-            </div>
-          ) : (
-            <div className="text-muted" style={{ fontSize: 13, marginTop: 4 }}>
-              {recommendation === "tie" ? "Comparable totals are within $1 of each other." : "No marks appear on both quotes — comparison can't pick a winner."}
-            </div>
-          )}
-        </div>
+    <div className="compare-hero">
+      <div className="compare-hero-eyebrow">AI Recommendation</div>
 
-        <div style={{ flex: "0 1 360px" }}>
-          <table style={{ width: "100%", fontSize: 13 }}>
-            <tbody>
-              <tr>
-                <td className="text-muted">Items subtotal</td>
-                <td style={{ textAlign: "right" }}>{money(itemsA)}</td>
-                <td style={{ textAlign: "right" }}>{money(itemsB)}</td>
-              </tr>
-              <tr>
-                <td className="text-muted">Freight</td>
-                <td style={{ textAlign: "right" }}>
-                  <FreightInput value={freightA} onChange={onSetFreightA} />
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  <FreightInput value={freightB} onChange={onSetFreightB} />
-                </td>
-              </tr>
-              <tr>
-                <td className="text-muted" style={{ fontWeight: 600 }}>Headline total</td>
-                <td style={{ textAlign: "right", fontWeight: 600 }}>{money(totalA)}</td>
-                <td style={{ textAlign: "right", fontWeight: 600 }}>{money(totalB)}</td>
-              </tr>
-              <tr><td colSpan={3} style={{ paddingTop: 6 }}></td></tr>
-              <tr>
-                <td className="text-muted">Comparable items</td>
-                <td style={{ textAlign: "right" }}>{money(comparableItemsA)}</td>
-                <td style={{ textAlign: "right" }}>{money(comparableItemsB)}</td>
-              </tr>
-              <tr>
-                <td className="text-muted">+ Freight</td>
-                <td style={{ textAlign: "right" }}>{freightA > 0 ? money(freightA) : <span className="text-subtle">—</span>}</td>
-                <td style={{ textAlign: "right" }}>{freightB > 0 ? money(freightB) : <span className="text-subtle">—</span>}</td>
-              </tr>
-              <tr>
-                <td className="text-muted" style={{ fontWeight: 600 }}>Comparable total</td>
-                <td style={{ textAlign: "right", fontWeight: 600 }}>{money(comparableA)}</td>
-                <td style={{ textAlign: "right", fontWeight: 600 }}>{money(comparableB)}</td>
-              </tr>
-              <tr>
-                <td></td>
-                <td style={{ textAlign: "right", fontWeight: 600 }}>{a.supplier || "Quote A"}</td>
-                <td style={{ textAlign: "right", fontWeight: 600 }}>{b.supplier || "Quote B"}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {caveats.length > 0 && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
-          <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600, marginBottom: 6 }}>
-            Caveats
+      {showHeroStats ? (
+        <>
+          <div className="compare-hero-stats">
+            <div className="stat-card stat-card--win">
+              <div className="stat-num stat-num--win">{money(savings)}</div>
+              <div className="stat-label">Saved</div>
+              <div className="stat-sub">{supplierA} {recommendation === "a" ? "beats" : "vs"} {supplierB}</div>
+            </div>
+            <div className={`stat-card ${loserMissing.length > 0 ? "stat-card--warn" : ""}`}>
+              <div className={`stat-num ${loserMissing.length > 0 ? "stat-num--warn" : ""}`}>
+                {loserMissing.length}
+              </div>
+              <div className="stat-label">Items missing</div>
+              <div className="stat-sub">
+                {loserMissing.length > 0
+                  ? <>from {loserName}: {loserMissing.join(", ")}</>
+                  : <>both quotes cover all marks</>}
+              </div>
+            </div>
+            <div className="stat-card stat-card--accent">
+              <div className="stat-num stat-num--accent" style={{ fontSize: 26 }}>{winnerName}</div>
+              <div className="stat-label">Recommended</div>
+              <div className="stat-sub">
+                {money(comparableA < comparableB ? comparableA : comparableB)} vs {money(comparableA < comparableB ? comparableB : comparableA)} on {comparableMarks} comparable mark{comparableMarks === 1 ? "" : "s"}
+              </div>
+            </div>
           </div>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#444" }}>
-            {caveats.map((c, i) => <li key={i}>{c}</li>)}
-          </ul>
+        </>
+      ) : (
+        <div style={{ marginBottom: "var(--s-5)" }}>
+          <div style={{ fontFamily: "var(--font-serif)", fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>
+            {recommendation === "tie" ? "It's a tie" : "Not enough comparable data"}
+          </div>
+          <div className="text-muted" style={{ fontSize: 13, marginTop: 4 }}>
+            {recommendation === "tie"
+              ? "Comparable totals are within $1 of each other."
+              : "No marks appear on both quotes — comparison can't pick a winner."}
+          </div>
         </div>
       )}
 
-      <div className="row" style={{ marginTop: 14, gap: 8 }}>
+      <div className="compare-hero-actions">
         <button className={recommendation === "a" ? "primary" : ""} onClick={onUseA}>
-          Use {a.supplier || "Quote A"} for proposal
+          Use {supplierA} for proposal
         </button>
         <button className={recommendation === "b" ? "primary" : ""} onClick={onUseB}>
-          Use {b.supplier || "Quote B"} for proposal
+          Use {supplierB} for proposal
         </button>
-        <span className="text-subtle" style={{ fontSize: 12, alignSelf: "center" }}>
-          Sets the active supplier quote on the Proposal tab.
-        </span>
+        <span className="text-subtle">Sets the active supplier quote on the Proposal tab.</span>
       </div>
+
+      {otherCaveats.length > 0 && (
+        <div style={{ marginTop: "var(--s-4)", paddingTop: "var(--s-3)", borderTop: "1px solid var(--color-divider)" }}>
+          <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginBottom: 6 }}>
+            Also worth flagging
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--color-text-muted)" }}>
+            {otherCaveats.map((c, i) => <li key={i}>{c}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LedgerCard({ a, b, summary, onSetFreightA, onSetFreightB }) {
+  const {
+    itemsA, itemsB, freightA, freightB,
+    totalA, totalB,
+    comparableItemsA, comparableItemsB,
+    comparableA, comparableB,
+  } = summary;
+  const supplierA = a.supplier || "Quote A";
+  const supplierB = b.supplier || "Quote B";
+
+  return (
+    <div className="compare-ledger">
+      <div className="compare-ledger-title">Comparison details</div>
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th style={{ textAlign: "right" }}>{supplierA}</th>
+            <th style={{ textAlign: "right" }}>{supplierB}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="text-muted">Items subtotal</td>
+            <td style={{ textAlign: "right" }}>{money(itemsA)}</td>
+            <td style={{ textAlign: "right" }}>{money(itemsB)}</td>
+          </tr>
+          <tr>
+            <td className="text-muted">Freight</td>
+            <td style={{ textAlign: "right" }}><FreightInput value={freightA} onChange={onSetFreightA} /></td>
+            <td style={{ textAlign: "right" }}><FreightInput value={freightB} onChange={onSetFreightB} /></td>
+          </tr>
+          <tr>
+            <td style={{ fontWeight: 600 }}>Headline total</td>
+            <td style={{ textAlign: "right", fontWeight: 600 }}>{money(totalA)}</td>
+            <td style={{ textAlign: "right", fontWeight: 600 }}>{money(totalB)}</td>
+          </tr>
+          <tr className="ledger-divider"><td colSpan={3}></td></tr>
+          <tr>
+            <td className="text-muted">Comparable items</td>
+            <td style={{ textAlign: "right" }}>{money(comparableItemsA)}</td>
+            <td style={{ textAlign: "right" }}>{money(comparableItemsB)}</td>
+          </tr>
+          <tr>
+            <td className="text-muted">+ Freight</td>
+            <td style={{ textAlign: "right" }}>{freightA > 0 ? money(freightA) : <span className="text-subtle">—</span>}</td>
+            <td style={{ textAlign: "right" }}>{freightB > 0 ? money(freightB) : <span className="text-subtle">—</span>}</td>
+          </tr>
+          <tr>
+            <td style={{ fontWeight: 600 }}>Comparable total</td>
+            <td style={{ textAlign: "right", fontWeight: 600 }}>{money(comparableA)}</td>
+            <td style={{ textAlign: "right", fontWeight: 600 }}>{money(comparableB)}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
