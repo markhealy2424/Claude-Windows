@@ -37,6 +37,24 @@ const TYPE_OPTIONS = [
   ["casement-door", "casement door"],
 ];
 
+// Optional spec columns the quotes table can show. If every row leaves
+// the field blank, hide the column by default — a "+ Show N hidden"
+// toggle lets the user see them all again. Notes/glass have visible
+// content on most demo data so they stay always-visible.
+const HIDEABLE_COLS = [
+  { key: "material",  header: "Material",  width: 130 },
+  { key: "ext_color", header: "Ext Color", width: 140 },
+  { key: "int_color", header: "Int Color", width: 140 },
+  { key: "thickness", header: "Thick",     width: 60  },
+  { key: "profile",   header: "Profile",   width: 160 },
+];
+
+function isCellEmpty(v) {
+  if (v == null) return true;
+  const s = String(v).trim();
+  return s === "" || s === "0";
+}
+
 export default function QuotesTab({ project, onChange }) {
   const quotes = project.quotes ?? [];
   const [activeId, setActiveId] = useState(quotes[0]?.id ?? null);
@@ -46,8 +64,21 @@ export default function QuotesTab({ project, onChange }) {
   const [parsing, setParsing] = useState(false);
   const [uploadingTo, setUploadingTo] = useState(null);  // quoteId being uploaded to
   const [error, setError] = useState("");
+  const [showAllCols, setShowAllCols] = useState(false);
 
   const active = useMemo(() => quotes.find((q) => q.id === activeId) ?? null, [quotes, activeId]);
+
+  // Columns where every row is blank — candidates for hiding so the table
+  // reads less like a spreadsheet and more like the AI's clean output.
+  const hiddenCols = useMemo(() => {
+    if (!active) return new Set();
+    const s = new Set();
+    for (const c of HIDEABLE_COLS) {
+      if (active.items.every((it) => isCellEmpty(it[c.key]))) s.add(c.key);
+    }
+    return s;
+  }, [active]);
+  const isColVisible = (key) => showAllCols || !hiddenCols.has(key);
 
   function persist(nextQuotes, nextComparison = comparison) {
     onChange({ quotes: nextQuotes, discrepancies: nextComparison });
@@ -212,7 +243,7 @@ export default function QuotesTab({ project, onChange }) {
                   />
                 </label>
                 {active.filePersisted && (
-                  <button onClick={() => runParse(active.id)} disabled={parsing}>
+                  <button className="ai" onClick={() => runParse(active.id)} disabled={parsing}>
                     {parsing ? "Re-parsing…" : "Re-parse with AI"}
                   </button>
                 )}
@@ -234,15 +265,41 @@ export default function QuotesTab({ project, onChange }) {
 
           {error && <div className="card error" style={{ marginBottom: 12 }}>{error}</div>}
 
-          <h4 style={{ marginBottom: 8 }}>Quote line items <span className="text-muted" style={{ fontWeight: 400, fontSize: 13 }}>· editable, auto-filled by AI parse</span></h4>
+          {active.items.length > 0 && (
+            <div className="ai-banner">
+              <div className="ai-banner-icon">✦</div>
+              <div className="ai-banner-body">
+                <div className="ai-banner-title">
+                  AI parsed {active.items.length} line item{active.items.length === 1 ? "" : "s"}{active.fileName ? <> from <code>{active.fileName}</code></> : ""}
+                </div>
+                <div className="ai-banner-sub">
+                  Every cell is editable — your changes save automatically.
+                </div>
+              </div>
+              {hiddenCols.size > 0 && (
+                <button
+                  className="ai-banner-toggle"
+                  onClick={() => setShowAllCols((v) => !v)}
+                >
+                  {showAllCols
+                    ? `Hide ${hiddenCols.size} empty column${hiddenCols.size === 1 ? "" : "s"}`
+                    : `+ Show ${hiddenCols.size} hidden column${hiddenCols.size === 1 ? "" : "s"}`}
+                </button>
+              )}
+            </div>
+          )}
 
           <table style={{ marginBottom: 16 }}>
             <thead>
               <tr>
-                <th>Mark</th><th>Qty</th><th>Type</th><th>Op</th><th>Material</th>
+                <th>Mark</th><th>Qty</th><th>Type</th><th>Op</th>
+                {isColVisible("material") && <th>Material</th>}
                 <th>Width (in)</th><th>Height (in)</th>
-                <th>Glass</th><th>Ext Color</th><th>Int Color</th>
-                <th>Thick</th><th>Profile</th>
+                <th>Glass</th>
+                {isColVisible("ext_color") && <th>Ext Color</th>}
+                {isColVisible("int_color") && <th>Int Color</th>}
+                {isColVisible("thickness") && <th>Thick</th>}
+                {isColVisible("profile") && <th>Profile</th>}
                 <th>Unit $</th><th>Total $</th><th>Scrn</th><th>Notes</th><th></th>
               </tr>
             </thead>
@@ -257,14 +314,14 @@ export default function QuotesTab({ project, onChange }) {
                     </select>
                   </td>
                   <td><input value={it.operation ?? ""} onChange={(e) => updateActiveItem(i, { operation: e.target.value })} style={{ width: 60 }} /></td>
-                  <td><input value={it.material ?? "Aluminum"} onChange={(e) => updateActiveItem(i, { material: e.target.value })} style={{ width: 130 }} /></td>
+                  {isColVisible("material") && <td><input value={it.material ?? "Aluminum"} onChange={(e) => updateActiveItem(i, { material: e.target.value })} style={{ width: 130 }} /></td>}
                   <td><input type="number" value={it.width_in ?? 0} onChange={(e) => updateActiveItem(i, { width_in: Number(e.target.value) || 0 })} style={{ width: 70 }} onFocus={(e)=>e.target.select()} /></td>
                   <td><input type="number" value={it.height_in ?? 0} onChange={(e) => updateActiveItem(i, { height_in: Number(e.target.value) || 0 })} style={{ width: 70 }} onFocus={(e)=>e.target.select()} /></td>
                   <td><input value={it.glass ?? ""} onChange={(e) => updateActiveItem(i, { glass: e.target.value })} style={{ width: 240 }} title={it.glass ?? ""} /></td>
-                  <td><input value={it.ext_color ?? ""} onChange={(e) => updateActiveItem(i, { ext_color: e.target.value })} style={{ width: 140 }} /></td>
-                  <td><input value={it.int_color ?? ""} onChange={(e) => updateActiveItem(i, { int_color: e.target.value })} style={{ width: 140 }} /></td>
-                  <td><input value={it.thickness ?? ""} onChange={(e) => updateActiveItem(i, { thickness: e.target.value })} style={{ width: 60 }} /></td>
-                  <td><input value={it.profile ?? ""} onChange={(e) => updateActiveItem(i, { profile: e.target.value })} style={{ width: 160 }} title={it.profile ?? ""} /></td>
+                  {isColVisible("ext_color") && <td><input value={it.ext_color ?? ""} onChange={(e) => updateActiveItem(i, { ext_color: e.target.value })} style={{ width: 140 }} /></td>}
+                  {isColVisible("int_color") && <td><input value={it.int_color ?? ""} onChange={(e) => updateActiveItem(i, { int_color: e.target.value })} style={{ width: 140 }} /></td>}
+                  {isColVisible("thickness") && <td><input value={it.thickness ?? ""} onChange={(e) => updateActiveItem(i, { thickness: e.target.value })} style={{ width: 60 }} /></td>}
+                  {isColVisible("profile") && <td><input value={it.profile ?? ""} onChange={(e) => updateActiveItem(i, { profile: e.target.value })} style={{ width: 160 }} title={it.profile ?? ""} /></td>}
                   <td><input type="number" value={it.unit_price_usd ?? it.cost ?? 0} onChange={(e) => updateActiveItem(i, { unit_price_usd: Number(e.target.value) || 0 })} style={{ width: 80 }} onFocus={(e)=>e.target.select()} /></td>
                   <td><input type="number" value={it.total_price_usd ?? 0} onChange={(e) => updateActiveItem(i, { total_price_usd: Number(e.target.value) || 0 })} style={{ width: 90 }} onFocus={(e)=>e.target.select()} /></td>
                   <td style={{ textAlign: "center" }}><input type="checkbox" checked={!!it.screen} onChange={(e) => updateActiveItem(i, { screen: e.target.checked })} title="Has screen" /></td>
