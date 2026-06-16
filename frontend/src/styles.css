@@ -492,10 +492,38 @@ button.ai:hover:not(:disabled) {
   background: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
 }
+/* When the .ai button is disabled (currently running the AI op), it should
+   look alive — not greyed out. A horizontal background shimmer + sparkle
+   pulse signals "AI is thinking" while the wait cursor + native disabled
+   still blocks double-clicks. */
 button.ai:disabled {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  opacity: 0.5;
+  background: linear-gradient(110deg,
+    var(--color-accent) 30%,
+    var(--color-accent-hover) 50%,
+    var(--color-accent) 70%);
+  background-size: 220% 100%;
+  border-color: var(--color-accent-hover);
+  color: var(--color-accent-text);
+  opacity: 1;
+  cursor: wait;
+  animation: ai-shimmer 1.8s ease-in-out infinite;
+}
+button.ai:disabled::before {
+  animation: ai-sparkle 1.2s ease-in-out infinite;
+}
+@keyframes ai-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes ai-sparkle {
+  0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+  50%      { opacity: 0.45; transform: translateY(-50%) scale(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  button.ai:disabled,
+  button.ai:disabled::before {
+    animation: none;
+  }
 }
 
 /* ─── Layout helpers ─── */
