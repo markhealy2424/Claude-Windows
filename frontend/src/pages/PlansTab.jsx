@@ -16,6 +16,18 @@ const KINDS = [
 const SCHEDULE_KINDS = new Set(["window_schedule", "door_schedule"]);
 const FLOOR_KINDS = new Set(["floor"]);
 
+// Single-line metadata for an uploaded schedule. Pages only make sense for
+// PDFs (image uploads come through with pageCount: 0). Dates show the day,
+// not the second — second-precision reads as machine-generated noise in the
+// UI even though it's accurate.
+function scheduleMeta(schedule) {
+  const ext = (schedule.name ?? "").split(".").pop().toLowerCase();
+  const isImage = ["png", "jpg", "jpeg", "webp"].includes(ext);
+  const kind = isImage ? "Image" : `${schedule.pageCount} page${schedule.pageCount === 1 ? "" : "s"}`;
+  const when = new Date(schedule.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return `${kind} · uploaded ${when}`;
+}
+
 export default function PlansTab({ project, onChange }) {
   const plans = project.plans ?? [];
   const schedules = project.schedules ?? [];
@@ -343,6 +355,7 @@ export default function PlansTab({ project, onChange }) {
               </div>
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <button
+                  className="ai"
                   onClick={countMarks}
                   disabled={floorPages.length === 0 || countingMarks || (!hasExtractedText && !active.pdfPersisted)}
                   title={
@@ -356,7 +369,7 @@ export default function PlansTab({ project, onChange }) {
                   {countingMarks ? "Counting…" : `Count marks (${floorPages.length} floor page${floorPages.length === 1 ? "" : "s"})`}
                 </button>
                 <button
-                  className="primary"
+                  className="ai"
                   onClick={extractItems}
                   disabled={!hasExtractedText || schedulePages.length === 0 || extractingItems}
                   title={
@@ -496,11 +509,16 @@ export default function PlansTab({ project, onChange }) {
       <div style={{ marginTop: 40, paddingTop: 24, borderTop: "2px solid var(--color-border)" }}>
         <h3 style={{ marginTop: 0, marginBottom: 8 }}>Window Schedule</h3>
         <p className="text-muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 8 }}>
-          Upload the window schedule (the table that lists each mark with its width, height, type, and notes). The AI reads each row and updates matching items in the Items tab — combined with the mark counts from floor plans, you get full item records without manual data entry.
+          Upload the schedule (table of marks + dimensions). AI reads each row and updates matching items in the Items tab.
         </p>
-        <p className="text-muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 12, fontStyle: "italic" }}>
-          <strong>Tip:</strong> for the most accurate read, upload a <strong>cropped screenshot of just the schedule table</strong> (PNG or JPEG) instead of the full sheet. The vision AI can focus on the cells without competing with elevations, door schedules, or title blocks. PDF works too, but a focused image typically gives ~2× better accuracy on dense tables.
-        </p>
+        <details style={{ marginBottom: 12 }}>
+          <summary className="text-muted" style={{ fontSize: 12, cursor: "pointer", fontStyle: "italic" }}>
+            Tip for best accuracy
+          </summary>
+          <p className="text-muted" style={{ fontSize: 12, marginTop: 6, marginBottom: 0, fontStyle: "italic" }}>
+            Upload a <strong>cropped screenshot of just the schedule table</strong> (PNG / JPEG) — the vision AI focuses on cells without competing with elevations, door schedules, or title blocks. ~2× better accuracy than the full sheet.
+          </p>
+        </details>
 
         <div className="row" style={{ marginBottom: 16, flexWrap: "wrap" }}>
           {schedules.map((s) => (
@@ -529,12 +547,12 @@ export default function PlansTab({ project, onChange }) {
               <div>
                 <div style={{ fontWeight: 600 }}>{activeSchedule.name}</div>
                 <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                  {activeSchedule.pageCount} page{activeSchedule.pageCount === 1 ? "" : "s"} · uploaded {new Date(activeSchedule.addedAt).toLocaleString()}
+                  {scheduleMeta(activeSchedule)}
                 </div>
               </div>
               <div className="row">
                 <button
-                  className="primary"
+                  className="ai"
                   onClick={parseSchedule}
                   disabled={parsingSchedule || !activeSchedule.pdfPersisted}
                   title={!activeSchedule.pdfPersisted ? "Re-upload this schedule — PDF bytes aren't on the server's persistent disk." : ""}

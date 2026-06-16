@@ -437,6 +437,38 @@ button.primary:disabled {
   border-color: var(--color-accent);
 }
 
+/* AI-triggered actions get a distinct visual treatment so investors and
+   users can immediately see where the "intelligent" parts of the product
+   live. Sparkle glyph + accent gradient + sharper letter-spacing. */
+button.ai {
+  background: linear-gradient(180deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+  color: var(--color-accent-text);
+  border: 1px solid var(--color-accent-hover);
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  padding-left: 30px;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(31, 27, 22, 0.08);
+}
+button.ai::before {
+  content: '✦';
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  line-height: 1;
+}
+button.ai:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+button.ai:disabled {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  opacity: 0.5;
+}
+
 /* ─── Layout helpers ─── */
 
 .row {
