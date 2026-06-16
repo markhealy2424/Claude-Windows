@@ -31,10 +31,11 @@
   --color-paper-text-muted: var(--color-text-muted);
   --color-paper-border: var(--color-border);
 
-  /* Brand — terracotta accent */
-  --color-accent: #077BE2;
-  --color-accent-hover: #0561B5;
-  --color-accent-soft: #DCEBFA;
+  /* Brand — refined navy accent */
+  --color-accent: #1E3A5F;
+  --color-accent-hover: #142848;
+  --color-accent-soft: #DBE4F0;
+  --color-accent-border: #BDCAE0;
   --color-accent-text: #FFFFFF;
 
   /* Semantic */
@@ -128,7 +129,7 @@ strong, b { font-weight: 600; color: var(--color-text); }
 
 .layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 240px 1fr;
   min-height: 100vh;
 }
 
@@ -184,22 +185,25 @@ strong, b { font-weight: 600; color: var(--color-text); }
   gap: 10px;
   font-family: var(--font-serif);
   font-weight: 600;
-  font-size: 16px;
-  letter-spacing: -0.005em;
+  font-size: 17px;
+  letter-spacing: -0.01em;
   color: var(--color-text);
   padding: 2px 4px;
+  white-space: nowrap;
 }
 .sidebar .brand:hover { color: var(--color-text); text-decoration: none; }
 
 .sidebar .brand-logo {
   display: block;
-  height: 36px;
+  height: 32px;
   width: auto;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .sidebar .brand-name {
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 /* Settings gear pinned to the bottom of the sidebar, visually separated
