@@ -12,7 +12,6 @@ import ProjectInfo from "./ProjectInfo.jsx";
 import MoneyTab from "./MoneyTab.jsx";
 import DrawingsTab from "./DrawingsTab.jsx";
 import QuestionsTab from "./QuestionsTab.jsx";
-import { StatusSelect } from "./Dashboard.jsx";
 
 const TABS = ["Project Summary", "Project Info", "Plans", "Items", "Questions for Client", "RFQ", "Quotes", "Compare", "Proposal", "Drawings", "Money"];
 
@@ -76,13 +75,6 @@ export default function ProjectView() {
                 {subtitleParts.join(" · ")}
               </div>
             )}
-          </div>
-          <div className="project-status">
-            <span className="project-status-label">Status</span>
-            <StatusSelect
-              value={project.status}
-              onChange={(status) => savePatch({ status })}
-            />
           </div>
         </div>
         {tab === "Project Summary" && <ProjectSummary project={project} onChange={savePatch} />}

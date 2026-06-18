@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { money, projectSummary } from "../lib/financials.js";
+import { StatusSelect } from "./Dashboard.jsx";
 
 // Project-scoped dashboard. Three sections:
 //   1. Hero stat row — status, money headline, open to-dos
@@ -25,7 +26,12 @@ export default function ProjectSummary({ project, onChange }) {
 
   return (
     <div>
-      <HeroStats project={project} fin={fin} openTodoCount={openTodoCount} />
+      <HeroStats
+        project={project}
+        fin={fin}
+        openTodoCount={openTodoCount}
+        onStatusChange={(status) => onChange({ status })}
+      />
       <ProjectStats project={project} items={items} plans={plans} quotes={quotes} />
       <MoneyDetails fin={fin} />
       <TodoList
@@ -39,7 +45,7 @@ export default function ProjectSummary({ project, onChange }) {
 
 // ── Hero (3 stat cards) ──────────────────────────────────────────────
 
-function HeroStats({ project, fin, openTodoCount }) {
+function HeroStats({ project, fin, openTodoCount, onStatusChange }) {
   const pctCollected = fin.clientQuoted > 0
     ? Math.round((fin.clientReceived / fin.clientQuoted) * 100)
     : 0;
@@ -48,8 +54,14 @@ function HeroStats({ project, fin, openTodoCount }) {
     <div className="summary-hero">
       <div className="stat-card">
         <div className="stat-label">Status</div>
-        <div className="stat-num stat-num--accent" style={{ fontSize: 22 }}>
-          {project.status || "—"}
+        {/* Status is editable here on the Project Summary tab — moved off
+            the page header so it's not duplicated across every sub-tab. */}
+        <div style={{ marginTop: 6, marginBottom: 4 }}>
+          <StatusSelect
+            className="status-pill"
+            value={project.status}
+            onChange={onStatusChange}
+          />
         </div>
         <div className="stat-sub">
           {project.info?.address || "No address set"}
