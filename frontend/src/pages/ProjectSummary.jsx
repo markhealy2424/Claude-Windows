@@ -165,16 +165,16 @@ function MoneyDetails({ fin }) {
       <h3 style={{ marginTop: 0, marginBottom: 16 }}>Money details</h3>
       <div className="money-grid">
         <div>
-          <div className="money-side-label">Client side</div>
-          <MoneyRow label="Quoted" value={fin.clientQuoted} />
-          <MoneyRow label="Received" value={fin.clientReceived} suffix={fin.clientQuoted > 0 && ` · ${clientPct}%`} accent="success" />
-          <MoneyRow label="Outstanding" value={fin.clientOutstanding} accent={fin.clientOutstanding > 0 ? "warning" : null} />
-        </div>
-        <div>
           <div className="money-side-label">Supplier side</div>
           <MoneyRow label="Total cost" value={fin.supplierTotalCost} />
           <MoneyRow label="Paid" value={fin.supplierPaid} suffix={fin.supplierTotalCost > 0 && ` · ${supplierPct}%`} />
           <MoneyRow label="Outstanding" value={fin.supplierOutstanding} accent={fin.supplierOutstanding > 0 ? "warning" : null} />
+        </div>
+        <div>
+          <div className="money-side-label">Client side</div>
+          <MoneyRow label="Quoted" value={fin.clientQuoted} />
+          <MoneyRow label="Received" value={fin.clientReceived} suffix={fin.clientQuoted > 0 && ` · ${clientPct}%`} accent="success" />
+          <MoneyRow label="Outstanding" value={fin.clientOutstanding} accent={fin.clientOutstanding > 0 ? "warning" : null} />
         </div>
       </div>
 

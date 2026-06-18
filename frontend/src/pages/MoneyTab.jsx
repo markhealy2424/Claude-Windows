@@ -146,52 +146,6 @@ export default function MoneyTab({ project, onChange }) {
 
       <div className="row" style={{ gap: 16, alignItems: "stretch", marginBottom: 16, flexWrap: "wrap" }}>
         <div className="card" style={{ flex: "1 1 360px" }}>
-          <h3 style={{ marginTop: 0 }}>Client receivables</h3>
-          <div className="row" style={{ gap: 24, alignItems: "center", flexWrap: "wrap" }}>
-            <PieChart
-              paid={summary.clientReceived}
-              remaining={summary.clientOutstanding}
-              paidColor="#15623F"
-              remainingColor="#E2C7C2"
-            />
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <Row dotColor="#15623F" label="Received" value={money(summary.clientReceived)} />
-              <Row dotColor="#E2C7C2" label="Still owed by client" value={money(summary.clientOutstanding)} valueColor={summary.clientOutstanding > 0 ? "var(--color-error)" : "var(--color-text-muted)"} />
-              <Divider />
-              <Row label="Total quoted" value={money(summary.clientQuoted)} bold />
-              <div className="text-subtle" style={{ fontSize: 12, marginTop: 6 }}>
-                {summary.clientQuoted > 0 ? `${clientPaidPct}% of contract received` : "Set the contract amount below to track owed."}
-              </div>
-            </div>
-          </div>
-          <div className="row" style={{ marginTop: 12, alignItems: "flex-end" }}>
-            <NumberField
-              label="Client contract total ($)"
-              value={f.clientQuoted}
-              onChange={(v) => persist({ clientQuoted: Number(v) || 0 })}
-              inputStyle={{ width: 160 }}
-            />
-          </div>
-          <Ledger
-            bare
-            title="Client payments received"
-            emptyMessage="No client payments logged yet."
-            rows={f.clientReceipts}
-            onAdd={addReceipt}
-            onUpdate={updateReceipt}
-            onRemove={removeReceipt}
-            columns={[
-              { key: "date", label: "Date", type: "date", width: 130 },
-              { key: "amount", label: "Amount ($)", type: "number", width: 110 },
-              { key: "method", label: "Method", type: "text", width: 130, placeholder: "Check / wire / card" },
-              { key: "notes", label: "Notes", type: "text", width: 180 },
-            ]}
-            footerLabel="Total received"
-            footerValue={money(summary.clientReceived)}
-          />
-        </div>
-
-        <div className="card" style={{ flex: "1 1 360px" }}>
           <h3 style={{ marginTop: 0 }}>Supplier costs</h3>
           <div className="row" style={{ gap: 24, alignItems: "center", flexWrap: "wrap" }}>
             <PieChart
@@ -236,6 +190,52 @@ export default function MoneyTab({ project, onChange }) {
             ]}
             footerLabel="Total paid"
             footerValue={money(summary.supplierPaid)}
+          />
+        </div>
+
+        <div className="card" style={{ flex: "1 1 360px" }}>
+          <h3 style={{ marginTop: 0 }}>Client receivables</h3>
+          <div className="row" style={{ gap: 24, alignItems: "center", flexWrap: "wrap" }}>
+            <PieChart
+              paid={summary.clientReceived}
+              remaining={summary.clientOutstanding}
+              paidColor="#15623F"
+              remainingColor="#E2C7C2"
+            />
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <Row dotColor="#15623F" label="Received" value={money(summary.clientReceived)} />
+              <Row dotColor="#E2C7C2" label="Still owed by client" value={money(summary.clientOutstanding)} valueColor={summary.clientOutstanding > 0 ? "var(--color-error)" : "var(--color-text-muted)"} />
+              <Divider />
+              <Row label="Total quoted" value={money(summary.clientQuoted)} bold />
+              <div className="text-subtle" style={{ fontSize: 12, marginTop: 6 }}>
+                {summary.clientQuoted > 0 ? `${clientPaidPct}% of contract received` : "Set the contract amount below to track owed."}
+              </div>
+            </div>
+          </div>
+          <div className="row" style={{ marginTop: 12, alignItems: "flex-end" }}>
+            <NumberField
+              label="Client contract total ($)"
+              value={f.clientQuoted}
+              onChange={(v) => persist({ clientQuoted: Number(v) || 0 })}
+              inputStyle={{ width: 160 }}
+            />
+          </div>
+          <Ledger
+            bare
+            title="Client payments received"
+            emptyMessage="No client payments logged yet."
+            rows={f.clientReceipts}
+            onAdd={addReceipt}
+            onUpdate={updateReceipt}
+            onRemove={removeReceipt}
+            columns={[
+              { key: "date", label: "Date", type: "date", width: 130 },
+              { key: "amount", label: "Amount ($)", type: "number", width: 110 },
+              { key: "method", label: "Method", type: "text", width: 130, placeholder: "Check / wire / card" },
+              { key: "notes", label: "Notes", type: "text", width: 180 },
+            ]}
+            footerLabel="Total received"
+            footerValue={money(summary.clientReceived)}
           />
         </div>
       </div>
