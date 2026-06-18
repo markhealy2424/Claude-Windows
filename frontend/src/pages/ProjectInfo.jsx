@@ -2,12 +2,26 @@ import { useState, useEffect } from "react";
 import { TextField } from "../lib/Fields.jsx";
 import { REQUIREMENTS } from "../lib/projectRequirements.js";
 
+const blankClient = {
+  name: "",
+  address: "",
+  manager: "",
+  phone: "",
+  email: "",
+  notes: "",
+};
+
 const blank = {
   address: "",
   buyerName: "",
   company: "",
   date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
   requirements: {},  // { dualGlazed: "yes"|"no", narrowFrame: "yes"|"no", narrowFrameSpec: "...", ... }
+  // Client info is stored as a nested object so it doesn't collide with
+  // the buyer fields above. The buyer is whoever's purchasing windows
+  // (often a contractor or builder); the client is the end-user / owner
+  // the project is being built for. The two are frequently different.
+  client: blankClient,
 };
 
 export default function ProjectInfo({ project, onChange }) {
@@ -29,7 +43,13 @@ export default function ProjectInfo({ project, onChange }) {
     set("requirements", nextReqs);
   }
 
+  function setClient(key, value) {
+    const nextClient = { ...blankClient, ...(info.client ?? {}), [key]: value };
+    set("client", nextClient);
+  }
+
   const reqs = info.requirements ?? {};
+  const client = { ...blankClient, ...(info.client ?? {}) };
 
   return (
     <div>
@@ -72,6 +92,64 @@ export default function ProjectInfo({ project, onChange }) {
               value={info.date}
               onChange={(e) => set("date", e.target.value)}
               style={{ width: 180 }}
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="card" style={{ maxWidth: 720, marginBottom: 24 }}>
+        <h3 style={{ marginTop: 0 }}>Client</h3>
+        <p className="text-muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 16 }}>
+          The end client this project is being built for — typically the homeowner or building owner. Often distinct from the buyer above (a contractor or builder placing the order on the client's behalf).
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--s-4)" }}>
+          <TextField
+            label="Client name"
+            value={client.name}
+            onChange={(v) => setClient("name", v)}
+            placeholder="Jane Homeowner"
+            inputStyle={{ width: "100%" }}
+          />
+          <TextField
+            label="Client manager / contact"
+            value={client.manager}
+            onChange={(v) => setClient("manager", v)}
+            placeholder="Property manager or rep"
+            inputStyle={{ width: "100%" }}
+          />
+          <div style={{ gridColumn: "1 / -1" }}>
+            <TextField
+              label="Client address"
+              value={client.address}
+              onChange={(v) => setClient("address", v)}
+              placeholder="If different from the build address"
+              inputStyle={{ width: "100%" }}
+            />
+          </div>
+          <TextField
+            label="Phone"
+            value={client.phone}
+            onChange={(v) => setClient("phone", v)}
+            placeholder="(555) 123-4567"
+            inputStyle={{ width: "100%" }}
+          />
+          <TextField
+            label="Email"
+            value={client.email}
+            onChange={(v) => setClient("email", v)}
+            placeholder="client@example.com"
+            inputStyle={{ width: "100%" }}
+          />
+          <label style={{ display: "flex", flexDirection: "column", gap: 2, gridColumn: "1 / -1" }}>
+            <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
+              Notes (optional)
+            </span>
+            <textarea
+              value={client.notes}
+              onChange={(e) => setClient("notes", e.target.value)}
+              placeholder="Anything specific about how this client likes to communicate, payment terms, access codes, etc."
+              rows={2}
+              style={{ width: "100%", fontFamily: "inherit", fontSize: 13 }}
             />
           </label>
         </div>
