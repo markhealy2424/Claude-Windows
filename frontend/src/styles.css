@@ -880,6 +880,67 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
 .badge.info    { background: var(--color-info-soft);    color: var(--color-info);    border-color: transparent; }
 .badge.accent  { background: var(--color-accent-soft);  color: var(--color-accent);  border-color: transparent; }
 
+/* Reusable status-pill rendering of a <select>. Same visual language
+   as the pilot chip — accent-soft fill, rounded pill, custom caret —
+   so status reads as status, not as data entry. Apply by adding
+   className="status-pill" to any <select>. */
+select.status-pill {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-border);
+  border-radius: 999px;
+  padding: 4px 28px 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-accent) 50%),
+                    linear-gradient(135deg, var(--color-accent) 50%, transparent 50%);
+  background-position: calc(100% - 14px) calc(50% - 1px),
+                       calc(100% - 10px) calc(50% - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  transition: background-color var(--transition), color var(--transition), border-color var(--transition);
+}
+select.status-pill:hover {
+  background-color: var(--color-accent);
+  color: var(--color-accent-text);
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-accent-text) 50%),
+                    linear-gradient(135deg, var(--color-accent-text) 50%, transparent 50%);
+}
+select.status-pill:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+/* Project name rendered as a static link in a table — bold, dark,
+   clickable. Replaces the previous editable-input look that made the
+   Projects list read as a CRUD admin form. Name edits still live on
+   the Project Info tab inside the project. */
+.project-name-link {
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.project-name-link:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+/* Search input — used on the Projects list page (and reusable for any
+   future list/filter UI). Slightly larger and with a leading icon
+   affordance so it reads as a search control, not a generic input. */
+.search-input {
+  width: 100%;
+  max-width: 360px;
+  padding-left: 32px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B6053' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>");
+  background-position: 10px center;
+  background-repeat: no-repeat;
+}
+
 /* ─── Project status block (top-right of ProjectView header) ─── */
 
 .project-status {

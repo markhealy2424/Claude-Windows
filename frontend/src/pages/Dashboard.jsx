@@ -7,13 +7,14 @@ import { money, projectSummary } from "../lib/financials.js";
 // ── Public exports kept for back-compat (still imported by ProjectView
 //    and Projects pages). ────────────────────────────────────────────────
 
-export function StatusSelect({ value, onChange }) {
+export function StatusSelect({ value, onChange, className }) {
   const known = isKnownStatus(value);
   return (
     <select
       value={known ? value : ""}
       onChange={(e) => onChange(e.target.value)}
       aria-label="Project status"
+      className={className}
     >
       {!known && <option value="" disabled>{value ? `${value} — pick new` : "— pick status —"}</option>}
       {STATUS_OPTIONS.map((s) => (
