@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api.js";
+import ProjectSummary from "./ProjectSummary.jsx";
 import ItemEditor from "./ItemEditor.jsx";
 import RFQTab from "./RFQTab.jsx";
 import QuotesTab from "./QuotesTab.jsx";
@@ -13,12 +14,12 @@ import DrawingsTab from "./DrawingsTab.jsx";
 import QuestionsTab from "./QuestionsTab.jsx";
 import { StatusSelect } from "./Dashboard.jsx";
 
-const TABS = ["Project Info", "Plans", "Items", "Questions for Client", "RFQ", "Quotes", "Compare", "Proposal", "Drawings", "Money"];
+const TABS = ["Project Summary", "Project Info", "Plans", "Items", "Questions for Client", "RFQ", "Quotes", "Compare", "Proposal", "Drawings", "Money"];
 
 export default function ProjectView() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
-  const [tab, setTab] = useState("Items");
+  const [tab, setTab] = useState("Project Summary");
   // Per-keystroke PATCHes can race: an older response carrying an older
   // snapshot of the project arrives AFTER a newer one and clobbers freshly
   // typed input ("letters get deleted as I type"). Track the latest issued
@@ -84,6 +85,7 @@ export default function ProjectView() {
             />
           </div>
         </div>
+        {tab === "Project Summary" && <ProjectSummary project={project} onChange={savePatch} />}
         {tab === "Project Info" && <ProjectInfo project={project} onChange={savePatch} />}
         {tab === "Plans" && <PlansTab project={project} onChange={savePatch} />}
         {tab === "Items" && <ItemEditor items={project.items} onChange={saveItems} />}

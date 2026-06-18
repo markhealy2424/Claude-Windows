@@ -1428,6 +1428,59 @@ select.status-pill:focus {
   border-color: var(--color-accent);
 }
 
+/* ── Project Summary tab ─────────────────────────────────────────── */
+
+/* Hero stat row at the top of a Project Summary. Three .stat-card
+   tiles (already defined for Compare) laid out 3-up at desktop,
+   stack at narrow widths. */
+.summary-hero {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+}
+@media (max-width: 900px) {
+  .summary-hero { grid-template-columns: 1fr; }
+}
+
+/* Quick-stats grid below the hero — 4 simple stats side by side. */
+.summary-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s-5);
+  margin-top: var(--s-4);
+}
+@media (max-width: 900px) {
+  .summary-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Money breakdown: client side / supplier side, side-by-side. */
+.money-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-6);
+}
+@media (max-width: 700px) {
+  .money-grid { grid-template-columns: 1fr; gap: var(--s-4); }
+}
+.money-side-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-divider);
+}
+.money-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
 /* ── Compare hero ────────────────────────────────────────────────── */
 
 .compare-hero {
