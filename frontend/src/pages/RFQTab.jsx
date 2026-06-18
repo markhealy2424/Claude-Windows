@@ -43,7 +43,6 @@ export default function RFQTab({ project }) {
       <div className="row" style={{ marginBottom: 16, justifyContent: "space-between" }}>
         <div className="text-muted">
           {items.length} item{items.length === 1 ? "" : "s"}
-          {preview && <> · generated {new Date(preview.generatedAt).toLocaleTimeString()}</>}
         </div>
         <button className="primary" onClick={downloadPdf} disabled={downloading}>
           {downloading ? "Building PDF…" : "Download PDF"}
@@ -156,11 +155,14 @@ function RFQHeader({ info, projectName }) {
       </div>
 
       {answeredReqs.length > 0 && (
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--color-divider)" }}>
-          <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600, marginBottom: 8 }}>
-            Project requirements
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+        <details className="rfq-requirements">
+          <summary>
+            <span className="rfq-requirements-label">Project requirements</span>
+            <span className="text-subtle" style={{ fontSize: 12, marginLeft: 6 }}>
+              ({answeredReqs.length} answered)
+            </span>
+          </summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, marginTop: 10 }}>
             {answeredReqs.map((req) => {
               const value = reqs[req.key];
               const spec = req.hasSpec && value === "no" ? reqs[`${req.key}Spec`] : null;
@@ -176,7 +178,7 @@ function RFQHeader({ info, projectName }) {
               );
             })}
           </div>
-        </div>
+        </details>
       )}
     </div>
   );

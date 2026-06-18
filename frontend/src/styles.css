@@ -1232,6 +1232,42 @@ select.status-pill:focus {
 }
 .todo-item:last-child { border-bottom: none; }
 
+/* RFQ project requirements — collapsed by default. Disclosure triangle
+   lives next to the eyebrow label; opening the summary reveals the
+   answered-requirements list below. */
+.rfq-requirements {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-divider);
+}
+.rfq-requirements > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  padding: 4px 0;
+}
+.rfq-requirements > summary::-webkit-details-marker { display: none; }
+.rfq-requirements > summary::before {
+  content: '▸';
+  display: inline-block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  transition: transform var(--transition);
+}
+.rfq-requirements[open] > summary::before {
+  transform: rotate(90deg);
+}
+.rfq-requirements-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
 /* ── Modal ───────────────────────────────────────────────────────── */
 
 .modal-overlay {
