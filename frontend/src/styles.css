@@ -127,6 +127,183 @@ strong, b { font-weight: 600; color: var(--color-text); }
 
 /* ─── Layout ─── */
 
+/* The .app shell holds the global top nav + main content area. Replaced
+   the old left-sidebar .layout (2026-06-17) — that pattern is preserved
+   below in case any deprecated callsites still reference .sidebar. */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Top navigation — global. Sticks to the top of the viewport so the nav
+   is always reachable while scrolling. */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  padding: 10px var(--s-6);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topnav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  white-space: nowrap;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.topnav-brand:hover { color: var(--color-text); text-decoration: none; }
+
+.topnav-logo {
+  display: block;
+  height: 30px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.topnav-brand-name {
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.topnav-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.topnav-nav a {
+  display: block;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 14px;
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition);
+}
+.topnav-nav a:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  text-decoration: none;
+}
+.topnav-nav a.active {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+  font-weight: 600;
+}
+
+.topnav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-shrink: 0;
+}
+
+.topnav-pilot {
+  padding: 4px 10px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-border);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: default;
+  font-family: var(--font-sans);
+}
+
+.topnav-settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 13px;
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition);
+}
+.topnav-settings:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  text-decoration: none;
+}
+.topnav-settings.active {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+  font-weight: 600;
+}
+
+/* Context-aware left subnav (used by ProjectView, Sales, Catalog,
+   Financials). Pairs with .with-subnav grid on the parent. */
+.with-subnav {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--s-6);
+  align-items: start;
+}
+.subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: calc(56px + var(--s-5));
+}
+.subnav button {
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.35;
+  transition: background var(--transition), color var(--transition);
+}
+.subnav button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: transparent;
+}
+.subnav button.active {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+  font-weight: 600;
+}
+.subnav button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+.subnav-eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--color-text-subtle);
+  padding: 4px 12px 8px;
+}
+
+/* Legacy left-sidebar layout — kept for any callsites still pointed at
+   the old grid. Safe to remove once the codebase is verified clean. */
 .layout {
   display: grid;
   grid-template-columns: 240px 1fr;
@@ -258,6 +435,7 @@ strong, b { font-weight: 600; color: var(--color-text); }
   padding: var(--s-6) var(--s-8);
   width: 100%;
   min-width: 0;
+  flex: 1;
 }
 
 /* ─── Tabs ─── */
@@ -1419,8 +1597,9 @@ input.edited { font-weight: 600; border-color: var(--color-success); }
 }
 
 @media print {
-  /* Hide on-screen chrome (sidebar, page controls) when printing */
-  .sidebar, .invoice-actions, .invoice-controls, .breadcrumb { display: none !important; }
+  /* Hide on-screen chrome (top nav, subnav, page controls) when printing */
+  .topnav, .subnav, .sidebar, .invoice-actions, .invoice-controls, .breadcrumb { display: none !important; }
+  .with-subnav { display: block; }
   .layout { display: block; }
   .main { padding: 0; }
   .invoice-page {

@@ -13,17 +13,20 @@ export default function Financials({ initialTab = "Overview" }) {
   const [tab, setTab] = useState(initialTab);
 
   return (
-    <div>
-      <h1 style={{ marginTop: 0, marginBottom: 12 }}>Financials</h1>
-      <div className="tabs" style={{ marginBottom: 16 }}>
+    <div className="with-subnav">
+      <nav className="subnav" aria-label="Financials sections">
+        <div className="subnav-eyebrow">Financials</div>
         {SUB_TABS.map((t) => (
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t}</button>
         ))}
+      </nav>
+      <div>
+        <h1 style={{ marginTop: 0, marginBottom: 16 }}>{tab}</h1>
+        {tab === "Overview" && <FinancialsOverview />}
+        {tab === "Roster" && <Roster />}
+        {tab === "Sale assignments" && <Salespeople />}
+        {tab === "Invoices" && <Invoices />}
       </div>
-      {tab === "Overview" && <FinancialsOverview />}
-      {tab === "Roster" && <Roster />}
-      {tab === "Sale assignments" && <Salespeople />}
-      {tab === "Invoices" && <Invoices />}
     </div>
   );
 }
