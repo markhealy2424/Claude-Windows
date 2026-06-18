@@ -223,7 +223,7 @@ function MoneyDetails({ fin }) {
 
       {fin.clientQuoted === 0 && fin.supplierTotalCost === 0 && (
         <div className="text-subtle" style={{ fontSize: 13, marginTop: 12 }}>
-          No money tracked yet. Enter client quote and supplier costs on the <strong>Money</strong> tab to see this project's P&amp;L.
+          No money tracked yet. Enter client quote and supplier costs on the <strong>Financial</strong> tab to see this project's P&amp;L.
         </div>
       )}
     </div>

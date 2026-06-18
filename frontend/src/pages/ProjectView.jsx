@@ -13,7 +13,7 @@ import MoneyTab from "./MoneyTab.jsx";
 import DrawingsTab from "./DrawingsTab.jsx";
 import QuestionsTab from "./QuestionsTab.jsx";
 
-const TABS = ["Project Summary", "Project Info", "Plans", "Items", "Questions for Client", "RFQ", "Quotes", "Compare", "Proposal", "Drawings", "Money"];
+const TABS = ["Project Summary", "Project Info", "Plans", "Items", "Questions for Client", "RFQ", "Quotes", "Compare", "Proposal", "Drawings", "Financial"];
 
 export default function ProjectView() {
   const { id } = useParams();
@@ -73,7 +73,7 @@ export default function ProjectView() {
         {tab === "Compare" && <CompareTab project={project} onChange={savePatch} />}
         {tab === "Proposal" && <ProposalTab project={project} onChange={savePatch} />}
         {tab === "Drawings" && <DrawingsTab project={project} onChange={savePatch} />}
-        {tab === "Money" && <MoneyTab project={project} onChange={savePatch} />}
+        {tab === "Financial" && <MoneyTab project={project} onChange={savePatch} />}
       </div>
     </div>
   );
