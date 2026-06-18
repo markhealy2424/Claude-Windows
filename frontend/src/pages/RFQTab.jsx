@@ -59,40 +59,46 @@ export default function RFQTab({ project }) {
         const doorRows = preview.rows.filter((r) => isDoor(r.type));
         const renderRow = (r, key) => (
           <tr key={key}>
-            <td>{r.mark}</td>
-            <td>{r.qty}</td>
-            <td style={{ width: 120 }}>
-              {typeof r.sketch === "string" && r.sketch.startsWith("data:image/") ? (
-                <img src={r.sketch} alt="" style={{ width: 110, maxHeight: 90, objectFit: "contain" }} />
-              ) : (
-                <div dangerouslySetInnerHTML={{ __html: r.sketch }} />
+            <td className="nowrap">
+              <strong>{r.mark}</strong>
+              {" "}<span className="text-subtle" style={{ fontSize: 11 }}>· {r.qty}</span>
+            </td>
+            <td>
+              <div className="rfq-sketch">
+                {typeof r.sketch === "string" && r.sketch.startsWith("data:image/") ? (
+                  <img src={r.sketch} alt="" />
+                ) : (
+                  <div dangerouslySetInnerHTML={{ __html: r.sketch }} />
+                )}
+              </div>
+            </td>
+            <td>
+              <div>{r.type}</div>
+              {r.operation && (
+                <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>{r.operation}</div>
               )}
             </td>
-            <td>{r.type}</td>
-            <td>{r.material ?? "Aluminum"}</td>
-            <td>{r.operation}</td>
-            <td style={{ textAlign: "center" }}>
-              {r.screen ? "✓" : <span className="text-subtle">—</span>}
-            </td>
             <td>
-              {r.width_per_panel_in ?? "?"}"
-              {r.width_per_panel_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_per_panel_mm} mm</div>}
+              <div>{r.material ?? "Aluminum"}</div>
+              {r.screen && (
+                <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>+ screen</div>
+              )}
             </td>
-            <td>
-              {r.width_in ?? "?"}"
-              {r.width_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.width_mm} mm</div>}
+            <td className="nowrap">
+              <div>{r.width_in ?? "?"}" × {r.height_in ?? "?"}"</div>
+              <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>
+                {r.panels ?? 1} panel{Number(r.panels ?? 1) === 1 ? "" : "s"}
+                {r.width_mm != null && r.height_mm != null && (
+                  <> · {r.width_mm}×{r.height_mm} mm</>
+                )}
+              </div>
             </td>
-            <td>
-              {r.height_in ?? "?"}"
-              {r.height_mm != null && <div className="text-muted" style={{ fontSize: 11 }}>{r.height_mm} mm</div>}
-            </td>
-            <td>{r.panels ?? 1}</td>
-            <td>{r.notes}</td>
+            <td className="text-muted" style={{ maxWidth: 200 }}>{r.notes}</td>
           </tr>
         );
         const sectionHeader = (label, count) => (
           <tr>
-            <td colSpan={12} style={{ background: "var(--color-surface-alt)", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid var(--color-border)" }}>
+            <td colSpan={6} style={{ background: "var(--color-surface-alt)", fontWeight: 600, padding: "6px 10px", borderTop: "1px solid var(--color-border)" }}>
               {label} <span className="text-muted" style={{ fontWeight: 400, marginLeft: 6 }}>({count})</span>
             </td>
           </tr>
@@ -102,8 +108,12 @@ export default function RFQTab({ project }) {
           <table className="compact">
             <thead>
               <tr>
-                <th>Mark</th><th>Qty</th><th>Sketch</th><th>Type</th><th>Material</th>
-                <th>Operation</th><th>Screen</th><th>W/Panel</th><th>Total W</th><th>Height</th><th>Panels</th><th>Notes</th>
+                <th>Mark · Qty</th>
+                <th>Sketch</th>
+                <th>Type</th>
+                <th>Material</th>
+                <th>Size</th>
+                <th>Notes</th>
               </tr>
             </thead>
             <tbody>

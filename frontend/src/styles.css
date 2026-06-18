@@ -529,14 +529,55 @@ tbody tr:hover { background: var(--color-paper-alt); }
 
 /* Compact-table variant — used on dense data tables (Items, Quotes,
    Compare line items, RFQ). Pulls 25% of the horizontal cell padding
-   back so tight column sets stop wrapping cell content to 2 lines. */
+   back so tight column sets stop wrapping cell content to 2 lines.
+   Word-break softened too: the base `td` rule uses `anywhere` so long
+   URL-style strings wrap inside cells, but on a compact data table
+   that aggressive break also splits regular words like "Aluminum" mid-
+   character. Override here to break at word boundaries only. */
 table.compact th,
 table.compact td {
   padding: 8px 10px;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 table.compact th {
   font-size: 11px;
   white-space: nowrap;
+}
+
+/* RFQ sketch cell — caps the auto-generated SVG to a tile size so a
+   tall window (e.g. 8'-0") doesn't blow the row out to ~900px. Works
+   for both the inline SVG path (dangerouslySetInnerHTML) and the
+   uploaded-screenshot path (data URL <img>). */
+.rfq-sketch {
+  width: 96px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 4px;
+}
+.rfq-sketch > div, .rfq-sketch > svg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rfq-sketch svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+}
+.rfq-sketch img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 /* Cell content that should never break onto two lines (short labels,
