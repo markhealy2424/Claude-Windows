@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api } from "../api.js";
 import ProjectSummary from "./ProjectSummary.jsx";
 import ItemEditor from "./ItemEditor.jsx";
@@ -47,36 +47,15 @@ export default function ProjectView() {
     return savePatch({ items });
   }
 
-  // One-line project identity for the header — surfaces what's otherwise
-  // buried in the Project Info tab so every tab shows who/where at a glance.
-  const subtitleParts = [
-    project.info?.buyerName,
-    project.info?.company,
-    project.info?.address,
-  ].filter(Boolean);
-
   return (
     <div className="with-subnav">
       <nav className="subnav" aria-label="Project sections">
-        <div className="subnav-eyebrow">Project</div>
+        <div className="subnav-title">{project.name}</div>
         {TABS.map((t) => (
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t}</button>
         ))}
       </nav>
       <div>
-        <div className="page-header">
-          <div style={{ minWidth: 0 }}>
-            <div className="breadcrumb">
-              <Link to="/projects">← Projects</Link>
-            </div>
-            <h1 style={{ margin: 0 }}>{project.name}</h1>
-            {subtitleParts.length > 0 && (
-              <div className="text-muted" style={{ fontSize: 14, marginTop: 6, lineHeight: 1.5 }}>
-                {subtitleParts.join(" · ")}
-              </div>
-            )}
-          </div>
-        </div>
         {tab === "Project Summary" && <ProjectSummary project={project} onChange={savePatch} />}
         {tab === "Project Info" && <ProjectInfo project={project} onChange={savePatch} />}
         {tab === "Plans" && <PlansTab project={project} onChange={savePatch} />}
