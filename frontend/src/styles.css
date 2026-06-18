@@ -1284,6 +1284,70 @@ select.status-pill:focus {
   color: var(--color-text-muted);
 }
 
+/* Proof-of-payment cell on the Financial tab's payment ledgers. Small
+   thumb/pill for already-uploaded files + an Upload affordance when
+   the cell is empty. Clickable thumb opens the proof in a new tab. */
+.proof-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.proof-upload-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px dashed var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.proof-upload-btn:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  border-style: solid;
+  color: var(--color-accent);
+}
+.proof-thumb {
+  width: 40px;
+  height: 40px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.proof-thumb:hover { border-color: var(--color-accent); }
+.proof-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.proof-pdf-pill {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-radius: 3px;
+  padding: 2px 5px;
+}
+.proof-remove {
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+.proof-error {
+  font-size: 10px;
+  color: var(--color-error);
+  margin-left: 4px;
+}
+
 /* ── Modal ───────────────────────────────────────────────────────── */
 
 .modal-overlay {

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { NumberField } from "../lib/Fields.jsx";
 import { api } from "../api.js";
+import { compressImageToDataUrl } from "../lib/imageCompress.js";
 import {
   emptyFinancials,
   getFinancials,
@@ -186,7 +187,8 @@ export default function MoneyTab({ project, onChange }) {
               { key: "date", label: "Date", type: "date", width: 130 },
               { key: "supplier", label: "Paid to", type: "text", width: 150 },
               { key: "amount", label: "Amount ($)", type: "number", width: 110 },
-              { key: "notes", label: "Notes", type: "text", width: 180 },
+              { key: "notes", label: "Notes", type: "text", width: 160 },
+              { key: "proof", label: "Proof", type: "file", width: 90 },
             ]}
             footerLabel="Total paid"
             footerValue={money(summary.supplierPaid)}
@@ -232,7 +234,8 @@ export default function MoneyTab({ project, onChange }) {
               { key: "date", label: "Date", type: "date", width: 130 },
               { key: "amount", label: "Amount ($)", type: "number", width: 110 },
               { key: "method", label: "Method", type: "text", width: 130, placeholder: "Check / wire / card" },
-              { key: "notes", label: "Notes", type: "text", width: 180 },
+              { key: "notes", label: "Notes", type: "text", width: 160 },
+              { key: "proof", label: "Proof", type: "file", width: 90 },
             ]}
             footerLabel="Total received"
             footerValue={money(summary.clientReceived)}
@@ -417,21 +420,52 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
-              {columns.map((c) => (
-                <td key={c.key}>
-                  <input
-                    type={c.type}
-                    value={row[c.key] ?? (c.type === "number" ? 0 : "")}
-                    placeholder={c.placeholder ?? ""}
-                    onChange={(e) => {
-                      const v = c.type === "number" ? (Number(e.target.value) || 0) : e.target.value;
-                      onUpdate(row.id, { [c.key]: v });
-                    }}
-                    onFocus={(e) => c.type === "number" && e.target.select()}
-                    style={{ width: c.width }}
-                  />
-                </td>
-              ))}
+              {columns.map((c) => {
+                if (c.type === "file") {
+                  return (
+                    <td key={c.key}>
+                      <ProofCell
+                        value={row[c.key]}
+                        onChange={(v) => onUpdate(row.id, { [c.key]: v })}
+                      />
+                    </td>
+                  );
+                }
+                // Number inputs render blank when the row has no value yet —
+                // the previous behavior pre-filled "0" which users couldn't
+                // erase (typed "23" appended to "0" → "023"). Empty string
+                // here lets the user type freely; sumAmounts treats missing
+                // or non-numeric values as 0 downstream.
+                const isNumber = c.type === "number";
+                const displayValue = row[c.key] == null || row[c.key] === ""
+                  ? ""
+                  : row[c.key];
+                return (
+                  <td key={c.key}>
+                    <input
+                      type={c.type}
+                      value={displayValue}
+                      placeholder={c.placeholder ?? ""}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        let v;
+                        if (isNumber) {
+                          if (raw === "") v = null;
+                          else {
+                            const n = Number(raw);
+                            v = Number.isFinite(n) ? n : null;
+                          }
+                        } else {
+                          v = raw;
+                        }
+                        onUpdate(row.id, { [c.key]: v });
+                      }}
+                      onFocus={(e) => isNumber && e.target.select()}
+                      style={{ width: c.width }}
+                    />
+                  </td>
+                );
+              })}
               <td><button onClick={() => onRemove(row.id)} title="Delete row">×</button></td>
             </tr>
           ))}
@@ -449,5 +483,113 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
         )}
       </table>
     </Wrapper>
+  );
+}
+
+// File-upload cell for the proof-of-payment column. Stores the uploaded
+// file as a data-URL object on the row: { dataUrl, name, type }. Images
+// get a tiny thumbnail; PDFs get a "PDF" pill — both clickable to open
+// the file in a new tab. Click × to remove.
+function ProofCell({ value, onChange }) {
+  const inputRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleFile(file) {
+    if (!file) return;
+    setError("");
+    setBusy(true);
+    try {
+      const isImage = file.type.startsWith("image/");
+      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+      if (!isImage && !isPdf) {
+        setError("Use PNG, JPG, or PDF");
+        return;
+      }
+      // Hard cap at ~6 MB raw before we even try; data URLs balloon ~33%
+      // over the source so the persisted row stays under ~8 MB.
+      if (file.size > 6 * 1024 * 1024) {
+        setError("Max 6 MB");
+        return;
+      }
+      let dataUrl;
+      if (isImage) {
+        // Squash images so a 4 MB phone screenshot becomes a tidy ~200 KB
+        // data URL — same compressor we use for sketch overrides.
+        dataUrl = await compressImageToDataUrl(file);
+      } else {
+        dataUrl = await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = () => reject(fr.error);
+          fr.readAsDataURL(file);
+        });
+      }
+      onChange({ dataUrl, name: file.name, type: file.type || (isPdf ? "application/pdf" : "image/*") });
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function clear(e) {
+    e.stopPropagation();
+    onChange(null);
+    setError("");
+  }
+
+  function openProof() {
+    if (!value?.dataUrl) return;
+    const win = window.open();
+    if (!win) return;
+    win.document.write(
+      value.type.startsWith("image/")
+        ? `<img src="${value.dataUrl}" style="max-width:100%" />`
+        : `<embed src="${value.dataUrl}" type="application/pdf" style="width:100vw;height:100vh" />`
+    );
+  }
+
+  if (value?.dataUrl) {
+    const isImg = (value.type ?? "").startsWith("image/");
+    return (
+      <div className="proof-cell">
+        <button
+          type="button"
+          className="proof-thumb"
+          onClick={openProof}
+          title={`Open ${value.name || "proof"}`}
+        >
+          {isImg ? (
+            <img src={value.dataUrl} alt="" />
+          ) : (
+            <span className="proof-pdf-pill">PDF</span>
+          )}
+        </button>
+        <button type="button" onClick={clear} title="Remove proof" className="proof-remove">×</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="proof-cell">
+      <button
+        type="button"
+        className="proof-upload-btn"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        title="Upload proof of payment (PNG / JPG / PDF, max 6 MB)"
+      >
+        {busy ? "…" : "+ Upload"}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,application/pdf,image/webp"
+        style={{ display: "none" }}
+        onChange={(e) => handleFile(e.target.files?.[0])}
+      />
+      {error && <div className="proof-error" title={error}>{error}</div>}
+    </div>
   );
 }
