@@ -254,8 +254,8 @@ strong, b { font-weight: 600; color: var(--color-text); }
    Financials). Pairs with .with-subnav grid on the parent. */
 .with-subnav {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: var(--s-6);
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--s-5);
   align-items: start;
 }
 .subnav {
@@ -526,6 +526,34 @@ td {
 
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--color-paper-alt); }
+
+/* Compact-table variant — used on dense data tables (Items, Quotes,
+   Compare line items, RFQ). Pulls 25% of the horizontal cell padding
+   back so tight column sets stop wrapping cell content to 2 lines. */
+table.compact th,
+table.compact td {
+  padding: 8px 10px;
+}
+table.compact th {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Cell content that should never break onto two lines (short labels,
+   sketches, action buttons). Apply via class on individual <td>. */
+.nowrap { white-space: nowrap; }
+
+/* Scroll wrapper — when a table is wider than its container, this
+   keeps the columns intact and exposes a horizontal scrollbar inside
+   the wrapper instead of clipping content. Used as a safety net even
+   on tables we've compacted. */
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.table-scroll > table {
+  min-width: 100%;
+}
 
 tfoot td {
   background: var(--color-paper-alt);
@@ -1003,6 +1031,14 @@ select.status-pill:focus {
   margin-bottom: var(--s-6);
   padding-bottom: var(--s-4);
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.page-header > div:first-child {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+.page-header .project-status {
+  flex-shrink: 0;
 }
 
 .breadcrumb {

@@ -307,7 +307,8 @@ export default function ProposalTab({ project, onChange }) {
           {downloading ? "Building PDF…" : "Download proposal PDF"}
         </button>
       </div>
-      <table>
+      <div className="table-scroll">
+      <table className="compact">
             <thead>
               <tr>
                 <th>Item</th><th>Qty</th><th>Description</th><th>Width</th><th>Height</th>
@@ -349,6 +350,7 @@ export default function ProposalTab({ project, onChange }) {
               <tr><td colSpan={8} style={{ textAlign: "right", fontWeight: 600 }}>Total</td><td style={{ fontWeight: 600 }}>{money(priced.total)}</td></tr>
             </tfoot>
       </table>
+      </div>
       <div className="text-subtle" style={{ marginTop: 8, fontSize: 12 }}>
         Edits in the Items tab and changes to the inputs above are reflected here automatically.
       </div>

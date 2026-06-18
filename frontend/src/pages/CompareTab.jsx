@@ -399,7 +399,8 @@ function DetailTable({ a, b, rows }) {
   }
 
   return (
-    <table>
+    <div className="table-scroll">
+    <table className="compact">
       <thead>
         <tr>
           <th>Mark</th>
@@ -459,6 +460,7 @@ function DetailTable({ a, b, rows }) {
         })}
       </tbody>
     </table>
+    </div>
   );
 }
 

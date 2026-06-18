@@ -98,7 +98,8 @@ export default function RFQTab({ project }) {
           </tr>
         );
         return (
-          <table>
+          <div className="table-scroll">
+          <table className="compact">
             <thead>
               <tr>
                 <th>Mark</th><th>Qty</th><th>Sketch</th><th>Type</th><th>Material</th>
@@ -112,6 +113,7 @@ export default function RFQTab({ project }) {
               {doorRows.map((r, i) => renderRow(r, `d-${i}`))}
             </tbody>
           </table>
+          </div>
         );
       })()}
     </div>

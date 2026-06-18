@@ -161,57 +161,53 @@ function SketchDrop({ value, item, onChange, height = 56 }) {
 }
 
 export default function ItemEditor({ items = [], onChange }) {
+  // formState: null when no modal open; { mode: "new" } for add;
+  // { mode: "edit", index } when editing a row in place. Editing in a
+  // modal (instead of inline) lets the read-only table stay compact —
+  // ~8 columns instead of the 16 the inline-edit pattern needed.
   const [draft, setDraft] = useState(blank);
-  const [editIndex, setEditIndex] = useState(-1);
-  const [editDraft, setEditDraft] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const [formState, setFormState] = useState(null);
 
-  // Close the add-item modal on Escape, mirroring the Dashboard new-project
-  // modal so the keyboard contract is consistent across the app.
   useEffect(() => {
-    if (!showAdd) return;
-    function onKey(e) { if (e.key === "Escape") setShowAdd(false); }
+    if (!formState) return;
+    function onKey(e) { if (e.key === "Escape") closeForm(); }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showAdd]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formState]);
 
-  function addItem(e) {
+  function openNew() {
+    setDraft(blank);
+    setFormState({ mode: "new" });
+  }
+
+  function openEdit(idx) {
+    setDraft({ ...blank, ...items[idx] });
+    setFormState({ mode: "edit", index: idx });
+  }
+
+  function closeForm() {
+    setFormState(null);
+    setDraft(blank);
+  }
+
+  function submitForm(e) {
     e.preventDefault();
     if (!draft.mark) return;
-    onChange([...items, { ...draft }]);
-    setDraft(blank);
-    setShowAdd(false);
+    if (formState?.mode === "edit") {
+      onChange(items.map((it, i) => (i === formState.index ? { ...draft } : it)));
+    } else {
+      onChange([...items, { ...draft }]);
+    }
+    closeForm();
   }
 
   function removeItem(idx) {
-    if (editIndex === idx) { setEditIndex(-1); setEditDraft(null); }
     onChange(items.filter((_, i) => i !== idx));
-  }
-
-  function startEdit(idx) {
-    setEditIndex(idx);
-    setEditDraft({ ...blank, ...items[idx] });
-  }
-
-  function cancelEdit() {
-    setEditIndex(-1);
-    setEditDraft(null);
-  }
-
-  function saveEdit() {
-    if (editIndex < 0 || !editDraft) return;
-    if (!editDraft.mark) return;
-    onChange(items.map((it, i) => (i === editIndex ? { ...editDraft } : it)));
-    setEditIndex(-1);
-    setEditDraft(null);
   }
 
   function set(key, value) {
     setDraft({ ...draft, [key]: value });
-  }
-
-  function setEdit(key, value) {
-    setEditDraft({ ...editDraft, [key]: value });
   }
 
   // Allow drag-drop / click-upload directly on a non-editing row so users
@@ -228,43 +224,39 @@ export default function ItemEditor({ items = [], onChange }) {
   return (
     <div>
       <div className="row" style={{ justifyContent: "flex-end", marginBottom: 16 }}>
-        <button className="primary" onClick={() => setShowAdd(true)}>+ Add item</button>
+        <button className="primary" onClick={openNew}>+ Add item</button>
       </div>
 
       <ItemTable
         items={items}
-        editIndex={editIndex}
-        editDraft={editDraft}
-        setEditDraft={setEditDraft}
-        setEdit={setEdit}
-        startEdit={startEdit}
-        cancelEdit={cancelEdit}
-        saveEdit={saveEdit}
-        removeItem={removeItem}
-        setSketchAt={setSketchAt}
-        toggleAttentionAt={toggleAttentionAt}
+        onEdit={openEdit}
+        onRemove={removeItem}
+        onSketch={setSketchAt}
+        onToggleAttention={toggleAttentionAt}
       />
 
-      {showAdd && (
-        <NewItemModal
+      {formState && (
+        <ItemFormModal
+          mode={formState.mode}
           draft={draft}
           set={set}
           setDraft={setDraft}
-          onSubmit={addItem}
-          onClose={() => setShowAdd(false)}
+          onSubmit={submitForm}
+          onClose={closeForm}
         />
       )}
     </div>
   );
 }
 
-function NewItemModal({ draft, set, setDraft, onSubmit, onClose }) {
+function ItemFormModal({ mode, draft, set, setDraft, onSubmit, onClose }) {
   const draftTotalW = totalWidth(draft);
+  const isEdit = mode === "edit";
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" style={{ maxWidth: 760 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2 style={{ margin: 0 }}>New item</h2>
+          <h2 style={{ margin: 0 }}>{isEdit ? "Edit item" : "New item"}</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
         <form onSubmit={onSubmit}>
@@ -306,6 +298,17 @@ function NewItemModal({ draft, set, setDraft, onSubmit, onClose }) {
                 onChange={(dataUrl) => set("sketchImage", dataUrl)}
               />
             </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+              <span style={{ color: "var(--color-text-muted)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Flag</span>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, paddingTop: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={!!draft.needsAttention}
+                  onChange={(e) => set("needsAttention", e.target.checked)}
+                />
+                <span style={{ fontSize: 12 }}>Needs attention</span>
+              </label>
+            </label>
           </div>
 
           <div className="text-muted" style={{ fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>
@@ -315,7 +318,7 @@ function NewItemModal({ draft, set, setDraft, onSubmit, onClose }) {
 
           <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
             <button type="button" onClick={onClose}>Cancel</button>
-            <button className="primary" type="submit" disabled={!draft.mark}>Add item</button>
+            <button className="primary" type="submit" disabled={!draft.mark}>{isEdit ? "Save changes" : "Add item"}</button>
           </div>
         </form>
       </div>
@@ -323,13 +326,9 @@ function NewItemModal({ draft, set, setDraft, onSubmit, onClose }) {
   );
 }
 
-const TABLE_COLSPAN = 16;
+const TABLE_COLSPAN = 7;
 
-function ItemTable({
-  items,
-  editIndex, editDraft, setEditDraft, setEdit,
-  startEdit, cancelEdit, saveEdit, removeItem, setSketchAt, toggleAttentionAt,
-}) {
+function ItemTable({ items, onEdit, onRemove, onSketch, onToggleAttention }) {
   // Carry the original index alongside each item so edits, removals, and
   // sketch uploads still mutate the correct slot in the canonical array.
   const indexed = items.map((it, i) => [it, i]);
@@ -337,108 +336,56 @@ function ItemTable({
   const doorEntries = indexed.filter(([it]) => isDoor(it));
 
   const renderRow = ([it, i]) => {
-    if (i === editIndex && editDraft) {
-      const editTotal = totalWidth(editDraft);
-      const editRowStyle = editDraft.needsAttention ? { background: "var(--color-highlight-soft)" } : undefined;
-      return (
-        <tr key={i} className="editing" style={editRowStyle}>
-          <td style={{ textAlign: "center" }}>
-            <input
-              type="checkbox"
-              checked={!!editDraft.needsAttention}
-              onChange={(e) => setEdit("needsAttention", e.target.checked)}
-              title="Flag this item as needing special attention"
-            />
-          </td>
-          <td><TextField label="" value={editDraft.mark} onChange={(v) => setEdit("mark", v)} inputStyle={{ width: 60 }} /></td>
-          <td><NumberField label="" value={editDraft.quantity} onChange={(v) => setEdit("quantity", v)} inputStyle={{ width: 50 }} /></td>
-          <td>
-            <SelectField label="" value={editDraft.type} onChange={(v) => setEdit("type", v)} options={TYPES} />
-          </td>
-          <td>
-            <SelectField label="" value={editDraft.material ?? "Aluminum"} onChange={(v) => setEdit("material", v)} options={MATERIALS} />
-          </td>
-          <td><TextField label="" value={editDraft.operation} onChange={(v) => setEdit("operation", v)} inputStyle={{ width: 80 }} /></td>
-          <td><NumberField label="" value={editDraft.width_in} onChange={(v) => setEdit("width_in", v)} inputStyle={{ width: 60 }} /></td>
-          <td className="text-muted">{editTotal}"</td>
-          <td><NumberField label="" value={editDraft.height_in} onChange={(v) => setEdit("height_in", v)} inputStyle={{ width: 60 }} /></td>
-          <td><NumberField label="" value={editDraft.panels} onChange={(v) => setEdit("panels", v)} inputStyle={{ width: 50 }} /></td>
-          <td>
-            <TextField
-              label=""
-              value={gridToString(editDraft)}
-              onChange={(v) => {
-                const g = parseGridString(v);
-                if (g) setEditDraft({ ...editDraft, ...g });
-              }}
-              inputStyle={{ width: 50 }}
-            />
-          </td>
-          <td>
-            <SelectField label="" value={editDraft.operableRow ?? "all"} onChange={(v) => setEdit("operableRow", v)} options={OPERABLE_ROWS} />
-          </td>
-          <td style={{ textAlign: "center" }}>
-            <input
-              type="checkbox"
-              checked={!!editDraft.screen}
-              onChange={(e) => setEdit("screen", e.target.checked)}
-              title="Has screen"
-            />
-          </td>
-          <td>
-            <SketchDrop
-              value={editDraft.sketchImage || ""}
-              item={editDraft}
-              onChange={(dataUrl) => setEdit("sketchImage", dataUrl)}
-            />
-          </td>
-          <td><TextField label="" value={editDraft.notes} onChange={(v) => setEdit("notes", v)} inputStyle={{ width: 120 }} /></td>
-          <td>
-            <div className="row">
-              <button className="primary" onClick={saveEdit} disabled={!editDraft.mark} type="button">Save</button>
-              <button onClick={cancelEdit} type="button">Cancel</button>
-            </div>
-          </td>
-        </tr>
-      );
-    }
+    const total = totalWidth(it);
+    const grid = gridToString(it);
+    const opLabel = [it.operation, it.operableRow && it.operableRow !== "all" ? `${it.operableRow} row` : null]
+      .filter(Boolean)
+      .join(" · ");
     const rowStyle = it.needsAttention ? { background: "var(--color-highlight-soft)" } : undefined;
     return (
       <tr key={i} style={rowStyle}>
-        <td style={{ textAlign: "center" }}>
-          <input
-            type="checkbox"
-            checked={!!it.needsAttention}
-            onChange={(e) => toggleAttentionAt(i, e.target.checked)}
-            title="Flag this item as needing special attention"
-          />
+        <td className="nowrap">
+          {it.needsAttention && <span title="Needs attention" style={{ color: "var(--color-warning)", marginRight: 4 }}>⚠</span>}
+          <strong>{it.mark}</strong>
+          {" "}<span className="text-subtle" style={{ fontSize: 11 }}>· {it.quantity}</span>
         </td>
-        <td>{it.mark}</td>
-        <td>{it.quantity}</td>
-        <td>{it.type}</td>
-        <td>{it.material ?? "Aluminum"}</td>
-        <td>{it.operation}</td>
-        <td>{it.width_in}"</td>
-        <td>{totalWidth(it)}"</td>
-        <td>{it.height_in}"</td>
-        <td>{it.panels}</td>
-        <td>{gridToString(it)}</td>
-        <td>{it.operableRow ?? "all"}</td>
-        <td style={{ textAlign: "center" }}>
-          {it.screen ? "✓" : <span className="text-subtle">—</span>}
+        <td>
+          <div>{it.type}</div>
+          {opLabel && (
+            <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>{opLabel}</div>
+          )}
+        </td>
+        <td>
+          <div>{it.material ?? "Aluminum"}</div>
+          {it.screen && (
+            <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>+ screen</div>
+          )}
+        </td>
+        <td className="nowrap">
+          <div>{it.width_in}" × {it.height_in}"</div>
+          <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>
+            {it.panels} panel{Number(it.panels) === 1 ? "" : "s"}
+            {total !== Number(it.width_in) && <> · {total}" total</>}
+            {grid && grid !== "1x1" && <> · {grid} grid</>}
+          </div>
         </td>
         <td>
           <SketchDrop
             value={it.sketchImage || ""}
             item={it}
-            onChange={(dataUrl) => setSketchAt(i, dataUrl)}
+            onChange={(dataUrl) => onSketch(i, dataUrl)}
           />
         </td>
-        <td className="text-muted" style={{ maxWidth: 180 }}>{it.notes}</td>
-        <td>
-          <div className="row">
-            <button onClick={() => startEdit(i)} disabled={editIndex >= 0 && editIndex !== i}>Edit</button>
-            <button onClick={() => removeItem(i)}>Remove</button>
+        <td className="text-muted" style={{ maxWidth: 220 }}>{it.notes}</td>
+        <td className="nowrap">
+          <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
+            <button
+              onClick={() => onToggleAttention(i, !it.needsAttention)}
+              title={it.needsAttention ? "Clear attention flag" : "Flag for attention"}
+              style={{ padding: "4px 8px", color: it.needsAttention ? "var(--color-warning)" : "var(--color-text-muted)" }}
+            >⚠</button>
+            <button onClick={() => onEdit(i)}>Edit</button>
+            <button onClick={() => onRemove(i)}>Remove</button>
           </div>
         </td>
       </tr>
@@ -447,36 +394,41 @@ function ItemTable({
 
   const sectionHeader = (label, count) => (
     <tr className="section-header">
-      <td colSpan={TABLE_COLSPAN} style={{ background: "var(--color-surface-alt)", fontWeight: 600, padding: "6px 8px", borderTop: "1px solid var(--color-border)" }}>
+      <td colSpan={TABLE_COLSPAN} style={{ background: "var(--color-surface-alt)", fontWeight: 600, padding: "6px 10px", borderTop: "1px solid var(--color-border)" }}>
         {label} <span className="text-muted" style={{ fontWeight: 400, marginLeft: 6 }}>({count})</span>
       </td>
     </tr>
   );
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th title="Needs special attention">⚠</th>
-          <th>Mark</th><th>Qty</th><th>Type</th><th>Material</th><th>Operation</th>
-          <th>W/panel</th><th>Total W</th><th>H</th>
-          <th>Panels</th><th>Grid</th><th>Operable</th><th>Screen</th><th>Sketch</th><th>Notes</th><th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {sectionHeader("Windows", windowEntries.length)}
-        {windowEntries.length === 0 ? (
-          <tr><td colSpan={TABLE_COLSPAN} className="text-subtle">No windows yet.</td></tr>
-        ) : (
-          windowEntries.map(renderRow)
-        )}
-        {sectionHeader("Doors", doorEntries.length)}
-        {doorEntries.length === 0 ? (
-          <tr><td colSpan={TABLE_COLSPAN} className="text-subtle">No doors yet.</td></tr>
-        ) : (
-          doorEntries.map(renderRow)
-        )}
-      </tbody>
-    </table>
+    <div className="table-scroll">
+      <table className="compact">
+        <thead>
+          <tr>
+            <th>Mark · Qty</th>
+            <th>Type</th>
+            <th>Material</th>
+            <th>Size</th>
+            <th>Sketch</th>
+            <th>Notes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {sectionHeader("Windows", windowEntries.length)}
+          {windowEntries.length === 0 ? (
+            <tr><td colSpan={TABLE_COLSPAN} className="text-subtle">No windows yet.</td></tr>
+          ) : (
+            windowEntries.map(renderRow)
+          )}
+          {sectionHeader("Doors", doorEntries.length)}
+          {doorEntries.length === 0 ? (
+            <tr><td colSpan={TABLE_COLSPAN} className="text-subtle">No doors yet.</td></tr>
+          ) : (
+            doorEntries.map(renderRow)
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }

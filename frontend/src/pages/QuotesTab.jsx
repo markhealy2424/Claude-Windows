@@ -289,7 +289,8 @@ export default function QuotesTab({ project, onChange }) {
             </div>
           )}
 
-          <table style={{ marginBottom: 16 }}>
+          <div className="table-scroll" style={{ marginBottom: 16 }}>
+          <table className="compact">
             <thead>
               <tr>
                 <th>Mark</th><th>Qty</th><th>Type</th><th>Op</th>
@@ -334,6 +335,7 @@ export default function QuotesTab({ project, onChange }) {
               )}
             </tbody>
           </table>
+          </div>
 
           <details style={{ marginBottom: 16 }}>
             <summary className="text-muted" style={{ cursor: "pointer", fontSize: 13 }}>Add a line manually</summary>
