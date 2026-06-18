@@ -2,15 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 import { compressImageToDataUrl } from "../lib/imageCompress.js";
 import { generateSketch } from "../lib/sketch.js";
-import { isDoor } from "../lib/itemKind.js";
+import { isDoor, needsSwing, swingLabel } from "../lib/itemKind.js";
 
 const blank = {
   mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
   width_in: 36, height_in: 48, width_mm: 914, height_mm: 1219,
   panels: 1, gridRows: 1, gridCols: 1, operableRow: "all", notes: "",
   screen: false, sketchImage: "",
+  // "in" | "out" | "" — only meaningful for casement + door types
+  // (see needsSwing()).
+  swing: "",
   needsAttention: false, clientQuestion: "",
 };
+
+const SWING_OPTIONS = [
+  ["", "—"],
+  ["in", "Swings in"],
+  ["out", "Swings out"],
+];
 
 // "ColsxRows" — e.g. "2x4" = 2 lite columns, 4 lite rows.
 function gridToString(item) {
@@ -266,6 +275,14 @@ function ItemFormModal({ mode, draft, set, setDraft, onSubmit, onClose }) {
             <SelectField label="Type" value={draft.type} onChange={(v) => set("type", v)} options={TYPES} />
             <SelectField label="Material" value={draft.material ?? "Aluminum"} onChange={(v) => set("material", v)} options={MATERIALS} />
             <TextField label="Operation (left/right)" value={draft.operation} onChange={(v) => set("operation", v)} />
+            {needsSwing(draft.type) && (
+              <SelectField
+                label="Swing direction"
+                value={draft.swing ?? ""}
+                onChange={(v) => set("swing", v)}
+                options={SWING_OPTIONS}
+              />
+            )}
             <NumberField label="Width per panel (in)" value={draft.width_in} onChange={(v) => set("width_in", v)} />
             <NumberField label="Height (in)" value={draft.height_in} onChange={(v) => set("height_in", v)} />
             <NumberField label="Panels" value={draft.panels} onChange={(v) => set("panels", v)} />
@@ -338,7 +355,11 @@ function ItemTable({ items, onEdit, onRemove, onSketch, onToggleAttention }) {
   const renderRow = ([it, i]) => {
     const total = totalWidth(it);
     const grid = gridToString(it);
-    const opLabel = [it.operation, it.operableRow && it.operableRow !== "all" ? `${it.operableRow} row` : null]
+    const opLabel = [
+      it.operation,
+      it.operableRow && it.operableRow !== "all" ? `${it.operableRow} row` : null,
+      swingLabel(it),
+    ]
       .filter(Boolean)
       .join(" · ");
     const rowStyle = it.needsAttention ? { background: "var(--color-highlight-soft)" } : undefined;

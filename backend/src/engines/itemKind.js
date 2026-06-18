@@ -30,3 +30,20 @@ export function partitionByKind(items = []) {
   }
   return { windows, doors };
 }
+
+// True when a swing direction (in / out) is meaningful for this type:
+// casement windows + every door type. Mirror of the same helper on the
+// frontend (keep in sync).
+export function needsSwing(typeOrItem) {
+  const t = String(typeof typeOrItem === "string" ? typeOrItem : (typeOrItem?.type ?? "")).toLowerCase();
+  if (t === "casement") return true;
+  return DOOR_SLUGS.has(t);
+}
+
+export function swingLabel(item) {
+  if (!item || !needsSwing(item.type)) return "";
+  const s = String(item.swing ?? "").toLowerCase();
+  if (s === "in") return "swings in";
+  if (s === "out") return "swings out";
+  return "";
+}

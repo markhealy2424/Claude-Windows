@@ -30,3 +30,25 @@ export function partitionByKind(items = []) {
   }
   return { windows, doors };
 }
+
+// True when a swing direction (in / out) is meaningful for this type:
+// casement windows + every door type. Sliding, fixed, awning, hopper,
+// hung etc. don't have a meaningful swing direction (or it's
+// standardized by the type itself), so the swing field stays hidden
+// for them.
+export function needsSwing(typeOrItem) {
+  const t = String(typeof typeOrItem === "string" ? typeOrItem : (typeOrItem?.type ?? "")).toLowerCase();
+  if (t === "casement") return true;
+  return DOOR_SLUGS.has(t);
+}
+
+// Human-readable label for an item's swing — used in row subtitles and
+// PDF cells. Returns "" when the type doesn't need a swing or the field
+// is blank.
+export function swingLabel(item) {
+  if (!item || !needsSwing(item.type)) return "";
+  const s = String(item.swing ?? "").toLowerCase();
+  if (s === "in") return "swings in";
+  if (s === "out") return "swings out";
+  return "";
+}

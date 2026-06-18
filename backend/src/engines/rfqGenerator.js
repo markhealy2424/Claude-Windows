@@ -2,7 +2,15 @@ import PDFDocument from "pdfkit";
 import SVGtoPDF from "svg-to-pdfkit";
 import { generateSketch } from "./sketchGenerator.js";
 import { totalWidthIn, totalWidthMm, heightMm } from "./dimensions.js";
-import { partitionByKind } from "./itemKind.js";
+import { partitionByKind, swingLabel } from "./itemKind.js";
+
+// Compose an item's operation cell for the RFQ — combines the free-form
+// operation field with the swing direction (only set for casement +
+// doors). The resulting string is what shows on the PDF + the preview
+// row, so suppliers see "left, swings in" instead of two separate cells.
+function operationCell(it) {
+  return [it.operation, swingLabel(it)].filter(Boolean).join(", ");
+}
 
 // Decode an item's optional sketchImage data URL into a Buffer. Returns
 // null if no override is set so callers can fall back to the auto sketch.
@@ -40,7 +48,8 @@ export function generateRFQ({ items, projectName, info }) {
       width_mm: totalWidthMm(it),
       height_mm: heightMm(it),
       panels: it.panels ?? 1,
-      operation: it.operation,
+      operation: operationCell(it),
+      swing: it.swing ?? "",
       screen: it.screen === true,
       notes: it.notes ?? "",
     };
@@ -267,7 +276,7 @@ export function renderRFQPdf({ items, projectName, info }, stream) {
 
     cellText(it.type, cols[3].w); x += cols[3].w;
     cellText(it.material ?? "Aluminum", cols[4].w); x += cols[4].w;
-    cellText(it.operation, cols[5].w); x += cols[5].w;
+    cellText(operationCell(it), cols[5].w); x += cols[5].w;
     cellText(it.screen === true ? "Yes" : "—", cols[6].w); x += cols[6].w;
     cellText(dimCell(wppIn, wppMm), cols[7].w); x += cols[7].w;
     cellText(dimCell(wIn, wMm), cols[8].w); x += cols[8].w;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { REQUIREMENTS } from "../lib/projectRequirements.js";
-import { isDoor } from "../lib/itemKind.js";
+import { isDoor, swingLabel } from "../lib/itemKind.js";
 
 export default function RFQTab({ project }) {
   const [preview, setPreview] = useState(null);
@@ -73,8 +73,10 @@ export default function RFQTab({ project }) {
             </td>
             <td>
               <div>{r.type}</div>
-              {r.operation && (
-                <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>{r.operation}</div>
+              {(r.operation || swingLabel(r)) && (
+                <div className="text-subtle" style={{ fontSize: 11, marginTop: 2 }}>
+                  {[r.operation, swingLabel(r)].filter(Boolean).join(" · ")}
+                </div>
               )}
             </td>
             <td>
