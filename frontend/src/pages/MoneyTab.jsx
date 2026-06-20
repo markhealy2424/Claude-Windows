@@ -460,10 +460,10 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
   const editRow = (
     <tr className="editing">
       {columns.map((c) => (
-        <td key={c.key}>{renderEditCell(c, editState?.draft ?? {}, updateDraft)}</td>
+        <td key={c.key} className={nowrapClass(c)}>{renderEditCell(c, editState?.draft ?? {}, updateDraft)}</td>
       ))}
-      <td>
-        <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
+      <td className="nowrap ledger-actions">
+        <div className="row" style={{ gap: 4, justifyContent: "flex-end", flexWrap: "nowrap" }}>
           <button className="primary" type="button" onClick={saveDraft}>Save</button>
           <button type="button" onClick={cancelDraft}>Cancel</button>
         </div>
@@ -477,7 +477,8 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
         {titleTag}
         <button onClick={startNew} disabled={isEditing}>+ Add row</button>
       </div>
-      <table>
+      <div className="table-scroll">
+      <table className="compact">
         <thead>
           <tr>
             {columns.map((c) => <th key={c.key}>{c.label}</th>)}
@@ -491,10 +492,10 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
             return (
               <tr key={row.id}>
                 {columns.map((c) => (
-                  <td key={c.key}>{renderReadCell(c, row)}</td>
+                  <td key={c.key} className={nowrapClass(c)}>{renderReadCell(c, row)}</td>
                 ))}
-                <td>
-                  <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
+                <td className="nowrap ledger-actions">
+                  <div className="row" style={{ gap: 4, justifyContent: "flex-end", flexWrap: "nowrap" }}>
                     <button type="button" onClick={() => startEdit(row)} disabled={isEditing}>Edit</button>
                     <button type="button" onClick={() => onRemove(row.id)} disabled={isEditing} title="Delete row">×</button>
                   </div>
@@ -515,8 +516,17 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
           </tfoot>
         )}
       </table>
+      </div>
     </Wrapper>
   );
+}
+
+// Cells that should never break mid-content: date, money, file (the
+// thumb), and the action button column. Text/note columns are fine to
+// wrap at word boundaries so longer notes don't push the table wider
+// than its card.
+function nowrapClass(column) {
+  return column.type === "text" ? "" : "nowrap";
 }
 
 // ── Cell renderers ──────────────────────────────────────────────────

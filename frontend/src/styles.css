@@ -1284,6 +1284,14 @@ select.status-pill:focus {
   color: var(--color-text-muted);
 }
 
+/* Action-button cell on the Financial tab's payment ledger. Even when
+   the surrounding card is narrow the buttons should never split their
+   labels mid-word — keep them on one line at all costs. */
+.ledger-actions button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* Proof-of-payment cell on the Financial tab's payment ledgers. Small
    thumb/pill for already-uploaded files + an Upload affordance when
    the cell is empty. Clickable thumb opens the proof in a new tab. */
