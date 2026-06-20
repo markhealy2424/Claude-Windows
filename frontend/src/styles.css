@@ -52,9 +52,12 @@
   --color-highlight-soft: #FFFCEF;
   --color-highlight-border: #C68B00;
 
-  /* Typography */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-serif: "Georgia", "Cambria", "Times New Roman", Times, serif;
+  /* Typography. Inter + Source Serif 4 load from Google Fonts (see
+     index.html). System fallbacks stay in the stack so anything still
+     renders cleanly during the brief font-loading window or if the
+     Google CDN is blocked. */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, "Cambria", "Times New Roman", Times, serif;
   --font-mono: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Spacing (4px grid) */
