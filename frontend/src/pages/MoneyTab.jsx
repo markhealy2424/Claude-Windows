@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { NumberField } from "../lib/Fields.jsx";
 import { api } from "../api.js";
 import { compressImageToDataUrl } from "../lib/imageCompress.js";
@@ -83,11 +83,14 @@ export default function MoneyTab({ project, onChange }) {
     onChange({ finalInvoices: { ...finalInvoices, [kind]: meta } });
   }
 
-  function addReceipt() {
+  // Add helpers now take the finalized draft from the Ledger. Rows are
+  // prepended so the most recent transaction lands at the top of the
+  // list (matches the in-progress new-row position).
+  function addReceipt(draft) {
     persist({
       clientReceipts: [
+        { id: crypto.randomUUID(), ...draft },
         ...f.clientReceipts,
-        { id: crypto.randomUUID(), date: todayIso(), amount: 0, method: "", notes: "" },
       ],
     });
   }
@@ -102,11 +105,11 @@ export default function MoneyTab({ project, onChange }) {
     persist({ clientReceipts: f.clientReceipts.filter((r) => r.id !== id) });
   }
 
-  function addPayment() {
+  function addPayment(draft) {
     persist({
       supplierPayments: [
+        { id: crypto.randomUUID(), ...draft },
         ...f.supplierPayments,
-        { id: crypto.randomUUID(), date: todayIso(), supplier: "", amount: 0, notes: "" },
       ],
     });
   }
@@ -393,10 +396,23 @@ function Stat({ label, value, color, big, hint }) {
   );
 }
 
+// Save / edit flow. Saved rows render as static text; clicking + Add
+// row opens a single draft at the top of the table (replaces the row
+// list while in-progress) — Save commits, Cancel discards. Existing
+// rows get an Edit button that puts them in the same draft state.
+// Only one editor is active at a time so it's always clear what's
+// committed vs. in-progress.
 export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, onRemove, footerLabel, footerValue, bare = false }) {
+  // null when nothing is being edited.
+  // { mode: "new",  draft }              — adding a new row
+  // { mode: "edit", draft, rowId }       — editing an existing row in place
+  const [editState, setEditState] = useState(null);
+
   const Wrapper = bare ? "div" : "div";
   const wrapperClass = bare ? "" : "card";
-  const wrapperStyle = bare ? { marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--color-border)" } : { marginBottom: 16 };
+  const wrapperStyle = bare
+    ? { marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--color-border)" }
+    : { marginBottom: 16 };
   const titleTag = bare ? (
     <div className="text-muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
       {title}
@@ -404,11 +420,62 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
   ) : (
     <h4 style={{ margin: 0 }}>{title}</h4>
   );
+
+  function blankDraft() {
+    const d = {};
+    for (const c of columns) {
+      if (c.type === "date") d[c.key] = todayIso();
+      else if (c.type === "number") d[c.key] = null;
+      else if (c.type === "file") d[c.key] = null;
+      else d[c.key] = "";
+    }
+    return d;
+  }
+
+  function startNew() {
+    setEditState({ mode: "new", draft: blankDraft() });
+  }
+  function startEdit(row) {
+    setEditState({ mode: "edit", rowId: row.id, draft: { ...blankDraft(), ...row } });
+  }
+  function updateDraft(key, value) {
+    setEditState((s) => (s ? { ...s, draft: { ...s.draft, [key]: value } } : s));
+  }
+  function saveDraft() {
+    if (!editState) return;
+    if (editState.mode === "new") {
+      onAdd(editState.draft);
+    } else {
+      onUpdate(editState.rowId, editState.draft);
+    }
+    setEditState(null);
+  }
+  function cancelDraft() {
+    setEditState(null);
+  }
+
+  const isEditing = editState !== null;
+  const editingRowId = editState?.mode === "edit" ? editState.rowId : null;
+
+  const editRow = (
+    <tr className="editing">
+      {columns.map((c) => (
+        <td key={c.key}>{renderEditCell(c, editState?.draft ?? {}, updateDraft)}</td>
+      ))}
+      <td>
+        <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
+          <button className="primary" type="button" onClick={saveDraft}>Save</button>
+          <button type="button" onClick={cancelDraft}>Cancel</button>
+        </div>
+      </td>
+    </tr>
+  );
+
   return (
     <Wrapper className={wrapperClass} style={wrapperStyle}>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         {titleTag}
-        <button onClick={onAdd}>+ Add row</button>
+        <button onClick={startNew} disabled={isEditing}>+ Add row</button>
       </div>
       <table>
         <thead>
@@ -418,58 +485,24 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              {columns.map((c) => {
-                if (c.type === "file") {
-                  return (
-                    <td key={c.key}>
-                      <ProofCell
-                        value={row[c.key]}
-                        onChange={(v) => onUpdate(row.id, { [c.key]: v })}
-                      />
-                    </td>
-                  );
-                }
-                // Number inputs render blank when the row has no value yet —
-                // the previous behavior pre-filled "0" which users couldn't
-                // erase (typed "23" appended to "0" → "023"). Empty string
-                // here lets the user type freely; sumAmounts treats missing
-                // or non-numeric values as 0 downstream.
-                const isNumber = c.type === "number";
-                const displayValue = row[c.key] == null || row[c.key] === ""
-                  ? ""
-                  : row[c.key];
-                return (
-                  <td key={c.key}>
-                    <input
-                      type={c.type}
-                      value={displayValue}
-                      placeholder={c.placeholder ?? ""}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        let v;
-                        if (isNumber) {
-                          if (raw === "") v = null;
-                          else {
-                            const n = Number(raw);
-                            v = Number.isFinite(n) ? n : null;
-                          }
-                        } else {
-                          v = raw;
-                        }
-                        onUpdate(row.id, { [c.key]: v });
-                      }}
-                      onFocus={(e) => isNumber && e.target.select()}
-                      style={{ width: c.width }}
-                    />
-                  </td>
-                );
-              })}
-              <td><button onClick={() => onRemove(row.id)} title="Delete row">×</button></td>
-            </tr>
-          ))}
-          {rows.length === 0 && (
+          {editState?.mode === "new" && editRow}
+          {rows.map((row) => {
+            if (row.id === editingRowId) return <React.Fragment key={row.id}>{editRow}</React.Fragment>;
+            return (
+              <tr key={row.id}>
+                {columns.map((c) => (
+                  <td key={c.key}>{renderReadCell(c, row)}</td>
+                ))}
+                <td>
+                  <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
+                    <button type="button" onClick={() => startEdit(row)} disabled={isEditing}>Edit</button>
+                    <button type="button" onClick={() => onRemove(row.id)} disabled={isEditing} title="Delete row">×</button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+          {rows.length === 0 && editState?.mode !== "new" && (
             <tr><td colSpan={columns.length + 1} className="text-subtle">{emptyMessage}</td></tr>
           )}
         </tbody>
@@ -483,6 +516,81 @@ export function Ledger({ title, emptyMessage, rows, columns, onAdd, onUpdate, on
         )}
       </table>
     </Wrapper>
+  );
+}
+
+// ── Cell renderers ──────────────────────────────────────────────────
+
+function renderReadCell(c, row) {
+  const value = row[c.key];
+  if (c.type === "file") return <ProofThumb proof={value} />;
+  if (c.type === "date") {
+    if (!value) return <span className="text-subtle">—</span>;
+    const d = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  if (c.type === "number") {
+    if (value == null || value === "") return <span className="text-subtle">—</span>;
+    return money(Number(value));
+  }
+  return value || <span className="text-subtle">—</span>;
+}
+
+function renderEditCell(c, draft, updateDraft) {
+  if (c.type === "file") {
+    return (
+      <ProofCell
+        value={draft[c.key]}
+        onChange={(v) => updateDraft(c.key, v)}
+      />
+    );
+  }
+  const isNumber = c.type === "number";
+  const displayValue = draft[c.key] == null || draft[c.key] === "" ? "" : draft[c.key];
+  return (
+    <input
+      type={c.type}
+      value={displayValue}
+      placeholder={c.placeholder ?? ""}
+      onChange={(e) => {
+        const raw = e.target.value;
+        let v;
+        if (isNumber) {
+          if (raw === "") v = null;
+          else {
+            const n = Number(raw);
+            v = Number.isFinite(n) ? n : null;
+          }
+        } else {
+          v = raw;
+        }
+        updateDraft(c.key, v);
+      }}
+      onFocus={(e) => isNumber && e.target.select()}
+      style={{ width: c.width }}
+    />
+  );
+}
+
+// Read-only proof view used in saved rows — thumbnail / PDF pill that
+// opens the stored data URL in a new tab. No upload affordance.
+function ProofThumb({ proof }) {
+  if (!proof?.dataUrl) return <span className="text-subtle">—</span>;
+  const isImg = (proof.type ?? "").startsWith("image/");
+  function open() {
+    const win = window.open();
+    if (!win) return;
+    win.document.write(
+      isImg
+        ? `<img src="${proof.dataUrl}" style="max-width:100%" />`
+        : `<embed src="${proof.dataUrl}" type="application/pdf" style="width:100vw;height:100vh" />`
+    );
+  }
+  return (
+    <button type="button" className="proof-thumb" onClick={open} title={`Open ${proof.name || "proof"}`}>
+      {isImg ? <img src={proof.dataUrl} alt="" /> : <span className="proof-pdf-pill">PDF</span>}
+    </button>
   );
 }
 
