@@ -1287,6 +1287,70 @@ select.status-pill:focus {
   color: var(--color-text-muted);
 }
 
+/* Definition-list rendering for "read mode" of editable cards on
+   Project Info — label on the left, value on the right, reads like a
+   completed form rather than an input surface. */
+.info-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.info-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) 1fr;
+  gap: 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+.info-row:last-child {
+  border-bottom: none;
+}
+.info-row dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  padding-top: 4px;
+  margin: 0;
+}
+.info-row dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+/* Inline editable money field — used on the Financial tab for
+   Supplier total cost + Client contract total. Read view shows the
+   formatted dollar value next to an Edit button; edit view swaps in
+   a NumberField with Save / Cancel actions inline. Mirrors the
+   finalize-on-Save flow used by the ledger + Project Info cards. */
+.inline-money {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.inline-money-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.inline-money-value-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.inline-money-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Action-button cell on the Financial tab's payment ledger. Even when
    the surrounding card is narrow the buttons should never split their
    labels mid-word — keep them on one line at all costs. */
