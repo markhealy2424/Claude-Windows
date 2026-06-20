@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NumberField } from "../lib/Fields.jsx";
 import { api } from "../api.js";
 import { compressImageToDataUrl } from "../lib/imageCompress.js";
@@ -170,12 +170,12 @@ export default function MoneyTab({ project, onChange }) {
               </div>
             </div>
           </div>
-          <div className="row" style={{ marginTop: 12, alignItems: "flex-end" }}>
-            <NumberField
+          <div style={{ marginTop: 12 }}>
+            <InlineMoneyField
               label="Supplier total cost ($)"
               value={f.supplierTotalCost}
-              onChange={(v) => persist({ supplierTotalCost: Number(v) || 0 })}
-              inputStyle={{ width: 160 }}
+              onSave={(v) => persist({ supplierTotalCost: v })}
+              helpEmpty="Set a total to track outstanding balance"
             />
           </div>
           <Ledger
@@ -217,12 +217,12 @@ export default function MoneyTab({ project, onChange }) {
               </div>
             </div>
           </div>
-          <div className="row" style={{ marginTop: 12, alignItems: "flex-end" }}>
-            <NumberField
+          <div style={{ marginTop: 12 }}>
+            <InlineMoneyField
               label="Client contract total ($)"
               value={f.clientQuoted}
-              onChange={(v) => persist({ clientQuoted: Number(v) || 0 })}
-              inputStyle={{ width: 160 }}
+              onSave={(v) => persist({ clientQuoted: v })}
+              helpEmpty="Set the contract amount to track owed"
             />
           </div>
           <Ledger
@@ -580,6 +580,63 @@ function renderEditCell(c, draft, updateDraft) {
       onFocus={(e) => isNumber && e.target.select()}
       style={{ width: c.width }}
     />
+  );
+}
+
+// Inline finalize-on-Save editor for a single dollar amount. Default
+// view shows the formatted number next to an Edit button; clicking
+// Edit swaps in a NumberField with Save / Cancel actions inline. Used
+// on the Financial tab for Supplier total cost + Client contract total
+// so those headline numbers feel like saved figures rather than
+// always-editable form inputs.
+function InlineMoneyField({ label, value, onSave, helpEmpty }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  // Snap the draft to the parent's value whenever we're not editing —
+  // covers the case where the project switches or another tab writes
+  // to this same field.
+  useEffect(() => {
+    if (!editing) setDraft(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  function startEdit() {
+    setDraft(value);
+    setEditing(true);
+  }
+  function cancel() {
+    setDraft(value);
+    setEditing(false);
+  }
+  function save() {
+    onSave(Number(draft) || 0);
+    setEditing(false);
+  }
+
+  return (
+    <div className="inline-money">
+      <span className="inline-money-label">{label}</span>
+      {editing ? (
+        <div className="inline-money-value-row">
+          <NumberField
+            label=""
+            value={draft ?? ""}
+            onChange={(v) => setDraft(v)}
+            inputStyle={{ width: 160 }}
+          />
+          <button className="primary" type="button" onClick={save}>Save</button>
+          <button type="button" onClick={cancel}>Cancel</button>
+        </div>
+      ) : (
+        <div className="inline-money-value-row">
+          <span className="inline-money-value">
+            {Number(value) > 0 ? money(Number(value)) : <span className="text-subtle">{helpEmpty || "—"}</span>}
+          </span>
+          <button type="button" onClick={startEdit}>Edit</button>
+        </div>
+      )}
+    </div>
   );
 }
 
