@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NumberField, TextField, SelectField } from "../lib/Fields.jsx";
 import { compressImageToDataUrl } from "../lib/imageCompress.js";
 import { generateSketch } from "../lib/sketch.js";
-import { isDoor, needsSwing, swingLabel } from "../lib/itemKind.js";
+import { isDoor, needsSwing, swingLabel, needsLeftRightOperation } from "../lib/itemKind.js";
 
 const blank = {
   mark: "", quantity: 1, type: "fixed", operation: "", material: "Aluminum",
@@ -19,6 +19,14 @@ const SWING_OPTIONS = [
   ["", "—"],
   ["in", "Swings in"],
   ["out", "Swings out"],
+];
+
+// Left / Right operation options for casement (and any future type
+// that opts into needsLeftRightOperation).
+const LEFT_RIGHT_OPTIONS = [
+  ["", "—"],
+  ["left", "Left"],
+  ["right", "Right"],
 ];
 
 // "ColsxRows" — e.g. "2x4" = 2 lite columns, 4 lite rows.
@@ -274,7 +282,16 @@ function ItemFormModal({ mode, draft, set, setDraft, onSubmit, onClose }) {
             <NumberField label="Qty" value={draft.quantity} onChange={(v) => set("quantity", v)} />
             <SelectField label="Type" value={draft.type} onChange={(v) => set("type", v)} options={TYPES} />
             <SelectField label="Material" value={draft.material ?? "Aluminum"} onChange={(v) => set("material", v)} options={MATERIALS} />
-            <TextField label="Operation (left/right)" value={draft.operation} onChange={(v) => set("operation", v)} />
+            {needsLeftRightOperation(draft.type) ? (
+              <SelectField
+                label="Operation"
+                value={draft.operation ?? ""}
+                onChange={(v) => set("operation", v)}
+                options={LEFT_RIGHT_OPTIONS}
+              />
+            ) : (
+              <TextField label="Operation (left/right)" value={draft.operation} onChange={(v) => set("operation", v)} />
+            )}
             {needsSwing(draft.type) && (
               <SelectField
                 label="Swing direction"

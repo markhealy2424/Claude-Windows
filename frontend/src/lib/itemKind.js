@@ -52,3 +52,11 @@ export function swingLabel(item) {
   if (s === "out") return "swings out";
   return "";
 }
+
+// True when the "operation" field should be a Left / Right choice
+// rather than a free-text input. Currently casement only — hinged
+// doors have similar semantics but the user only asked for casement.
+export function needsLeftRightOperation(typeOrItem) {
+  const t = String(typeof typeOrItem === "string" ? typeOrItem : (typeOrItem?.type ?? "")).toLowerCase();
+  return t === "casement";
+}
