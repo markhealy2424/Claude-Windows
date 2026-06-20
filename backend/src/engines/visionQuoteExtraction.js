@@ -64,7 +64,7 @@ STEP 2. For each product, extract:
         "entry-door"          ← "Entry door", "Front door", "Main entry", "Exterior entry door" (typically solid/insulated, not glazed-panel)
       Choose the closest match. Empty string only if truly unrecognizable.
    f. operation — swing direction if the spec says "(Right)" / "(Left)" (Format B) or "Open to outside" / "Open to inside" / "Fold to outside". One of: "left", "right", "in", "out", "" (empty if not specified).
-   g. material — "Aluminum" if the product mentions "Aluminum" or "Aluminium" anywhere (most do). Else infer ("Iron", "Wood"), else "". Include the construction descriptor when stated, e.g. "Thermally Broken, Aluminum".
+   g. material — "Aluminum" if the product mentions "Aluminum" or "Aluminium" anywhere (most do). Else infer ("Steel", "Iron", "Wood"), else "". Include the construction descriptor when stated, e.g. "Thermally Broken, Aluminum".
    h. glass — full glass build-up exactly as stated, e.g.
         "6mm Low E + 20A + Warm edge spacer + Argon gas + 6mm Low E, Double Tempered Glass"
         "Double Tempered Low-E Glass with Argon"

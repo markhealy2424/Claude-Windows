@@ -59,7 +59,7 @@ const TYPES = [
   ["entry-door", "Entry door"],
 ];
 const OPERABLE_ROWS = [["all", "All rows"], ["top", "Top row"], ["bottom", "Bottom row"]];
-const MATERIALS = [["Aluminum", "Aluminum"], ["Iron", "Iron"], ["Wood", "Wood"]];
+const MATERIALS = [["Aluminum", "Aluminum"], ["Steel", "Steel"], ["Iron", "Iron"], ["Wood", "Wood"]];
 
 const ACCEPTED_IMAGE_TYPES = "image/png,image/jpeg,image/webp";
 
