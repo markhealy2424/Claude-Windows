@@ -42,21 +42,35 @@ function parseGridString(str) {
   return { gridCols: Math.max(1, parseInt(m[1], 10)), gridRows: Math.max(1, parseInt(m[2], 10)) };
 }
 
-const TYPES = [
-  ["fixed", "Fixed window"],
-  ["casement", "Casement window"],
-  ["awning", "Awning window"],
-  ["sliding", "Sliding window"],
-  ["slider", "Slider window"],
-  ["hopper", "Hopper window"],
-  ["double-hung", "Double Hung window"],
-  ["sliding-door", "Sliding door"],
-  ["french-door", "French door"],
-  ["bifold-door", "Bi-Fold door"],
-  ["multi-fold-door", "Multi-Fold door"],
-  ["single-hinged-door", "Single-Hinged door"],
-  ["double-hinged-door", "Double-Hinged door"],
-  ["entry-door", "Entry door"],
+// Type options split by category so the modal's Category dropdown
+// can filter the Type list. Labels drop the redundant "window" /
+// "door" suffix since the Category dropdown already says which we
+// mean. Combined TYPES export kept for any read-only callers.
+const WINDOW_TYPES = [
+  ["fixed", "Fixed"],
+  ["casement", "Casement"],
+  ["awning", "Awning"],
+  ["sliding", "Sliding"],
+  ["slider", "Slider"],
+  ["hopper", "Hopper"],
+  ["double-hung", "Double Hung"],
+];
+
+const DOOR_TYPES = [
+  ["sliding-door", "Sliding"],
+  ["french-door", "French"],
+  ["bifold-door", "Bi-Fold"],
+  ["multi-fold-door", "Multi-Fold"],
+  ["single-hinged-door", "Single-Hinged"],
+  ["double-hinged-door", "Double-Hinged"],
+  ["entry-door", "Entry"],
+];
+
+const TYPES = [...WINDOW_TYPES, ...DOOR_TYPES];
+
+const CATEGORY_OPTIONS = [
+  ["window", "Window"],
+  ["door", "Door"],
 ];
 const OPERABLE_ROWS = [["all", "All rows"], ["top", "Top row"], ["bottom", "Bottom row"]];
 const MATERIALS = [["Aluminum", "Aluminum"], ["Steel", "Steel"], ["Iron", "Iron"], ["Wood", "Wood"]];
@@ -269,6 +283,17 @@ export default function ItemEditor({ items = [], onChange }) {
 function ItemFormModal({ mode, draft, set, setDraft, onSubmit, onClose }) {
   const draftTotalW = totalWidth(draft);
   const isEdit = mode === "edit";
+
+  // Category is derived from the current type — no separate field on
+  // the item. Switching it snaps the type to the first option of the
+  // new category so the dropdown never points at an out-of-list value.
+  const category = isDoor(draft.type) ? "door" : "window";
+  const typeOptions = category === "door" ? DOOR_TYPES : WINDOW_TYPES;
+  function changeCategory(nextCat) {
+    const nextList = nextCat === "door" ? DOOR_TYPES : WINDOW_TYPES;
+    setDraft({ ...draft, type: nextList[0][0] });
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" style={{ maxWidth: 760 }} onClick={(e) => e.stopPropagation()}>
@@ -280,7 +305,8 @@ function ItemFormModal({ mode, draft, set, setDraft, onSubmit, onClose }) {
           <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 }}>
             <TextField label="Mark" value={draft.mark} onChange={(v) => set("mark", v)} />
             <NumberField label="Qty" value={draft.quantity} onChange={(v) => set("quantity", v)} />
-            <SelectField label="Type" value={draft.type} onChange={(v) => set("type", v)} options={TYPES} />
+            <SelectField label="Category" value={category} onChange={changeCategory} options={CATEGORY_OPTIONS} />
+            <SelectField label="Type" value={draft.type} onChange={(v) => set("type", v)} options={typeOptions} />
             <SelectField label="Material" value={draft.material ?? "Aluminum"} onChange={(v) => set("material", v)} options={MATERIALS} />
             {needsLeftRightOperation(draft.type) ? (
               <SelectField
