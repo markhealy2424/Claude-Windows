@@ -363,7 +363,13 @@ export default function QuotesTab({ project, onChange }) {
           </div>
 
           {comparison?.quoteId === active.id && (
-            <DiscrepancyReport comparison={comparison} />
+            <DiscrepancyReport
+              comparison={comparison}
+              onChange={(next) => {
+                setComparison(next);
+                onChange({ discrepancies: next });
+              }}
+            />
           )}
         </>
       )}
@@ -371,7 +377,27 @@ export default function QuotesTab({ project, onChange }) {
   );
 }
 
-function DiscrepancyReport({ comparison }) {
+// Stable identifier for an issue so dismissal persists across renders.
+// Issues come back from the server without explicit ids — kind + mark
+// + position is unique enough since the backend produces at most one
+// row per (kind, mark) for a given comparison run.
+function issueKey(iss, idx) {
+  return `${iss.kind}|${iss.mark ?? ""}|${idx}`;
+}
+
+// Title-case a multi-word lowercase phrase, e.g.
+//   "quantity_mismatch" → "Quantity Mismatch"
+function issueLabel(kind) {
+  return String(kind || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function pluralizeDiscrepancy(n) {
+  return n === 1 ? "discrepancy" : "discrepancies";
+}
+
+function DiscrepancyReport({ comparison, onChange }) {
   if (comparison.ok) {
     return (
       <div className="card">
@@ -382,49 +408,89 @@ function DiscrepancyReport({ comparison }) {
     );
   }
 
-  // Group issues by severity for the summary header
-  const high = comparison.issues.filter((i) => i.severity === "high");
-  const medium = comparison.issues.filter((i) => i.severity === "medium");
-  const low = comparison.issues.filter((i) => i.severity === "low");
+  const dismissed = new Set(comparison.dismissedKeys ?? []);
+  const allIssues = comparison.issues ?? [];
+  const visibleIssues = allIssues.filter((iss, i) => !dismissed.has(issueKey(iss, i)));
+
+  function dismiss(iss, idx) {
+    const key = issueKey(iss, idx);
+    onChange({
+      ...comparison,
+      dismissedKeys: [...(comparison.dismissedKeys ?? []), key],
+    });
+  }
+
+  // Counts in the summary header reflect what's still on screen so the
+  // numbers stay coherent with what the user can actually see.
+  const high = visibleIssues.filter((i) => i.severity === "high");
+  const medium = visibleIssues.filter((i) => i.severity === "medium");
+  const low = visibleIssues.filter((i) => i.severity === "low");
+  const dismissedCount = allIssues.length - visibleIssues.length;
+
+  if (visibleIssues.length === 0) {
+    return (
+      <div className="card">
+        <div className="text-success" style={{ fontSize: 16, fontWeight: 600 }}>
+          ✓ All {allIssues.length} {pluralizeDiscrepancy(allIssues.length)} dismissed.
+        </div>
+        <div className="text-muted" style={{ fontSize: 12, marginTop: 6 }}>
+          Re-run the discrepancy check to bring them back if needed.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card warning">
       <div style={{ marginBottom: 12, fontSize: 14 }}>
-        <strong className="text-warning">⚠ {comparison.issues.length} discrepancy{comparison.issues.length === 1 ? "" : "ies"} found</strong>
+        <strong className="text-warning">
+          ⚠ {visibleIssues.length} {pluralizeDiscrepancy(visibleIssues.length)} found
+        </strong>
         {high.length > 0 && <span className="text-muted"> · {high.length} critical</span>}
         {medium.length > 0 && <span className="text-muted"> · {medium.length} medium</span>}
         {low.length > 0 && <span className="text-muted"> · {low.length} minor</span>}
+        {dismissedCount > 0 && <span className="text-subtle"> · {dismissedCount} dismissed</span>}
       </div>
-      <table>
+      <div className="table-scroll">
+      <table className="compact">
         <thead>
           <tr>
             <th>Mark</th>
             <th>Severity</th>
             <th>Issue</th>
             <th>Detail</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          {comparison.issues.map((iss, i) => (
-            <tr key={i}>
-              <td><strong>{iss.mark}</strong></td>
-              <td>
-                <span className={
-                  iss.severity === "high" ? "text-error"
-                  : iss.severity === "medium" ? "text-warning"
-                  : "text-muted"
-                } style={{ fontWeight: 600, fontSize: 12, textTransform: "uppercase" }}>
-                  {iss.severity}
-                </span>
-              </td>
-              <td>{iss.kind.replace(/_/g, " ")}</td>
-              <td>{iss.message ?? describeLegacy(iss)}</td>
-            </tr>
-          ))}
+          {allIssues.map((iss, i) => {
+            const key = issueKey(iss, i);
+            if (dismissed.has(key)) return null;
+            return (
+              <tr key={key}>
+                <td><strong>{iss.mark}</strong></td>
+                <td>
+                  <span className={
+                    iss.severity === "high" ? "text-error"
+                    : iss.severity === "medium" ? "text-warning"
+                    : "text-muted"
+                  } style={{ fontWeight: 600, fontSize: 12, textTransform: "uppercase" }}>
+                    {iss.severity}
+                  </span>
+                </td>
+                <td>{issueLabel(iss.kind)}</td>
+                <td>{iss.message ?? describeLegacy(iss)}</td>
+                <td className="nowrap">
+                  <button type="button" onClick={() => dismiss(iss, i)}>Dismiss</button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+      </div>
       <div className="text-muted" style={{ fontSize: 12, marginTop: 12, fontStyle: "italic" }}>
-        Mention these to the supplier so they can correct the quote before you commit.
+        Mention these to the supplier so they can correct the quote before you commit. Use Dismiss for any you've already resolved or chosen to accept.
       </div>
     </div>
   );
