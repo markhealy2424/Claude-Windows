@@ -1770,6 +1770,26 @@ select.status-pill:focus {
   background: var(--color-warning-soft);
   border-color: transparent;
 }
+/* When a stat card is clickable (e.g. Open to-dos jumping to its
+   section below), give it a hover + focus affordance so it doesn't
+   look like a static read-only tile. */
+.stat-card--clickable {
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.stat-card--clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.stat-card--clickable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+.stat-card-jump {
+  margin-left: 6px;
+  color: var(--color-warning);
+  font-weight: 600;
+}
 .stat-card--accent {
   background: var(--color-accent-soft);
   border-color: transparent;

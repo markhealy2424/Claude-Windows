@@ -50,6 +50,12 @@ function HeroStats({ project, fin, openTodoCount, onStatusChange }) {
     ? Math.round((fin.clientReceived / fin.clientQuoted) * 100)
     : 0;
 
+  const todoIsClickable = openTodoCount > 0;
+  function scrollToTodos() {
+    const el = document.getElementById("project-todos");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <div className="summary-hero">
       <div className="stat-card">
@@ -78,13 +84,28 @@ function HeroStats({ project, fin, openTodoCount, onStatusChange }) {
         </div>
       </div>
 
-      <div className={`stat-card ${openTodoCount > 0 ? "stat-card--warn" : ""}`}>
+      <div
+        className={`stat-card ${openTodoCount > 0 ? "stat-card--warn" : ""}${todoIsClickable ? " stat-card--clickable" : ""}`}
+        onClick={todoIsClickable ? scrollToTodos : undefined}
+        role={todoIsClickable ? "button" : undefined}
+        tabIndex={todoIsClickable ? 0 : undefined}
+        onKeyDown={todoIsClickable ? (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            scrollToTodos();
+          }
+        } : undefined}
+        title={todoIsClickable ? "Jump to to-do list" : undefined}
+      >
         <div className="stat-label">Open to-dos</div>
         <div className={`stat-num ${openTodoCount > 0 ? "stat-num--warn" : ""}`}>{openTodoCount}</div>
         <div className="stat-sub">
           {openTodoCount === 0
             ? "Nothing waiting on you"
-            : `${openTodoCount} action${openTodoCount === 1 ? "" : "s"} need attention`}
+            : <>
+                {openTodoCount} action{openTodoCount === 1 ? "" : "s"} need attention
+                <span className="stat-card-jump" aria-hidden="true"> ↓</span>
+              </>}
         </div>
       </div>
     </div>
@@ -276,7 +297,7 @@ function TodoList({ suggestions, todos, onChange }) {
   const doneTodos = todos.filter((t) => t.done);
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
+    <div id="project-todos" className="card" style={{ marginBottom: 16, scrollMarginTop: 72 }}>
       <h3 style={{ marginTop: 0, marginBottom: 6 }}>To-do list</h3>
       <p className="text-muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 16 }}>
         Action items for this project. Suggestions come from project state automatically. Add your own below.
